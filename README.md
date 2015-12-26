@@ -30,9 +30,11 @@ This repo contains python scripts to analyze PISM simulation of the Greenland Ic
 
 flux-gates/
 --------
-```greenland-flux-gates-29.*```: flux gates used in Aschwanden, Fahnestock, and Truffer (2016)
-```greenland-flux-gates-all.*```: flux gates of >170 outlet glaciers
+
+* ```greenland-flux-gates-29.*```: flux gates used in Aschwanden, Fahnestock, and Truffer (2016)
+* ```greenland-flux-gates-all.*```: flux gates of >170 outlet glaciers
 
 scripts/
 --------
-```flux-gate-analysis.py```: used in Aschwanden, Fahnestock, and Truffer (2016) to calculate statistics. Has [pypismtools](https://github.com/pism/pypismtools) as dependency.
+
+* ```flux-gate-analysis.py```: used in Aschwanden, Fahnestock, and Truffer (2016) to calculate statistics. Has [pypismtools](https://github.com/pism/pypismtools) as dependency.
