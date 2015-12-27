@@ -171,7 +171,7 @@ nc = len(my_colors)
 ns = nc - na
 my_colors = my_colors[ns::]
 mcc = my_colors
-mpl.rcParams['axes.color_cycle'] = my_colors
+mpl.rcParams['axes.prop_cycle'] = my_colors
 
 # my_colors = my_colors[ns::]
 # my_colors_light = my_colors_light[ns::]

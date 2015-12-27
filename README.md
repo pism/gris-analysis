@@ -34,6 +34,12 @@ flux-gates/
 * ```greenland-flux-gates-29.*```: flux gates used in Aschwanden, Fahnestock, and Truffer (2016)
 * ```greenland-flux-gates-all.*```: flux gates of >170 outlet glaciers
 
+gis/
+--------
+
+* some shapefiles used in Aschwanden, Fahnestock, and Truffer (2016)
+
+
 scripts/
 --------
 
