@@ -23,11 +23,11 @@ TYPE=ctrl_v${ver}
 GRID=1500
 tl_dir=${GRID}m_${CLIMATE}_${TYPE}
 
-out_suffix=${GRID}m_calib_tillphi
+out_suffix=${GRID}m_calib_tefo
 for region in "greenland"; do
     for saryears in "2008-2009"; do
         for var in "velsurf_normal"; do
-            ./flux-gate-analysis.py --plot_title -p twocol --legend short --label_params 'ssa_Glen_exponent,pseudo_plastic_q,till_effective_fraction_overburden,sia_enhancement_factor,ssa_enhancement_factor'  -v ${var} --obs_file $obs_dir/$pr_dir/profiles_${pgs}m_${region}_${saryears}_observed_flux.nc  $tl_dir/$pr_dir/profiles_${pgs}m_${region}_g${GRID}m_${CLIMATE}_${TYPE}_sia_e_*elevlow*.nc
+            ./flux-gate-analysis.py --plot_title -p twocol --legend exp --label_params 'pseudo_plastic_q,till_effective_fraction_overburden'  -v ${var} --obs_file $obs_dir/$pr_dir/profiles_${pgs}m_${region}_${saryears}_observed_flux.nc  $tl_dir/$pr_dir/profiles_${pgs}m_${region}_g${GRID}m_${CLIMATE}_${TYPE}_sia_e_*tefo_0.025*.nc $tl_dir/$pr_dir/profiles_${pgs}m_${region}_g${GRID}m_${CLIMATE}_${TYPE}_sia_e_*tefo_0.03*.nc
             for file in *_${var}_profile.pdf; do
                 bfile=$(basename $file .pdf)
                 mv $file ${bfile}_${pgs}m_${region}_${saryears}_${out_suffix}.pdf

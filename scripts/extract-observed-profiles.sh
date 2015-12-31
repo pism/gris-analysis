@@ -3,14 +3,14 @@
 ucigrid=150
 
 # Extract SAR from Joughin and Rignot
-extract_profiles.py  --all_variables /Volumes/Isunnguata\ Sermia/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/greenland_sar_velocities_500m_2005-2009.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_sar_velocities_2005-2009.nc
-extract_profiles.py  --all_variables /Volumes/Isunnguata\ Sermia/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/greenland_sar_velocities_${ucigrid}m_2008-2009.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_sar_velocities_2008-2009.nc
+extract_profiles.py  --all_variables /Volumes/negis/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/greenland_sar_velocities_500m_2005-2009.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_sar_velocities_2005-2009.nc
+extract_profiles.py  --all_variables /Volumes/negis/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/greenland_sar_velocities_${ucigrid}m_2008-2009.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_sar_velocities_2008-2009.nc
 
 # Extract ice thickness from original MCB
-extract_profiles.py  --all_variables /Volumes/Isunnguata\ Sermia/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/Greenland_${ucigrid}m_mcb_jpl_v${ver}.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_${ucigrid}m_mcb_jpl_v${ver}.nc
+extract_profiles.py  --all_variables /Volumes/negis/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/Greenland_${ucigrid}m_mcb_jpl_v${ver}.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_${ucigrid}m_mcb_jpl_v${ver}.nc
 
 # Extract ice thickness from boot file
-# extract_profiles.py  --all_variables /Volumes/Isunnguata\ Sermia/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/pism_Greenland_${GRID}m_mcb_jpl_v${ver}_${TYPE}.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_${GRID}m_mcb_jpl_v${ver}_${TYPE}.nc
+# extract_profiles.py  --all_variables /Volumes/negis/data/data_sets/GreenlandFluxGates/${region}-flux-gates-${pgs}m.shp ${obs_dir}/${nc_dir}/pism_Greenland_${GRID}m_mcb_jpl_v${ver}_${TYPE}.nc $obs_dir/$pr_dir/profiles_${pgs}m_${region}_${GRID}m_mcb_jpl_v${ver}_${TYPE}.nc
 
 # Calculate fluxes by multiplying SAR and MCB
 # We use vertically-average speed = surface speed
