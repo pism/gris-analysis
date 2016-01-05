@@ -184,7 +184,7 @@ markeredgewidth = 0.2
 
 params = ('pseudo_plastic_q', 'till_effective_fraction_overburden',
           'sia_enhancement_factor', 'do_cold_ice_methods', 'stress_balance_model',
-          'ssa_Glen_exponent', 'grid_dx_meters', 'bed_data_set', 'pseudo_plastic_uthreshold', 'ocean_forcing_type', 'eigen_calving_K', 'thickness_calving_threshold', 'ssa_enhancement_factor', 'bathymetry_type', 'fracture_density_softening_lower_limit')
+          'ssa_Glen_exponent', 'grid_dx_meters', 'bed_data_set', 'pseudo_plastic_uthreshold', 'ocean_forcing_type', 'eigen_calving_K', 'thickness_calving_threshold', 'ssa_enhancement_factor', 'bathymetry_type', 'fracture_density_softening_lower_limit', 'till_reference_void_ratio')
 params_formatting = (
     '{:1.2f}',
     '{:1.4f}',
@@ -200,6 +200,7 @@ params_formatting = (
     '{:.0f}',
     '{:1.2f}',
     '{}',
+    '{:1.2f}',
     '{:1.2f}')
 params_formatting_dict = dict(zip(params, params_formatting))
 params_abbr = (
@@ -217,7 +218,8 @@ params_abbr = (
     'Hm',
     'E$_{\mathregular{ssa}}$',
     'B',
-    'f')
+    'f',
+    '$e_0$')
 params_abbr_dict = dict(zip(params, params_abbr))
 
 var_long = (
