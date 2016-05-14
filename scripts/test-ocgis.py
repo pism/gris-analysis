@@ -14,20 +14,20 @@ Usage:
 ocgis.env.OVERWRITE = True
 
 ## path to target file (may also be an OPeNDAP target)
-URI = 'ex_gris_g3600m_v2_ppq_0.6_tefo_0.02_calving_ocean_kill_forcing_type_ctrl_hydro_diffuse_100a_asmb.nc'
+URI = 'ex_gris_ext_g4500m_straight_paleo_v2_ctrl_ppq_0.33_tefo_0.02_bed_deformation_lc_calving_eigen_calving_k_1e+18_threshold_150_forcing_type_e_age_hydro_diffuse_eemian.nc'
 
 ## the target variable in the dataset to convert
-VARIABLE = 'discharge_flux'
+VARIABLE = None
 
 ## this is the path to the shapefile containing state boundaries
-SHAPEFILE_PATH = 'Greenland_basins.shp'
+SHAPEFILE_PATH = 'gris_basins_buffered_wgs84.shp'
 
 ## write data to a new temporary directory for each script start
 DIR_OUTPUT = './'
 
 ## set the output format to convert to
 OUTPUT_FORMAT = 'nc'
-OUTPUT_FORMAT = 'shp'
+#OUTPUT_FORMAT = 'shp'
 
 ## limit the headers in the output.
 HEADERS = ['time','year','month','day','value']
@@ -40,9 +40,11 @@ GEOM = SHAPEFILE_PATH
 
 calc = [{'func': 'mean', 'name': 'mean'}, {'func': 'std', 'name': 'stdev'}]
 
+basin = 2.1
+
 ## connect to the dataset and load the data as a field object. this will be used
 ## to iterate over time coordinates during the conversion step.
-rd = ocgis.RequestDataset(uri=URI,variable=VARIABLE)
+rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 field = rd.get()
 
 ## selecting specific geometries from a shapefile requires knowing the target
@@ -60,13 +62,16 @@ else:
 ## USE OCGIS OPERATIONS ########################################################
 
 ## get an example time coordinate
-centroid = field.temporal.value_datetime[1]
-print('writing geojson for time slice: {0}'.format(centroid))
+
+# centroid = field.temporal.value_datetime[1]
+# print('writing geojson for time slice: {0}'.format(centroid))
+
 ## this again is the target dataset with a time range for subsetting now
-rd = ocgis.RequestDataset(uri=URI,variable=VARIABLE,time_range=[centroid,centroid])
-#rd = ocgis.RequestDataset(uri=URI,variable=VARIABLE)
+#rd = ocgis.RequestDataset(uri=URI,variable=VARIABLE,time_range=[centroid,centroid])
+rd = ocgis.RequestDataset(uri=URI,variable=VARIABLE)
 ## name of the output geojson file
-prefix = 'ocgis_output_{0}'.format(OUTPUT_FORMAT)
+prefix = 'basin_{basin}_{o_format}'.format(basin=basin,
+                                           o_format=OUTPUT_FORMAT)
 ## parameterize the operations to be performed on the target dataset
 # ops = ocgis.OcgOperations(dataset=rd,
 #                           geom=SHAPEFILE_PATH,
