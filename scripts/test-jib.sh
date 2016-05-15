@@ -10,4 +10,4 @@ done
 extract_profiles.py -a ~/base/gris-analysis/flux-gates/jib-sb-flux-gates-250m.shp /Volumes/Isunnguata_Sermia/green-hydro/run/observed/processed/Greenland_150m_2008-2009_observed_flux_v2.nc profiles/profile_250m_jib_obs.nc
 ncap2 -O -s "velsurf_normal=uvelsurf*nx+vvelsurf*ny;"  profiles/profile_250m_jib_obs.nc  profiles/profile_250m_jib_obs.nc
  
-~/base/gris-analysis/scripts/flux-gate-analysis.py -v velsurf_mag  --colormap Set1 qualitative 4 0 --obs_file profiles/profile_250m_jib_obs.nc profiles/profile_250m_jak*.nc
+~/base/gris-analysis/scripts/flux-gate-analysis.py -v velsurf_mag --legend short --label_params grid_dx_meters --colormap Set1 qualitative 4 0 --obs_file profiles/profile_250m_jib_obs.nc profiles/profile_250m_jak*.nc

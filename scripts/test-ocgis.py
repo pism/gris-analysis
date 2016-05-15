@@ -1,26 +1,32 @@
+#!/usr/bin/env python
+# Copyright (C) 2016 Andy Aschwanden
 
+
+from argparse import ArgumentParser
 import tempfile
-
 import ocgis
 
-'''
-Usage:
-    - Assumes repo is on current master
-    - Check the globals below for major script parameters
-    - The code for generating GeoJson directly from objects is below the code
-       that using the OcgOperations API. It is commented out.
-'''
+
+# set up the option parser
+parser = ArgumentParser()
+parser.description = "Generating scripts for prognostic simulations."
+parser.add_argument("FILE", nargs=1)
+parser.add_argument("--shape_file", dest="shape_file",
+                    help="Path to shape file with basins", default=None)
+
+options = parser.parse_args()
+filename = options.FILE[0]
+SHAPEFILE_PATH = options.shape_file
 
 ocgis.env.OVERWRITE = True
 
 ## path to target file (may also be an OPeNDAP target)
-URI = 'ex_gris_ext_g4500m_straight_paleo_v2_ctrl_ppq_0.33_tefo_0.02_bed_deformation_lc_calving_eigen_calving_k_1e+18_threshold_150_forcing_type_e_age_hydro_diffuse_eemian.nc'
+URI = filename
 
 ## the target variable in the dataset to convert
 VARIABLE = None
 
 ## this is the path to the shapefile containing state boundaries
-SHAPEFILE_PATH = 'gris_basins_buffered_wgs84.shp'
 
 ## write data to a new temporary directory for each script start
 DIR_OUTPUT = './'
@@ -40,7 +46,7 @@ GEOM = SHAPEFILE_PATH
 
 calc = [{'func': 'mean', 'name': 'mean'}, {'func': 'std', 'name': 'stdev'}]
 
-basin = 2.1
+basin = 7.1
 
 ## connect to the dataset and load the data as a field object. this will be used
 ## to iterate over time coordinates during the conversion step.
