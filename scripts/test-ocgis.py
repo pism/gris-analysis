@@ -32,7 +32,7 @@ URI = filename
 
 ## the target variable in the dataset to convert
 VARIABLE = None
-VARIABLE = 'discharge_flux'
+VARIABLE = 'thk'
 
 # Create filename
 savename=filename[0:len(filename)-3] 
@@ -47,8 +47,9 @@ output_format = 'nc'
 GEOM = SHAPEFILE_PATH
 #GEOM = None
 
-basins = range(1, 9)
 
+basins = range(1, 9)
+basins = (1,2)
 ## connect to the dataset and load the data as a field object. this will be used
 ## to iterate over time coordinates during the conversion step.
 # rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
@@ -77,7 +78,7 @@ for basin in basins:
     ops = ocgis.OcgOperations(dataset=rd,
                               geom=SHAPEFILE_PATH,
                               aggregate=False,
-                              snippet=True,
+                              snippet=False,
                               select_ugid=select_ugid,
                               output_format=output_format,
                               prefix=prefix,
