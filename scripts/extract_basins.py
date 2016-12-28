@@ -47,14 +47,20 @@ logger.addHandler(fh)
 parser = ArgumentParser()
 parser.description = "Generating scripts for prognostic simulations."
 parser.add_argument("FILE", nargs=1)
-parser.add_argument("--shape_file", dest="shape_file",
-                    help="Path to shape file with basins", default=None)
 parser.add_argument("--o_dir", dest="odir",
                     help="output directory", default='.')
+parser.add_argument("--shape_file", dest="shape_file",
+                    help="Path to shape file with basins", default=None)
+parser.add_argument("-v", "--variable", dest="VARIABLE",
+                    help="Comma-separated list of variables to be extracted. By default, all variables are extracted.", default=None)
 
 options = parser.parse_args()
 URI = options.FILE[0]
 SHAPEFILE_PATH = options.shape_file
+if options.VARIABLE is not None:
+    VARIABLE=options.VARIABLE.split(',')
+else:
+    VARIABLE=options.VARIABLE
 
 odir = options.odir
 if not os.path.isdir(odir):
@@ -62,12 +68,18 @@ if not os.path.isdir(odir):
 
 ocgis.env.OVERWRITE = True
 
+## Only needed until I figure out how to use nco.ncap2
+try:
+    import subprocess32 as sub
+except:
+    import subprocess as sub
 
-## the target variable in the dataset to convert
-VARIABLE = ['basal_mass_balance_average',
-            'eigen_calving_rate',
-            'surface_mass_balance_average',
-            'vonmises_calving_rate']
+# import time
+# start = time.time()
+# cmd = ['ncap2' , '-O', '-s', '''"cell_area_t[$time,$y,$x]=0.f; 'sz_idt=time.size(); for(*idt=0 ; idt<sz_idt ; idt++) {cell_area_t[idt,$y,$x]=cell_area;}"''', URI, URI]
+# sub.call(cmd)
+# end = time.time()
+# print end - start
 
 # Output name
 savename=URI[0:len(URI)-3] 
@@ -113,12 +125,14 @@ for basin in basins:
                               dir_output=odir)
     ret = ops.execute()
     print('path to output file: {0}'.format(ret))
-    output = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar', prefix]), 'nc']))
-    logger.info('Calculating field sum and saving to \n {}'.format(output))
-    cdo.fldsum(input=ret, output=output)
-    logger.info('Updating units in \n {}'.format(output))
-    opt = [c.Atted(mode="o", att_name="units", var_name="surface_mass_balance_average", value="kg year-1"),
-           c.Atted(mode="o", att_name="units", var_name="basal_mass_balance_average", value="kg year-1")]
-    nco.ncatted(input=output, options=opt)
-    #cdo.expr('ratio=surface_mass_balance_average/basal_mass_balance_average', input=output, output=output)
+    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar', prefix]), 'nc']))
+    logger.info('Calculating field sum and saving to \n {}'.format(ofile))
+    cdo.fldsum(input=ret, output=ofile)
+    # logger.info('Updating units in \n {}'.format(ofile))
+    # opt = [c.Atted(mode="o", att_name="units", var_name="surface_mass_balance_average", value="kg year-1"),
+    #        c.Atted(mode="o", att_name="units", var_name="basal_mass_balance_average", value="kg year-1")]
+    # nco.ncatted(input=output, options=opt)
+    # ifile = ofile
+    # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_runmean_1000yr', prefix]), 'nc']))
+    # cdo.runmean(10, input=ifile, output=ofile)
 
