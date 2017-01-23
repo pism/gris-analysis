@@ -96,6 +96,7 @@ legend = options.legend
 do_regress = options.do_regress
 make_figures = options.make_figures
 
+ice_density = 910.
 ice_density_units = '910 kg m-3'
 vol_to_mass = False
 profile_axis_out_units = 'km'
@@ -118,6 +119,15 @@ elif varname in ('flux_mag', 'flux_normal'):
     v_flux_o_units_str = 'Gt yr$^\mathregular{{-1}}$'
     v_flux_o_units_str_tex = 'Gt\,yr$^{-1}$'
 elif varname in ('thk', 'thickness', 'land_ice_thickness'):
+    flux_type = 'area'
+    v_o_units = 'm'
+    v_o_units_str = 'm'
+    v_o_units_str_tex = 'm'
+    vol_to_mass = False
+    v_flux_o_units = 'km2'
+    v_flux_o_units_str = 'km$^\mathregular{2}$'
+    v_flux_o_units_str_tex = 'km$^2$'
+elif varname in ('usurf', 'surface', 'surface_altitude'):
     flux_type = 'area'
     v_o_units = 'm'
     v_o_units_str = 'm'
@@ -182,10 +192,27 @@ numpoints = 1
 legend_frame_width = 0.25
 markeredgewidth = 0.2
 
-params = ('pseudo_plastic_q', 'till_effective_fraction_overburden',
-          'sia_enhancement_factor', 'do_cold_ice_methods', 'stress_balance_model',
-          'ssa_Glen_exponent', 'grid_dx_meters', 'bed_data_set', 'pseudo_plastic_uthreshold', 'ocean_forcing_type', 'eigen_calving_K', 'thickness_calving_threshold', 'ssa_enhancement_factor', 'bathymetry_type', 'fracture_density_softening_lower_limit', 'till_reference_void_ratio')
+params = ('surface.pdd.factor_ice',
+          'surface.pdd.factor_snow',
+          'pseudo_plastic_q',
+          'till_effective_fraction_overburden',
+          'sia_enhancement_factor',
+          'do_cold_ice_methods',
+          'stress_balance_model',
+          'ssa_Glen_exponent',
+          'grid_dx_meters',
+          'bed_data_set',
+          'pseudo_plastic_uthreshold',
+          'ocean_forcing_type',
+          'eigen_calving_K',
+          'thickness_calving_threshold',
+          'ssa_enhancement_factor',
+          'bathymetry_type',
+          'fracture_density_softening_lower_limit',
+          'till_reference_void_ratio')
 params_formatting = (
+    '{:1.4f}',
+    '{:1.4f}',
     '{:1.2f}',
     '{:1.4f}',
     '{:1.2f}',
@@ -204,6 +231,8 @@ params_formatting = (
     '{:1.2f}')
 params_formatting_dict = dict(zip(params, params_formatting))
 params_abbr = (
+    '$f_{\mathregular{ice}}$',
+    '$f_{\mathregular{snow}}$',
     '$q$',
     '$\\delta$',
     'E$_{\mathregular{sia}}$',
@@ -255,6 +284,8 @@ def calculate_skill_score(rmsd, error):
     rmsd-error<=0 S=1
     '''
 
+    if error is None:
+        error = 1e-9
     if rmsd - error <= 0:
         S = 1
     else:
@@ -547,8 +578,8 @@ class FluxGate(object):
             experiment_fluxes[id] = o_val
             experiment_fluxes_units[id] = o_units_str
             config = exp.config
-            my_exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
-                                   key].format(config[key])]) for key in label_params])
+            my_exp_str = ', '.join(['='.join([params_abbr_dict.get(key),
+                                              params_formatting_dict.get(key).format(config.get(key))]) for key in label_params])
         self.experiment_fluxes = experiment_fluxes
         self.experiment_fluxes_units = experiment_fluxes_units
 
@@ -716,7 +747,7 @@ class FluxGate(object):
                 config = exp.config
                 id = exp.id
                 exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
-                                    key].format(config[key])]) for key in params])
+                                    key].format(config.get(key))]) for key in params])
                 if has_observations:
                     if (legend == 'long'):
                         # label = ', '.join([': '.join([exp_str, '{:6.1f}'.format(
@@ -1032,6 +1063,7 @@ def export_latex_table_rmsd(filename, gate):
             v_flux_o_units_str_tex,
             v_o_units_str_tex))
     f.write('\midrule\n')
+    print gate.observed_flux_error, error_norm
     f.write(
         'observed && {:3.1f}$\pm${:2.1f} & {:2.2f} \\\ \n'.format(
             gate.observed_flux,
@@ -1044,7 +1076,7 @@ def export_latex_table_rmsd(filename, gate):
         config = gate.experiments[val].config
         my_flux = gate.experiment_fluxes[val]
         my_exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
-                               key].format(config[key])]) for key in label_params])
+                               key].format(config.get(key))]) for key in label_params])
         if k == 0:
             f.write(
                 "Experiment {} & {} & {:2.1f}  & \\textit{{{:1.2f}}} \\\ \n".format(
@@ -1101,7 +1133,7 @@ def export_latex_table_corr(filename, gate):
         config = gate.experiments[val].config
         my_flux = gate.experiment_fluxes[val]
         my_exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
-                               key].format(config[key])]) for key in label_params])
+                               key].format(config.get(key))]) for key in label_params])
         corr = gate.corr[val]
         if k == 0:
             corr_0 = corr
@@ -1253,7 +1285,7 @@ def write_experiment_table(outname):
         config = exp.config
         id = exp.id
         param_str = ' & '.join(
-            [params_formatting_dict[key].format(config[key]) for key in label_params])
+            [params_formatting_dict[key].format(config.get(key)) for key in label_params])
         line_str = ' '.join(
             [' & '.join(['{:1.0f}'.format(id), param_str]), '\\\ \n'])
         f.write(line_str)
@@ -1634,11 +1666,26 @@ for pos_id, profile_name in enumerate(profile_names):
     profile_axis_units = nc0.variables['profile'].units
     profile_axis_name = nc0.variables['profile'].long_name
     profile_id = int(nc0.variables['profile_id'][pos_id])
-    clon = nc0.variables['clon'][pos_id]
-    clat = nc0.variables['clat'][pos_id]
-    flightline = nc0.variables['flightline'][pos_id]
-    glaciertype = nc0.variables['glaciertype'][pos_id]
-    flowtype = nc0.variables['flowtype'][pos_id]
+    try:
+        clon = nc0.variables['clon'][pos_id]
+    except:
+        clon = 0.
+    try:
+        clat = nc0.variables['clat'][pos_id]
+    except:
+        clat = 0.
+    try:
+        flightline = nc0.variables['flightline'][pos_id]
+    except:
+        flightline = 0
+    try:
+        glaciertype = nc0.variables['glaciertype'][pos_id]
+    except:
+        glaciertype = ''
+    try:
+        flowtype = nc0.variables['flowtype'][pos_id]
+    except:
+        flowtype = ''
     flux_gate = FluxGate(pos_id, profile_name, profile_id, profile_axis, profile_axis_units,
                          profile_axis_name, clon, clat, flightline, glaciertype, flowtype)
     flux_gates.append(flux_gate)
@@ -1866,7 +1913,7 @@ if obs_file:
         corr_isbrae_median = np.nanmedian(corr_isbrae)
         corr_ice_stream_median = np.nanmedian(corr_ice_stream)
         my_exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
-                               key].format(config[key])]) for key in label_params])
+                               key].format(config.get(key))]) for key in label_params])
         if k == 0:
             rmsd_cum_0 = rmsd_cum
             rmsd_isbrae_cum_0 = rmsd_isbrae_cum
@@ -1918,7 +1965,7 @@ if obs_file:
         my_exp = flux_gates[0].experiments[id]
         config = my_exp.config
         my_exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
-                               key].format(config[key])]) for key in label_params])
+                               key].format(config.get(key))]) for key in label_params])
         f.write(
             "Experiment {} & {} & {:1.2f}\\\ \n".format(
                 id,
