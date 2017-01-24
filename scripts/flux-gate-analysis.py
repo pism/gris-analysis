@@ -16,6 +16,7 @@ import matplotlib.cm as cmx
 import matplotlib.colors as mplcolors
 from argparse import ArgumentParser
 import pandas as pa
+import statsmodels.api as sm
 from netCDF4 import Dataset as NC
 
 try:
@@ -486,9 +487,11 @@ class FluxGate(object):
             S[id] = calculate_skill_score(my_rmsd, sigma_obs)
             obsS = pa.Series(data=obs_vals, index=x)
             expS = pa.Series(data=exp_vals, index=x)
-            # Perform Ordinary Least Squares regression analysis with Pandas
-            p_ols[id] = pa.ols(x=obsS, y=expS)
-            r2[id] = p_ols[id].r2
+            # Perform Ordinary Least Squares regression analysis with 
+            # p_ols[id] = pa.ols(x=obsS, y=expS)
+            # r2[id] = p_ols[id].r2
+            p_ols[id] = sm.OLS(obsS, expS).fit()
+            r2[id] = p_ols[id].rsquared
             corr[id] = obsS.corr(expS)
         best_rmsd_exp_id = sorted(
             p_ols,
