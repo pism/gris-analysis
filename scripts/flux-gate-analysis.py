@@ -29,6 +29,8 @@ from udunits2 import Converter, System, Unit
 parser = ArgumentParser()
 parser.description = "Analyze flux gates. Used for 'Complex Greenland Outlet Galcier Flow Captured'."
 parser.add_argument("FILE", nargs='*')
+parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float,
+                    help='''Plot aspect ratio"''', default=0.8)
 parser.add_argument("--colormap", dest="colormap", nargs=4,
                     help='''brewer2mpl colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)''',
                     default=['Blues', 'Sequential', 8, 0])
@@ -57,6 +59,8 @@ parser.add_argument("--short_label", dest="short_label", action="store_true",
                     help="Short label.", default=False)
 parser.add_argument("--regress_label", dest="regress_label", action="store_true",
                     help="Special label for grid resolution plots", default=False)
+parser.add_argument("--simple_plot", dest="simple_plot", action="store_true",
+                    help="Make simple line plot", default=False)
 parser.add_argument("--no_legend", dest="plot_legend", action="store_false",
                     help="Don't plot a legend", default=True)
 parser.add_argument("-p", "--print_size", dest="print_mode",
@@ -83,6 +87,7 @@ options = parser.parse_args()
 args = options.FILE
 
 np.seterr(all='warn')
+aspect_ratio = options.aspect_ratio
 tol = 1e-6
 normalize = options.normalize
 print_mode = options.print_mode
@@ -95,6 +100,7 @@ plot_title = options.plot_title
 legend = options.legend
 do_regress = options.do_regress
 make_figures = options.make_figures
+simple_plot = options.simple_plot
 
 ice_density = 910.
 ice_density_units = '910 kg m-3'
@@ -177,6 +183,13 @@ except:
     my_colors = ['0.9', '0.7', '0.5', '0.3', '0.1']
     my_colors_light = ['0.8', '0.6', '0.4', '0.2', '0']
 
+# Make this an option
+my_colors = ['#deebf7', '#9ecae1', '#3182bd',
+             '#efedf5', '#bcbddc', '#756bb1',
+             '#fee0d2', '#fc9272', '#de2d26',
+             '#e5f5e0', '#a1d99b', '#31a354',
+             '#fee6ce', '#fdae6b', '#e6550d']
+    
 nc = len(my_colors)
 ns = nc - na
 my_colors = my_colors[ns::]
@@ -211,8 +224,8 @@ params = ('surface.pdd.factor_ice',
           'fracture_density_softening_lower_limit',
           'till_reference_void_ratio')
 params_formatting = (
-    '{:1.4f}',
-    '{:1.4f}',
+    '{:1.0f}',
+    '{:1.0f}',
     '{:1.2f}',
     '{:1.4f}',
     '{:1.2f}',
@@ -707,7 +720,7 @@ class FluxGate(object):
                         self.observed_flux_error)
                 else:
                     label = '{:6.1f}'.format(self.observed_flux)
-            if (legend == 'short') or (legend == 'regress'):
+            if legend in ('short', 'regress', 'exp'):
                 label = 'observed'
             has_error = obs.has_error
             i_vals = obs.values
@@ -726,9 +739,12 @@ class FluxGate(object):
                     obs_o_vals +
                     obs_error_o_vals,
                     color='0.85')
-
-            ax.plot(profile_axis_out, obs_o_vals, '-', color='0.5')
-            ax.plot(profile_axis_out, obs_o_vals, dash_style, color='0.35',
+            
+            if simple_plot:
+                ax.plot(profile_axis_out, obs_o_vals, '-', color='0.35', label=label)                
+            else:
+                ax.plot(profile_axis_out, obs_o_vals, '-', color='0.5')
+                ax.plot(profile_axis_out, obs_o_vals, dash_style, color='0.35',
                     markeredgewidth=markeredgewidth, label=label)
 
         ne = len(experiments)
@@ -750,13 +766,13 @@ class FluxGate(object):
                                     key].format(config.get(key))]) for key in params])
                 if has_observations:
                     if (legend == 'long'):
-                        # label = ', '.join([': '.join([exp_str, '{:6.1f}'.format(
-                        #     self.experiment_fluxes[id])]), '='.join(['r', '{:1.2f}'.format(self.corr[id])])])
-                        label = ', '.join(['{:6.1f}'.format(self.experiment_fluxes[id]), '='.join(['r', '{:1.2f}'.format(self.corr[id])])])
-                    elif (legend == 'exp'):
                         label = ', '.join([': '.join([exp_str, '{:6.1f}'.format(
                             self.experiment_fluxes[id])]), '='.join(['r', '{:1.2f}'.format(self.corr[id])])])
-                        
+                        # label = ', '.join(['{:6.1f}'.format(self.experiment_fluxes[id]), '='.join(['r', '{:1.2f}'.format(self.corr[id])])])
+                    elif (legend == 'exp'):
+                        exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
+                                    key].format(config.get(key) * ice_density)]) for key in params])
+                        label = exp_str
                     else:
                         label = 'r={:1.2f}'.format(self.corr[id])
                     if (legend == 'regress'):
@@ -774,10 +790,16 @@ class FluxGate(object):
 
             my_color = my_colors[k]
             my_color_light = my_colors_light[k]
-            line_c, = ax.plot(
-                profile_axis_out, exp_o_vals, '-', color=my_color, alpha=0.5)
-            line_d, = ax.plot(profile_axis_out, exp_o_vals, dash_style, color=my_color,
-                              markeredgewidth=markeredgewidth, label=label)
+            if simple_plot:
+                line_c, = ax.plot(
+                    profile_axis_out, exp_o_vals, color=my_color, label=label)
+                line_d, = ax.plot(
+                    profile_axis_out, exp_o_vals, color=my_color)
+            else:
+                line_c, = ax.plot(
+                    profile_axis_out, exp_o_vals, '-', color=my_color, alpha=0.5)
+                line_d, = ax.plot(profile_axis_out, exp_o_vals, dash_style, color=my_color,
+                                  markeredgewidth=markeredgewidth, label=label)
             labels.append(label)
             lines_d.append(line_d)
             lines_c.append(line_c)
@@ -816,6 +838,14 @@ class FluxGate(object):
                                bbox_transform=plt.gcf().transFigure)
             fr = lg.get_frame()
             fr.set_lw(legend_frame_width)
+        # Replot observations
+        if has_observations:
+            if simple_plot:
+                ax.plot(profile_axis_out, obs_o_vals, '-', color='0.35')
+            else:
+                ax.plot(profile_axis_out, obs_o_vals, '-', color='0.5')
+                ax.plot(profile_axis_out, obs_o_vals, dash_style, color='0.35',
+                        markeredgewidth=markeredgewidth)
         if plot_title:
             plt.title(gate_name, loc='left')
         return fig
@@ -1063,13 +1093,13 @@ def export_latex_table_rmsd(filename, gate):
             v_flux_o_units_str_tex,
             v_o_units_str_tex))
     f.write('\midrule\n')
-    print gate.observed_flux_error, error_norm
+    observed_flux = gate.observed_flux
+    observed_flux_error = gate.observed_flux_error
     f.write(
         'observed && {:3.1f}$\pm${:2.1f} & {:2.2f} \\\ \n'.format(
-            gate.observed_flux,
-            gate.observed_flux_error,
+            observed_flux,
+            observed_flux_error,
             error_norm))
-
     best_rmsd = gate.best_rmsd
     for k, val in enumerate(
             sorted(gate.p_ols, key=lambda x: gate.rmsd[x], reverse=False)):
@@ -1706,9 +1736,7 @@ for k, filename in enumerate(args):
 
 
 # set the print mode
-golden_mean = ppt.get_golden_mean()
-aspect_ratio = golden_mean
-lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=0.8)
+lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=aspect_ratio)
 
 ne = len(flux_gates[0].experiments)
 ng = len(flux_gates)
@@ -1745,10 +1773,10 @@ if obs_file:
     for gate in flux_gates:
         gate_name = '_'.join([unidecode(gate.gate_name), 'rmsd', varname])
         outname = '.'.join([gate_name, 'tex']).replace(' ', '_')
-        export_latex_table_rmsd(outname, gate)
+        # export_latex_table_rmsd(outname, gate)
         gate_name = '_'.join([unidecode(gate.gate_name), 'pearson_r', varname])
         outname = '.'.join([gate_name, 'tex']).replace(' ', '_')
-        export_latex_table_corr(outname, gate)
+        #export_latex_table_corr(outname, gate)
     # write rmsd and person r figure per experiment
     for exp in flux_gates[0].experiments:
         exp_str = '_'.join(['pearson_r_experiment', str(exp.id), varname])
