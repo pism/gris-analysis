@@ -490,7 +490,7 @@ class FluxGate(object):
             # Perform Ordinary Least Squares regression analysis with 
             # p_ols[id] = pa.ols(x=obsS, y=expS)
             # r2[id] = p_ols[id].r2
-            p_ols[id] = sm.OLS(obsS, expS).fit()
+            p_ols[id] = sm.OLS(expS, sm.add_constant(obsS)).fit()
             r2[id] = p_ols[id].rsquared
             corr[id] = obsS.corr(expS)
         best_rmsd_exp_id = sorted(
@@ -2020,11 +2020,11 @@ if do_regress:
         gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
         d = {'grid_resolution': gridS, 'RMSD': rmsdS}
         df = pa.DataFrame(d)
-        model = pa.ols(x=gridS, y=rmsdS)
+        model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
         # Calculate PISM trends and biases (intercepts)
-        trend, bias = model.beta
+        bias, trend = model.params
         # Calculate r-squared value
-        r2 = model.r2
+        r2 = model.rsquared
         # make x lims from 0 to 5000 m
         xmin, xmax = 0, 5000
         # Create figures
@@ -2071,14 +2071,14 @@ if do_regress:
         gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
         d = {'grid_resolution': gridS, 'RMSD': rmsdS}
         df = pa.DataFrame(d)
-        model = pa.ols(x=gridS, y=rmsdS)
+        model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
         # trend and bias (intercept)
-        trend, bias = model.beta
+        bias, trend = model.params
         # r-squared value
-        r2 = model.r2
+        r2 = model.rsquared
         # p-value
-        p = model.f_stat['p-value']
-        f = model.f_stat['f-stat']
+        p = model.fpvalue
+        f = model.fvalue
 
         gate.linear_trend = trend
         gate.linear_bias = bias
@@ -2117,10 +2117,10 @@ if do_regress:
         gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
         d = {'grid_resolution': gridS, 'RMSD': rmsdS}
         df = pa.DataFrame(d)
-        model = pa.ols(x=gridS, y=rmsdS)
+        model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
         # trend and bias (intercept)
-        trend_selected, bias_selected = model.beta
-        p_selected = model.f_stat['p-value']
+        bias_selected, trend_selected = model.params
+        p_selected = model.f_pvalue
 
         if id == 1:  # Jakobshavn
             colorVal = '#54278f'
@@ -2155,11 +2155,11 @@ if do_regress:
     gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
     d = {'grid_resolution': gridS, 'RMSD': rmsdS}
     df = pa.DataFrame(d)
-    model = pa.ols(x=gridS, y=rmsdS)
+    model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
     # Calculate PISM trends and biases (intercepts)
-    trend_isbrae, bias_isbrae = model.beta
-    r2_isbrae = model.r2
-    p_isbrae = model.f_stat['p-value']
+    bias_isbrae, trend_isbrae = model.params
+    r2_isbrae = model.rsquared
+    p_isbrae = model.f_pvalue
     if p_isbrae > 0.05:
         line_l, = ax.plot([grid_dx_meters[0], grid_dx_meters[-
                                                          1]], bias_isbrae +
@@ -2185,11 +2185,11 @@ if do_regress:
     gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
     d = {'grid_resolution': gridS, 'RMSD': rmsdS}
     df = pa.DataFrame(d)
-    model = pa.ols(x=gridS, y=rmsdS)
+    model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
     # Calculate PISM trends and biases (intercepts)
-    trend_ice_stream, bias_ice_stream = model.beta
-    r2_ice_stream = model.r2
-    p_ice_stream = model.f_stat['p-value']
+    bias_ice_stream, trend_ice_stream = model.params
+    r2_ice_stream = model.rsquared
+    p_ice_stream = model.f_pvalue
     if p_ice_stream > 0.05:
         line_l, = ax.plot([grid_dx_meters[0], grid_dx_meters[-
                                                          1]], bias_ice_stream +
@@ -2216,11 +2216,11 @@ if do_regress:
     gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
     d = {'grid_resolution': gridS, 'RMSD': rmsdS}
     df = pa.DataFrame(d)
-    model = pa.ols(x=gridS, y=rmsdS)
+    model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
     # Calculate PISM trends and biases (intercepts)
-    trend_global, bias_global = model.beta
-    r2_global = model.r2
-    p_global = model.f_stat['p-value']
+    bias_global, trend_global = model.params
+    r2_global = model.rsquared
+    p_global = model.f_pvalue
     if p_global > 0.05:
         line_l, = ax.plot([grid_dx_meters[0], grid_dx_meters[-
                                                              1]], bias_global +
@@ -2280,11 +2280,11 @@ if do_regress:
         gridS = pa.Series(data=grid_dx_meters, index=gate.r2.keys())
         d = {'grid_resolution': gridS, 'R2': r2S}
         df = pa.DataFrame(d)
-        model = pa.ols(x=gridS, y=r2S)
+        model = sm.OLS(r2S, sm.add_constant(gridS)).fit()
         # Calculate PISM trends and biases (intercepts)
-        trend, bias = model.beta
+        bis, trend = model.params
         # Calculate r-squared value
-        r2 = model.r2
+        r2 = model.rsquared
 
         ax.plot([grid_dx_meters[0],
                  grid_dx_meters[-1]],
@@ -2302,11 +2302,11 @@ if do_regress:
     gridS = pa.Series(data=grid_dx_meters, index=gate.r2.keys())
     d = {'grid_resolution': gridS, 'R2': r2S}
     df = pa.DataFrame(d)
-    model = pa.ols(x=gridS, y=r2S)
+    model = sm.OLS(gridS, sm.add_constant(r2S)).fit()
     # Calculate PISM trends and biases (intercepts)
-    trend, bias = model.beta
+    bias, trend = model.params
     # Calculate r-squared value
-    r2 = model.r2
+    r2 = model.rsquared
     # plot trend line
     ax.plot([grid_dx_meters[0],
              grid_dx_meters[-1]],
