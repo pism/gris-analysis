@@ -81,6 +81,9 @@ parser.add_argument("-r", "--output_resolution", dest="out_res",
                     help='''
                   Graphics resolution in dots per inch (DPI), default
                   = 300''', default=300)
+parser.add_argument("--y_lim", dest="y_lim", nargs=2,
+                    help='''Y lims''',
+                    default=[None, None])
 parser.add_argument("-v", "--variable", dest="varname",
                     help='''Variable to plot, default = 'velsurf_mag'.''', default='velsurf_mag')
 
@@ -102,12 +105,18 @@ legend = options.legend
 do_regress = options.do_regress
 make_figures = options.make_figures
 simple_plot = options.simple_plot
-
+y_lim_min, y_lim_max = options.y_lim
 ice_density = 910.
 ice_density_units = '910 kg m-3'
 vol_to_mass = False
 profile_axis_out_units = 'km'
 
+if y_lim_min is not None:
+    y_lim_min = np.float(y_lim_min)
+if y_lim_max is not None:
+    y_lim_max = np.float(y_lim_max)
+
+    
 if varname in ('velsurf_mag', 'velbase_mag', 'velsurf_normal'):
     flux_type = 'line flux'
     v_o_units = 'm yr-1'
@@ -190,7 +199,13 @@ my_colors = ['#deebf7', '#9ecae1', '#3182bd',
              '#fee0d2', '#fc9272', '#de2d26',
              '#e5f5e0', '#a1d99b', '#31a354',
              '#fee6ce', '#fdae6b', '#e6550d']
-    
+
+my_colors_light = ['#deebf7', '#9ecae1', '#3182bd',
+             '#efedf5', '#bcbddc', '#756bb1',
+             '#fee0d2', '#fc9272', '#de2d26',
+             '#e5f5e0', '#a1d99b', '#31a354',
+             '#fee6ce', '#fdae6b', '#e6550d']
+
 nc = len(my_colors)
 ns = nc - na
 my_colors = my_colors[ns::]
@@ -271,6 +286,9 @@ var_long = (
     'velsurf_normal',
     'flux_mag',
     'flux_normal',
+    'surface',
+    'usurf',
+    'surface_altitude'
     'thk',
     'thickness',
     'land_ice_thickness')
@@ -280,6 +298,9 @@ var_short = (
     'speed',
     'flux',
     'flux',
+    'altitude',
+    'altitude',
+    'altitude',
     'ice thickness',
     'ice thickness',
     'ice thickness')
@@ -817,7 +838,7 @@ class FluxGate(object):
             v_name = varname
         ylabel = "{0} ({1})".format(v_name, v_o_units_str)
         ax.set_ylabel(ylabel)
-        ax.set_ylim(bottom=0)
+        ax.set_ylim(bottom=y_lim_min, top=y_lim_max)
         handles, labels = ax.get_legend_handles_labels()
         ordered_handles = handles[:0:-1]
         ordered_labels = labels[:0:-1]
