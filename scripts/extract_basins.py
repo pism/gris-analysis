@@ -127,9 +127,10 @@ for basin in basins:
     print('path to output file: {0}'.format(ret))
     ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(ofile))
-    cdo.seltimestep('1050/1250', input=ifile, output=ofile)
-    ifile = ofile
-    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_lgm', prefix]), 'nc']))
+    cdo.fldsum(input=ret, output=ofile)
+    # cdo.seltimestep('1050/1250', input=ifile, output=ofile)
+    # ifile = ofile
+    # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_lgm', prefix]), 'nc']))
     # logger.info('Updating units in \n {}'.format(ofile))
     # opt = [c.Atted(mode="o", att_name="units", var_name="surface_mass_balance_average", value="kg year-1"),
     #        c.Atted(mode="o", att_name="units", var_name="basal_mass_balance_average", value="kg year-1")]

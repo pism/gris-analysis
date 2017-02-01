@@ -34,7 +34,7 @@ parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float,
                     help='''Plot aspect ratio"''', default=0.8)
 parser.add_argument("--colormap", dest="colormap", nargs=4,
                     help='''brewer2mpl colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)''',
-                    default=['Blues', 'Sequential', 8, 0])
+                    default=['Blues', 'Sequential', 9, 0])
 parser.add_argument("--label_params", dest="label_params",
                     help='''comma-separated list of parameters that appear in the legend,
                   e.g. "sia_enhancement_factor"''', default='pseudo_plastic_q,till_effective_fraction_overburden,sia_enhancement_factor')
@@ -194,17 +194,17 @@ except:
     my_colors_light = ['0.8', '0.6', '0.4', '0.2', '0']
 
 # Make this an option
-my_colors = ['#deebf7', '#9ecae1', '#3182bd',
-             '#efedf5', '#bcbddc', '#756bb1',
-             '#fee0d2', '#fc9272', '#de2d26',
-             '#e5f5e0', '#a1d99b', '#31a354',
-             '#fee6ce', '#fdae6b', '#e6550d']
+# my_colors = ['#deebf7', '#9ecae1', '#3182bd',
+#              '#efedf5', '#bcbddc', '#756bb1',
+#              '#fee0d2', '#fc9272', '#de2d26',
+#              '#e5f5e0', '#a1d99b', '#31a354',
+#              '#fee6ce', '#fdae6b', '#e6550d']
 
-my_colors_light = ['#deebf7', '#9ecae1', '#3182bd',
-             '#efedf5', '#bcbddc', '#756bb1',
-             '#fee0d2', '#fc9272', '#de2d26',
-             '#e5f5e0', '#a1d99b', '#31a354',
-             '#fee6ce', '#fdae6b', '#e6550d']
+# my_colors_light = ['#deebf7', '#9ecae1', '#3182bd',
+#              '#efedf5', '#bcbddc', '#756bb1',
+#              '#fee0d2', '#fc9272', '#de2d26',
+#              '#e5f5e0', '#a1d99b', '#31a354',
+#              '#fee6ce', '#fdae6b', '#e6550d']
 
 nc = len(my_colors)
 ns = nc - na
