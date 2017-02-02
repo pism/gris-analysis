@@ -93,15 +93,7 @@ output_format = 'nc'
 GEOM = SHAPEFILE_PATH
 
 basins = range(1, 9)
-
-# date_start = '-11700-1-1'
-# date_end = '1-1-1'
-# r_date_start = date_start.split('-')
-# r_date_end = date_end.split('-')
-# print r_date_start, r_date_end
-# time_range = [datetime(int(r_date_start[0]), int(r_date_start[1]), int(r_date_start[2])),
-#               datetime(int(r_date_end[0]), int(r_date_end[1]), int(r_date_end[2]))]
-# rd = ocgis.RequestDataset(uri=URI,variable=VARIABLE,time_range=time_range)
+basins = ('1', '2', '3a', '3b', '4', '5', '6', '7a', '7b')
 
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
@@ -125,9 +117,12 @@ for basin in basins:
                               dir_output=odir)
     ret = ops.execute()
     print('path to output file: {0}'.format(ret))
-    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar', prefix]), 'nc']))
+    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(ofile))
     cdo.fldsum(input=ret, output=ofile)
+    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldmean', prefix]), 'nc']))
+    logger.info('Calculating field sum and saving to \n {}'.format(ofile))
+    cdo.fldmean(input=ret, output=ofile)
     # cdo.seltimestep('1050/1250', input=ifile, output=ofile)
     # ifile = ofile
     # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_lgm', prefix]), 'nc']))
