@@ -24,7 +24,7 @@ try:
 except:
     import pypismtools as ppt
 
-from udunits2 import Converter, System, Unit
+import cf_units
 
 # Set up the option parser
 parser = ArgumentParser()
@@ -37,7 +37,7 @@ parser.add_argument("--colormap", dest="colormap", nargs=4,
                     default=['Blues', 'Sequential', 9, 0])
 parser.add_argument("--label_params", dest="label_params",
                     help='''comma-separated list of parameters that appear in the legend,
-                  e.g. "sia_enhancement_factor"''', default='pseudo_plastic_q,till_effective_fraction_overburden,sia_enhancement_factor')
+                  e.g. "sia_enhancement_factor"''', default='surface.pdd.factor_ice')
 parser.add_argument("--normalize", dest="normalize", action="store_true",
                     help="Normalize experiments by muliplying with max(obs)/max(experiment)", default=False)
 parser.add_argument("--obs_file", dest="obs_file",
@@ -225,7 +225,7 @@ params = ('surface.pdd.factor_ice',
           'surface.pdd.factor_snow',
           'pseudo_plastic_q',
           'till_effective_fraction_overburden',
-          'sia_enhancement_factor',
+          'stress_balance.sia.enhancement_factor',
           'do_cold_ice_methods',
           'stress_balance_model',
           'ssa_Glen_exponent',
@@ -305,9 +305,6 @@ var_short = (
     'ice thickness',
     'ice thickness')
 var_name_dict = dict(zip(var_long, var_short))
-
-# Init Unit system
-sys = System()
 
 
 def calculate_skill_score(rmsd, error):
@@ -556,16 +553,12 @@ class FluxGate(object):
         # Here we need to directly access udunits2 since we want to
         # multiply units
         if vol_to_mass:
-            i_units = Unit(sys,
-                           x_units) * Unit(sys,
-                                           y_units) * Unit(sys,
-                                                           ice_density_units)
+            i_units = cf_units.Unit(x_units) * cf_units.Unit(y_units) * cf_units.Unit(ice_density_units)
         else:
-            i_units = Unit(sys, x_units) * Unit(sys, y_units)
-        o_units = Unit(sys, v_flux_o_units)
+            i_units = cf_units.Unit(x_units) * cf_units.Unit(y_units)
+        o_units = cf_units.Unit(v_flux_o_units)
         o_units_str = v_flux_o_units_str
-        c = Converter((i_units, o_units))
-        o_val = c(int_val)
+        o_val = i_units.convert(int_val, o_units)
         observed_flux = o_val
         observed_flux_units = o_units_str
         if self.observations.has_error:
@@ -602,16 +595,12 @@ class FluxGate(object):
             # Here we need to directly access udunits2 since we want to
             # multiply units
             if vol_to_mass:
-                i_units = Unit(sys,
-                               x_units) * Unit(sys,
-                                               y_units) * Unit(sys,
-                                                               ice_density_units)
+                i_units = cf_units.Unit(x_units) * cf_units.Unit( y_units) * cf_units.Unit(ice_density_units)
             else:
-                i_units = Unit(sys, x_units) * Unit(sys, y_units)
-            o_units = Unit(sys, v_flux_o_units)
+                i_units = cf_units.Unit(x_units) * cf_units.Unit(y_units)
+            o_units = cf_units.Unit(v_flux_o_units)
             o_units_str = v_flux_o_units_str
-            c = Converter((i_units, o_units))
-            o_val = c(int_val)
+            o_val = i_units.convert(int_val, o_units)
             experiment_fluxes[id] = o_val
             experiment_fluxes_units[id] = o_units_str
             config = exp.config
