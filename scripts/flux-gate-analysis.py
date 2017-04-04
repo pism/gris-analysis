@@ -1297,12 +1297,10 @@ def export_gate_table_rmsd(filename, exp):
     for k in rmsds_rels_sorted:
         gate = flux_gates[k]
         line_str = ' & '.join(
-            [
-                unidecode(
-                    gate.gate_name), '{:1.0f}'.format(
-                    means[k]), '{:1.0f}'.format(
-                    rmsds[k]), '{:1.2f} \\\ \n'.format(
-                        rmsds_rels[k])])
+            [unidecode(gate.gate_name),
+             '{:1.0f}'.format(np.float(means[k])),
+             '{:1.0f}'.format(np.float(rmsds[k])),
+             '{:1.2f} \\\ \n'.format(np.float(rmsds_rels[k]))])
 
         f.write(line_str)
     f.write('\\bottomrule \n')
