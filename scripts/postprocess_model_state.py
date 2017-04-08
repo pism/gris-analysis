@@ -59,7 +59,8 @@ for dir_processed in (dir_gtiff, dir_nc):
     if not os.path.isdir(os.path.join(idir, dir_processed)):
         os.mkdir(os.path.join(idir, dir_processed))
 
-pvars = ('thk', 'usurf')
+pvars = ('thk', 'usurf', 'velsurf_mag')
+ppvars = ('thk', 'usurf')
 
 float2double_str = '''
 @all=get_vars_in();
@@ -86,7 +87,7 @@ for exp_file in exp_files:
     exp_gtiff_wd = os.path.join(idir, dir_gtiff, exp_basename + '.tif')
     logger.info('masking variables where ice thickness < 10m')
     nco.ncap2(input='-s "{}" {}'.format(ncap2_str, exp_file), output=exp_nc_wd, overwrite=True)
-    opt = [c.Atted(mode="o", att_name="_FillValue", var_name=myvar, value=fill_value) for myvar in pvars]
+    opt = [c.Atted(mode="o", att_name="_FillValue", var_name=myvar, value=fill_value) for myvar in ppvars]
     nco.ncatted(input=exp_nc_wd, options=opt)
     for mvar in pvars:
         m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)

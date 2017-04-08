@@ -66,3 +66,5 @@ for mvar in ('vx', 'vy', 'ex', 'ey'):
     opt = [c.Atted(mode="o", att_name="units", var_name=var_dict[mvar], value="m year-1")]
     nco.ncatted(input=ofile_wp, options=opt)
     nco.ncks(input=ofile_wp, output=ofile_merged_wp, append=True)
+ncap2_str = 'velsurf_mag_error=sqrt(uvelsurf_error^2+vvelsurf_error^2); velsurf_normal_error=velsurf_mag_error;'
+nco.ncap2(input='-s "{}" {}'.format(ncap2_str, ofile_merged_wp), output=ofile_merged_wp, overwrite=True)

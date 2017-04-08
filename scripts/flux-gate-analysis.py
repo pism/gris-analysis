@@ -500,7 +500,9 @@ class FluxGate(object):
             my_rmsd, my_N_rmsd = get_rmsd(exp_vals, obs_vals)
             i_units = self.varname_units
             o_units = v_o_units
-            rmsd[id] = ppt.unit_converter(my_rmsd, i_units, o_units)
+            i_units_cf = cf_units.Unit(i_units)
+            o_units_cf = cf_units.Unit(o_units)
+            rmsd[id] = i_units_cf.convert(my_rmsd, o_units_cf)
             N_rmsd[id] = my_N_rmsd
             S[id] = calculate_skill_score(my_rmsd, sigma_obs)
             obsS = pa.Series(data=obs_vals, index=x)
@@ -704,8 +706,9 @@ class FluxGate(object):
         profile_axis = self.profile_axis
         profile_axis_name = self.profile_axis_name
         profile_axis_units = self.profile_axis_units
-        profile_axis_out = ppt.unit_converter(profile_axis, profile_axis_units,
-                                              profile_axis_out_units)
+        i_units_cf = cf_units.Unit(profile_axis_units)
+        o_units_cf = cf_units.Unit(profile_axis_out_units)
+        profile_axis_out = i_units_cf.convert(profile_axis, o_units_cf)
         varname = self.varname
         v_units = self.varname_units
         has_observations = self.has_observations
@@ -737,13 +740,14 @@ class FluxGate(object):
                 label = 'observed'
             has_error = obs.has_error
             i_vals = obs.values
-            obs_o_vals = ppt.unit_converter(i_vals, v_units, v_o_units)
+            i_units_cf = cf_units.Unit(v_units)
+            o_units_cf = cf_units.Unit(v_o_units)
+            obs_o_vals = i_units_cf.convert(i_vals, o_units_cf)
             obs_max = np.max(obs_o_vals)
             if has_error:
                 i_vals = obs.error
-                obs_error_o_vals = ppt.unit_converter(
-                    i_vals,
-                    v_units,
+                obs_error_o_vals = i_units_cf.convert(
+                    o_units_cf,
                     v_o_units)
                 ax.fill_between(
                     profile_axis_out,
@@ -767,7 +771,7 @@ class FluxGate(object):
         # handles and labels to have first experiment plotted on top
         for k, exp in enumerate(reversed(experiments)):
             i_vals = np.squeeze(exp.values)
-            exp_o_vals = ppt.unit_converter(i_vals, v_units, v_o_units)
+            exp_o_vals = i_units_cf.convert(i_vals, o_units_cf)
             if normalize:
                 exp_max = np.max(exp_o_vals)
                 exp_o_vals *= obs_max / exp_max
@@ -1038,8 +1042,9 @@ def export_latex_table_flux(filename, flux_gates, params):
         profile_axis = gate.profile_axis
         profile_axis_units = gate.profile_axis_units
         length = gate.length()
-        profile_length = ppt.unit_converter(length, profile_axis_units,
-                                            profile_axis_out_units)
+        i_units_cf = cf_units.Unit(profile_axis_units)
+        o_units_cf = cf_units.Unit(profile_axis_out_units)
+        profile_length = i_units_cf.convert(length, o_units_cf)
         if gate.glaciertype == 0:
             glaciertype = 'ffmt'
         elif gate.glaciertype == 1:
@@ -1090,10 +1095,11 @@ def export_latex_table_rmsd(filename, gate):
 
     '''
 
-    error_norm = ppt.unit_converter(
+    i_units_cf = cf_units.Unit(gate.varname_units)
+    o_units_cf = cf_units.Unit(v_o_units)
+    error_norm = i_units_cf.convert(
         gate.sigma_obs,
-        gate.varname_units,
-        v_o_units)
+        o_units_cf)
     f = codecs.open(filename, 'w', 'utf-8')
     f.write('\\begin{tabular} {l l cc }\n')
     f.write('\\toprule \n')
@@ -1211,15 +1217,17 @@ def export_gate_table_relative_skill(filename, exp):
     for gate in flux_gates:
         id = gate.pos_id
         # Get uncertainty and convert units
-        error = ppt.unit_converter(gate.sigma_obs, gate.sigma_obs_units,
-                                   v_o_units)
+        i_units_cf = cf_units.Unit(gate.sigma_obs_units)
+        o_units_cf = cf_units.Unit(v_o_units)
+        error = i_units_cf.convert(gate.sigma_obs, o_units_cf)
         errors[id] = error
         # Get RMSD and convert units
-        rmsd = ppt.unit_converter(
+        i_units_cf = cf_units.Unit(gate.rmsd_units)
+        o_units_cf = cf_units.Unit(v_o_units)
+        rmsd = i_units_cf.convert(
             gate.rmsd[
                 exp.id],
-            gate.rmsd_units,
-            v_o_units)
+            o_units_cf)
         rmsds[id] = rmsd
         chi_rel = (rmsd - error) / error
         chi_rels[id] = chi_rel
@@ -1269,15 +1277,17 @@ def export_gate_table_rmsd(filename, exp):
     for gate in flux_gates:
         id = gate.pos_id
         # Get uncertainty and convert units
-        mean = ppt.unit_converter(gate.observed_mean, gate.observed_mean_units,
-                                  v_o_units)
+        i_units_cf = cf_units.Unit(gate.observed_mean_units)
+        o_units_cf = cf_units.Unit(v_o_units)
+        mean = i_units_cf.convert(gate.observed_mean, o_units_cf)
         means[id] = mean
         # Get RMSD and convert units
-        rmsd = ppt.unit_converter(
+        i_units_cf = cf_units.Unit(gate.rmsd_units)
+        o_units_cf = cf_units.Unit(v_o_units)
+        rmsd = i_units_cf.convert(
             gate.rmsd[
                 exp.id],
-            gate.rmsd_units,
-            v_o_units)
+            o_units_cf)
         rmsds[id] = rmsd
         rmsd_rel = rmsd / mean
         rmsds_rels[id] = rmsd_rel
@@ -1358,16 +1368,18 @@ def make_skill_score_figure(filename, exp):
     skills = {}
     for gate in flux_gates:
         id = gate.pos_id
-        error = ppt.unit_converter(
+        i_units_cf = cf_units.Unit(gate.sigma_obs_units)
+        o_units_cf = cf_units.Unit(v_o_units)
+        error = i_units_cf.convert(
             gate.sigma_obs,
-            gate.sigma_obs_units,
-            v_o_units)
+            o_units_cf)
         errors[id] = error
-        rmsd = ppt.unit_converter(
+        i_units_cf = cf_units.Unit(gate.rmsd_units)
+        o_units_cf = cf_units.Unit(v_o_units)
+        rmsd = i_units_cf.convert(
             gate.rmsd[
                 exp.id],
-            gate.rmsd_units,
-            v_o_units)
+            o_units_cf)
         rmsds[id] = rmsd
         skills[id] = calculate_skill_score(rmsd, error)
     sort_order = sorted(skills, key=lambda x: skills[x])
@@ -1659,18 +1671,20 @@ def write_shapefile(filename, flux_gates):
             rmsd_exp = '_'.join(['rmsd', str(int(cnt))])
             i = feature.GetFieldIndex(rmsd_exp)
             if gate.rmsd is not None:
-                chi = ppt.unit_converter(
+                i_units_cf = cf_units.Unit(gate.rmsd_units)
+                o_units_cf = cf_units.Unit(v_o_units)
+                chi = i_units_cf.convert(
                     gate.rmsd[cnt],
-                    gate.rmsd_units,
-                    v_o_units)
+                    o_units_cf)
                 feature.SetField(i, chi)
             sigma_exp = '_'.join(['sigma', str(int(cnt))])
             i = feature.GetFieldIndex(sigma_exp)
             if gate.sigma_obs is not None:
-                sigma_obs = ppt.unit_converter(
+                i_units_cf = cf_units.Unit(gate.varname_units)
+                o_units_cf = cf_units.Unit(v_o_units)
+                sigma_obs = i_units_cf.convert(
                     gate.sigma_obs,
-                    gate.varname_units,
-                    v_o_units)
+                    o_units_cf)
                 feature.SetField(i, sigma_obs)
         # Save feature
         layer.CreateFeature(feature)
@@ -1915,13 +1929,15 @@ if obs_file:
     # Calculate error norm
     gate_errors = np.array([x.sigma_obs for x in flux_gates])
     gate_errors_N = np.array([x.sigma_obs_N for x in flux_gates])
+    print gate_errors_N
     N_error_tot = np.linalg.norm(gate_errors_N, 1)
     error_sum = np.linalg.norm(gate_errors ** 2 * gate_errors_N, 1)
     my_error = np.sqrt(1. / N_error_tot * error_sum)
-    total_error_norm = ppt.unit_converter(
+    i_units_cf = cf_units.Unit(gate.varname_units)
+    o_units_cf = cf_units.Unit(v_o_units)
+    total_error_norm = i_units_cf.convert(
         my_error,
-        gate.varname_units,
-        v_o_units)
+        o_units_cf)
 
     # RMSD table
     outname = '.'.join(['rmsd_cum_table', 'tex'])
