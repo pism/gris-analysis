@@ -7,8 +7,8 @@ try:
 except:
     import subprocess as sub
 from glob import glob
-import numpy as np
 import gdal
+import numpy as np
 from nco import Nco
 nco = Nco()
 from nco import custom as c
@@ -52,45 +52,37 @@ thickness_threshold = 10
 gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
 
 # Process experiments
-dir_gtiff = 'processed_gtiff'
-dir_nc = 'processed_nc'
+dir_nc = 'processed_spatial_nc'
+dir_gtiff = 'processed_spatial_gtiff'
+mvar = 'deglac_year'
 
 for dir_processed in (dir_gtiff, dir_nc):
     if not os.path.isdir(os.path.join(idir, dir_processed)):
         os.mkdir(os.path.join(idir, dir_processed))
 
-pvars = ('thk', 'usurf', 'velsurf_mag')
-ppvars = ('thk', 'usurf')
-
-float2double_str = '''
-@all=get_vars_in();
-*sz=@all.size();
-
-for(idx=0;idx<sz;idx++){
-
-  @var_nm=sprint(@all(idx));
-
-  if( *@var_nm.type() == NC_INT || *@var_nm.type() == NC_FLOAT )
-   *@var_nm=*@var_nm.double();
-
-}
-'''
-
-fill_value = -2e9
-v_str = ' '.join('='.join([x, str(fill_value) + ';']) for x in pvars)
-ncap2_str = '{}; where(thk<{}) {{ {} }};'.format(float2double_str, thickness_threshold, v_str)
-exp_files = glob(os.path.join(idir, 'state', '*.nc'))
+exp_files = glob(os.path.join(idir, 'spatial', '*.nc'))
 for exp_file in exp_files:
     logger.info('Processing file {}'.format(exp_file))
     exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
     exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
-    exp_gtiff_wd = os.path.join(idir, dir_gtiff, exp_basename + '.tif')
-    logger.info('masking variables where ice thickness < 10m')
-    nco.ncap2(input='-s "{}" {}'.format(ncap2_str, exp_file), output=exp_nc_wd, overwrite=True)
-    opt = [c.Atted(mode="o", att_name="_FillValue", var_name=myvar, value=fill_value) for myvar in ppvars]
-#    nco.ncatted(input=exp_nc_wd, options=opt)
-    for mvar in pvars:
-        m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
-        m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
-        logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))
-        gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
+    nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
+    nc = NC(exp_nc_wd, 'a')
+    thk = nc.variables['thk'][:]
+    x = nc.variables['x'][:]
+    y = nc.variables['y'][:]
+    deglac_time = nc.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+    deglac_time.long_name = 'year of deglaciation'
+    nx = len(x)
+    ny = len(y)
+    for n in  range(ny):
+        for m in range(nx):
+             try:
+                 deglac_time[n,m] = np.where(thk[:,n,m]<thickness_threshold)[0][0]
+             except:
+                 pass
+    nc.close()
+    m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
+    m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
+    logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))
+    gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
+
