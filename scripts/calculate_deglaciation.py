@@ -17,6 +17,33 @@ import logging.handlers
 from argparse import ArgumentParser
 
 from netCDF4 import Dataset as NC
+from netcdftime import utime
+
+def calc_deglaciation_time(infile, thickness_threshold):
+    '''
+    Calculate year of deglaciation (e.g. when ice thickness
+    drops below threshold 'thickness_threshold')
+    '''
+    nc = NC(infile, 'a')
+    time = nc.variables['time']
+    time_units = time.units
+    time_calendar = time.calendar
+    thk = nc.variables['thk'][:]
+    x = nc.variables['x'][:]
+    y = nc.variables['y'][:]
+    deglac_time = nc.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+    deglac_time.long_name = 'year of deglaciation'
+    nx = len(x)
+    ny = len(y)
+    for n in  range(ny):
+        for m in range(nx):
+             try:
+                 idx = np.where(thk[:,n,m] < thickness_threshold)[0][0]
+                 deglac_time[n,m] = time[idx] / secpera
+             except:
+                 pass
+    nc.close()
+
 
 # set up the option parser
 parser = ArgumentParser()
@@ -49,6 +76,7 @@ logger.addHandler(ch)
 logger.addHandler(fh)
 
 thickness_threshold = 10
+secpera = 24 * 3600 * 365  # for 365_day calendar only
 gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
 
 # Process experiments
@@ -66,21 +94,7 @@ for exp_file in exp_files:
     exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
     exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
     nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
-    nc = NC(exp_nc_wd, 'a')
-    thk = nc.variables['thk'][:]
-    x = nc.variables['x'][:]
-    y = nc.variables['y'][:]
-    deglac_time = nc.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
-    deglac_time.long_name = 'year of deglaciation'
-    nx = len(x)
-    ny = len(y)
-    for n in  range(ny):
-        for m in range(nx):
-             try:
-                 deglac_time[n,m] = np.where(thk[:,n,m]<thickness_threshold)[0][0]
-             except:
-                 pass
-    nc.close()
+    calc_deglaciation_time(exp_nc_wd, thickness_threshold)
     m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
     m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
     logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))

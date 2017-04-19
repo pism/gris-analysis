@@ -555,19 +555,19 @@ class FluxGate(object):
         # Here we need to directly access udunits2 since we want to
         # multiply units
         if vol_to_mass:
-            i_units = cf_units.Unit(x_units) * cf_units.Unit(y_units) * cf_units.Unit(ice_density_units)
+            i_units_cf = cf_units.Unit(x_units) * cf_units.Unit(y_units) * cf_units.Unit(ice_density_units)
         else:
-            i_units = cf_units.Unit(x_units) * cf_units.Unit(y_units)
-        o_units = cf_units.Unit(v_flux_o_units)
+            i_units_cf = cf_units.Unit(x_units) * cf_units.Unit(y_units)
+        o_units_cf = cf_units.Unit(v_flux_o_units)
         o_units_str = v_flux_o_units_str
-        o_val = i_units.convert(int_val, o_units)
+        o_val = i_units_cf.convert(int_val, o_units_cf)
         observed_flux = o_val
         observed_flux_units = o_units_str
         if self.observations.has_error:
             y = self.observations.error
             int_val = self._line_integral(y, x)
             i_error = int_val
-            o_error = c(i_error)
+            o_error = i_units_cf.convert(i_error, o_units_cf)
             error_norm, N = get_rmsd(y, np.zeros_like(y, dtype='float32'))
             self.sigma_obs = error_norm
             self.sigma_obs_N = N
@@ -638,7 +638,7 @@ class FluxGate(object):
         else:
             obs_str = '{:2.1f}'.format(observed_flux)
         exp_str = ' & '.join([''.join(['{:2.1f}'.format(experiment_fluxes[
-                             key]), '({:1.2f})'.format(p_ols[key].r2)]) for key in experiment_fluxes])
+                             key]), '({:1.2f})'.format(p_ols[key].rsquared)]) for key in experiment_fluxes])
         if islast:
             gate_str = ' & '.join([gate_name, obs_str, '', exp_str])
         else:
@@ -747,8 +747,8 @@ class FluxGate(object):
             if has_error:
                 i_vals = obs.error
                 obs_error_o_vals = i_units_cf.convert(
-                    o_units_cf,
-                    v_o_units)
+                    i_vals,
+                    o_units_cf)
                 ax.fill_between(
                     profile_axis_out,
                     obs_o_vals -
@@ -1452,7 +1452,7 @@ def make_r2_figure(filename, exp):
     r2s = {}
     for gate in flux_gates:
         id = gate.pos_id
-        r2s[id] = gate.p_ols[exp.id].r2
+        r2s[id] = gate.p_ols[exp.id].rsquared
     sort_order = sorted(r2s, key=lambda x: r2s[x])
     r2s_sorted = [r2s[x] for x in sort_order]
 
@@ -1664,7 +1664,7 @@ def write_shapefile(filename, flux_gates):
             if gate.p_ols is not None:
                 r2_exp = '_'.join(['r2', str(int(cnt))])
                 i = feature.GetFieldIndex(r2_exp)
-                feature.SetField(i, gate.p_ols[cnt].r2)
+                feature.SetField(i, gate.p_ols[cnt].rsquared)
                 corr_exp = '_'.join(['r', str(int(cnt))])
                 i = feature.GetFieldIndex(corr_exp)
                 feature.SetField(i, gate.corr[cnt])
@@ -1929,7 +1929,6 @@ if obs_file:
     # Calculate error norm
     gate_errors = np.array([x.sigma_obs for x in flux_gates])
     gate_errors_N = np.array([x.sigma_obs_N for x in flux_gates])
-    print gate_errors_N
     N_error_tot = np.linalg.norm(gate_errors_N, 1)
     error_sum = np.linalg.norm(gate_errors ** 2 * gate_errors_N, 1)
     my_error = np.sqrt(1. / N_error_tot * error_sum)

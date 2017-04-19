@@ -94,7 +94,7 @@ GEOM = SHAPEFILE_PATH
 
 basins = range(1, 9)
 basins = ('1', '2', '3a', '3b', '4', '5', '6', '7a', '7b')
-
+# basins = ('7b', '7a')
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
     logger.info('Extracting basin {}'.format(basin))
@@ -118,11 +118,11 @@ for basin in basins:
     ret = ops.execute()
     print('path to output file: {0}'.format(ret))
     ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
-    logger.info('Calculating field sum and saving to \n {}'.format(ofile))
-    cdo.fldsum(input=ret, output=ofile)
-    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldmean', prefix]), 'nc']))
-    logger.info('Calculating field sum and saving to \n {}'.format(ofile))
-    cdo.fldmean(input=ret, output=ofile)
+    # logger.info('Calculating field sum and saving to \n {}'.format(ofile))
+    # cdo.fldsum(input=ret, output=ofile)
+    # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldmean', prefix]), 'nc']))
+    # logger.info('Calculating field sum and saving to \n {}'.format(ofile))
+    # cdo.fldmean(input=ret, output=ofile)
     # cdo.seltimestep('1050/1250', input=ifile, output=ofile)
     # ifile = ofile
     # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_lgm', prefix]), 'nc']))
