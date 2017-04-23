@@ -307,25 +307,6 @@ var_short = (
 var_name_dict = dict(zip(var_long, var_short))
 
 
-def calculate_skill_score(rmsd, error):
-    '''
-    Calculate skill score S.
-
-    We chose S such that
-    rmsd->inf S->0
-    rmsd-error<=0 S=1
-    '''
-
-    if error is None:
-        error = 1e-9
-    if rmsd - error <= 0:
-        S = 1
-    else:
-        beta = -1. / np.log(0.5)
-        S = np.exp(-(rmsd - error) / (beta * error))
-    return S
-
-
 def reverse_enumerate(iterable):
     '''
     Enumerate over an iterable in reverse order while retaining proper indexes
@@ -504,7 +485,6 @@ class FluxGate(object):
             o_units_cf = cf_units.Unit(o_units)
             rmsd[id] = i_units_cf.convert(my_rmsd, o_units_cf)
             N_rmsd[id] = my_N_rmsd
-            S[id] = calculate_skill_score(my_rmsd, sigma_obs)
             obsS = pa.Series(data=obs_vals, index=x)
             expS = pa.Series(data=exp_vals, index=x)
             # Perform Ordinary Least Squares regression analysis with 
@@ -1345,91 +1325,6 @@ def write_experiment_table(outname):
     f.close()
 
 
-def make_skill_score_figure(filename, exp):
-    '''
-    Create a skill score plot.
-
-    Create a skill score plot for a given experiment, sorted by
-    decreasing skill.
-
-    Parameters
-    ----------
-    filename: string
-    exp: FluxGateExperiment
-
-    '''
-
-    nocol = 5
-    colormap = ['RdYlGn', 'Diverging', nocol, 0]
-    my_ok_colors = brewer2mpl.get_map(*colormap).mpl_colors
-
-    errors = {}
-    rmsds = {}
-    skills = {}
-    for gate in flux_gates:
-        id = gate.pos_id
-        i_units_cf = cf_units.Unit(gate.sigma_obs_units)
-        o_units_cf = cf_units.Unit(v_o_units)
-        error = i_units_cf.convert(
-            gate.sigma_obs,
-            o_units_cf)
-        errors[id] = error
-        i_units_cf = cf_units.Unit(gate.rmsd_units)
-        o_units_cf = cf_units.Unit(v_o_units)
-        rmsd = i_units_cf.convert(
-            gate.rmsd[
-                exp.id],
-            o_units_cf)
-        rmsds[id] = rmsd
-        skills[id] = calculate_skill_score(rmsd, error)
-    sort_order = sorted(skills, key=lambda x: skills[x])
-    skills_sorted = [skills[x] for x in sort_order]
-
-    lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=1.2)
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    height = 0.4
-    y = np.arange(len(errors.keys())) + 2
-    for k, skill in enumerate(skills_sorted):
-        if skill < 0.1:
-            colorVal = my_ok_colors[0]
-        elif (skill >= 0.1) and (skill < 0.25):
-            colorVal = my_ok_colors[1]
-        elif (skill >= 0.25) and (skill < 0.5):
-            colorVal = my_ok_colors[2]
-        elif (skill >= 0.5) and (skill < 0.75):
-            colorVal = my_ok_colors[3]
-        else:
-            colorVal = my_ok_colors[4]
-        # use gray
-        colorVal = '0.6'
-        ax.plot(skill, y[k], 'o', markersize=5, color=colorVal)
-
-    skill_median = np.nanmedian(skills.values())
-    ax.vlines(skill_median, 0, y[-1], linestyle='solid', color='0.5')
-
-    plt.yticks(y, [flux_gates[x].gate_name for x in sort_order])
-    ax.set_xlabel('S (-)')
-    ax.set_xlim(-0.2, 1.1)
-    ax.set_ylim(0, y[-1] + 1)
-    ticks = [0, 0.25, 0.5, 0.75, 1]
-    ax.set_xticks(ticks)
-    ax.set_xticklabels(ticks)
-    # Only draw spine between the y-ticks
-    ax.spines['left'].set_bounds(y[0], y[-1])
-    ax.spines['bottom'].set_bounds(0, 1)
-    # Hide the right and top spines
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    # Only show ticks on the left and bottom spines
-    ax.yaxis.set_ticks_position('left')
-    ax.xaxis.set_ticks_position('bottom')
-    fig.tight_layout()
-    print(("Saving {0}".format(filename)))
-    fig.savefig(filename)
-    plt.close('all')
-    return skills
-
 
 def make_r2_figure(filename, exp):
     '''
@@ -1631,25 +1526,25 @@ def write_shapefile(filename, flux_gates):
             i = feature.GetFieldIndex('obs_mean')
             feature.SetField(i, float(gate.observed_mean))
         # OGR doesn't like numpy.int8
-        if gate.glaciertype is not None:
+        if gate.glaciertype is not (None or ''):
             i = feature.GetFieldIndex('gtype')
             feature.SetField(i, int(gate.glaciertype))
-        if gate.flowtype is not None:
+        if gate.flowtype is not (None or ''):
             i = feature.GetFieldIndex('ftype')
             feature.SetField(i, int(gate.flowtype))
-        if gate.flightline is not None:
+        if gate.flightline is not (None or ''):
             i = feature.GetFieldIndex('flightline')
             feature.SetField(i, int(gate.flightline))
-        if gate.linear_trend is not None:
+        if gate.linear_trend is not (None or ''):
             i = feature.GetFieldIndex('lin_trend')
             feature.SetField(i, gate.linear_trend)
-        if gate.linear_bias is not None:
+        if gate.linear_bias is not (None or ''):
             i = feature.GetFieldIndex('lin_bias')
             feature.SetField(i, gate.linear_bias)
-        if gate.linear_r2 is not None:
+        if gate.linear_r2 is not (None or ''):
             i = feature.GetFieldIndex('lin_r2')
             feature.SetField(i, gate.linear_r2)
-        if gate.linear_p is not None:
+        if gate.linear_p is not (None or ''):
             i = feature.GetFieldIndex('lin_p')
             feature.SetField(i, gate.linear_p)
         for cnt in range(flux_gates[0].exp_counter):
@@ -1657,11 +1552,7 @@ def write_shapefile(filename, flux_gates):
             i = feature.GetFieldIndex(flux_exp)
             exp_flux = gate.experiment_fluxes[cnt]
             feature.SetField(i, exp_flux)
-            if gate.S is not None:
-                skill_exp = '_'.join(['skill', str(int(cnt))])
-                i = feature.GetFieldIndex(skill_exp)
-                feature.SetField(i, gate.S[cnt])
-            if gate.p_ols is not None:
+            if gate.p_ols is not (None or ''):
                 r2_exp = '_'.join(['r2', str(int(cnt))])
                 i = feature.GetFieldIndex(r2_exp)
                 feature.SetField(i, gate.p_ols[cnt].rsquared)
@@ -1670,7 +1561,7 @@ def write_shapefile(filename, flux_gates):
                 feature.SetField(i, gate.corr[cnt])
             rmsd_exp = '_'.join(['rmsd', str(int(cnt))])
             i = feature.GetFieldIndex(rmsd_exp)
-            if gate.rmsd is not None:
+            if gate.rmsd is not (None or ''):
                 i_units_cf = cf_units.Unit(gate.rmsd_units)
                 o_units_cf = cf_units.Unit(v_o_units)
                 chi = i_units_cf.convert(
@@ -1679,7 +1570,7 @@ def write_shapefile(filename, flux_gates):
                 feature.SetField(i, chi)
             sigma_exp = '_'.join(['sigma', str(int(cnt))])
             i = feature.GetFieldIndex(sigma_exp)
-            if gate.sigma_obs is not None:
+            if gate.sigma_obs is not (None or ''):
                 i_units_cf = cf_units.Unit(gate.varname_units)
                 o_units_cf = cf_units.Unit(v_o_units)
                 sigma_obs = i_units_cf.convert(
@@ -1810,15 +1701,6 @@ if obs_file:
         exp_str = '_'.join(['rmsd_experiment', str(exp.id), varname])
         outname = '.'.join([exp_str, 'tex'])
         export_gate_table_rmsd(outname, exp)
-        # exp_str = '_'.join(['skill_score_experiment', str(exp.id), varname])
-        # outname = '.'.join([exp_str, 'tex'])
-        # export_gate_table_relative_skill(outname, exp)
-        # exp_str = '_'.join(['skill_score_experiment', str(exp.id), varname])
-        # outname = '.'.join([exp_str, 'pdf'])
-        # skills = make_skill_score_figure(outname, exp)
-        # exp_str = '_'.join(['r2_experiment', str(exp.id), varname])
-        # outname = '.'.join([exp_str, 'pdf'])
-        # r2s = make_r2_figure(outname, exp)
 
     # ugly way to find out how many glaciers we have of each type
     # this is needed because we have have an np.nan correlation

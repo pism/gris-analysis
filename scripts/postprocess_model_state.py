@@ -91,7 +91,8 @@ for exp_file in exp_files:
     cmd = ['extract_interface.py', '-t', 'ice_ocean', '-o', exp_shp_wd, exp_file]
     sub.call(cmd)
     logger.info('masking variables where ice thickness < 10m')
-    nco.ncap2(input='-6 -s "{}" {}'.format(ncap2_str, exp_file), output=exp_nc_wd, overwrite=True)
+    nco.ncks(input=exp_file, output=exp_nc_wd, variable=','.join([x for x in pvars]), overwrite=True)
+    nco.ncap2(input='-6 -s "{}" {}'.format(ncap2_str, exp_nc_wd), output=exp_nc_wd, overwrite=True)
     opt = [c.Atted(mode="o", att_name="_FillValue", var_name=myvar, value=fill_value) for myvar in ppvars]
     nco.ncatted(input=exp_nc_wd, options=opt)
     for mvar in pvars:
