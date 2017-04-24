@@ -52,6 +52,8 @@ parser.add_argument("--legend", dest="legend",
                     choices=['default', 'none', 'long', 'short', 'regress', 'exp'],
                     help="Controls the legend, options are: \
                     'default' (default), 'none, 'short', long', 'regress'", default='default')
+parser.add_argument("--o_dir", dest="odir",
+                    help="output directory. Default: current directory", default='foo')
 parser.add_argument("--plot_title", dest="plot_title", action="store_true",
                     help="Plots the flux gate name as title", default=False)
 parser.add_argument("--long_label", dest="long_label", action="store_true",
@@ -104,6 +106,7 @@ plot_title = options.plot_title
 legend = options.legend
 do_regress = options.do_regress
 make_figures = options.make_figures
+odir = options.odir
 simple_plot = options.simple_plot
 y_lim_min, y_lim_max = options.y_lim
 ice_density = 910.
@@ -223,19 +226,20 @@ markeredgewidth = 0.2
 
 params = ('surface.pdd.factor_ice',
           'surface.pdd.factor_snow',
-          'pseudo_plastic_q',
-          'till_effective_fraction_overburden',
+          'basal_resistance.pseudo_plastic.q',
+          'basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden',
           'stress_balance.sia.enhancement_factor',
-          'do_cold_ice_methods',
-          'stress_balance_model',
-          'ssa_Glen_exponent',
+          'energy.temperature_based',
+          'stress_balance.model',
+          'stress_balance.ssa.Glen_exponent',
+          'stress_balance.sia.Glen_exponent',
           'grid_dx_meters',
           'bed_data_set',
-          'pseudo_plastic_uthreshold',
+          'basal_resistance.pseudo_plastic.u_threshold',
           'ocean_forcing_type',
           'eigen_calving_K',
           'thickness_calving_threshold',
-          'ssa_enhancement_factor',
+          'stress_balance.ssa.enhancement_factor',
           'bathymetry_type',
           'fracture_density_softening_lower_limit',
           'till_reference_void_ratio')
@@ -247,6 +251,7 @@ params_formatting = (
     '{:1.2f}',
     '{}',
     '{}',
+    '{:1.2f}',
     '{:1.2f}',
     '{:.0f}',
     '{}',
@@ -267,7 +272,8 @@ params_abbr = (
     'E$_{\mathregular{sia}}$',
     'cold',
     'SSA',
-    '$n$',
+    '$n_{\mathregular{ssa}}$',
+    '$n_{\mathregular{sia}}$',
     'ds',
     'bed',
     '$u_{c}$',
@@ -1326,6 +1332,7 @@ def write_experiment_table(outname):
 
 
 
+
 def make_r2_figure(filename, exp):
     '''
     Create a r2 plot.
@@ -1661,8 +1668,6 @@ if table_file and obs_file:
     export_latex_table_flux(table_file, flux_gates, label_params)
 
 # make figure for each flux gate
-# Make a table for every flux gate with the top k_max experiments based on RMSD
-k_max = 25
 for gate in flux_gates:
     if make_figures:
         fig = gate.make_line_plot(label_param_list=label_params)
