@@ -775,6 +775,8 @@ class FluxGate(object):
                     elif (legend == 'exp'):
                         exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
                                     key].format(config.get(key) * ice_density)]) for key in params])
+                        exp_str = ', '.join(['='.join([params_abbr_dict[key], params_formatting_dict[
+                                    key].format(config.get(key))]) for key in params])
                         label = exp_str
                     else:
                         label = 'r={:1.2f}'.format(self.corr[id])
