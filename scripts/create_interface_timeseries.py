@@ -63,5 +63,9 @@ for feature in layer:
     k = feature.GetField('timestep')
     geom = feature.GetGeometryRef()
     length = geom.GetArea() / 2.
-    print length
     feature_length_vector[k-1] =+ length
+
+del ds
+
+import pylab as plt
+plt.plot(feature_length_vector/1e3)

@@ -52,11 +52,18 @@ thickness_threshold = 10
 gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
 
 # Process experiments
+dirs = []
 dir_gtiff = 'processed_gtiff'
+dirs.append(dir_gtiff)
 dir_nc = 'processed_nc'
-dir_shp = 'processed_grounding_lines'
+dirs.append(dir_nc)
+dir_gl = 'processed_grounding_lines'
+dirs.append(dir_gl)
+dir_io = 'processed_ice_ocean'
+dirs.append(dir_io)
 dir_hs = 'processed_hillshade'
-for dir_processed in (dir_gtiff, dir_nc, dir_shp, dir_hs):
+dirs.append(dir_hs)
+for dir_processed in dirs:
     if not os.path.isdir(os.path.join(idir, dir_processed)):
         os.mkdir(os.path.join(idir, dir_processed))
 
@@ -87,8 +94,13 @@ for exp_file in exp_files:
     exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
     exp_gtiff_wd = os.path.join(idir, dir_gtiff, exp_basename + '.tif')
     logger.info('extracting grounding line')
-    exp_shp_wd =  os.path.join(idir, dir_shp, exp_basename + '.shp')
-    cmd = ['extract_interface.py', '-t', 'ice_ocean', '-o', exp_shp_wd, exp_file]
+    exp_gl_wd =  os.path.join(idir, dir_gl, exp_basename + '.shp')
+    cmd = ['extract_interface.py', '-t', 'grounding_line', '-o', exp_gl_wd, exp_file]
+    print ' '.join([x for x in cmd])
+    #sub.call(cmd)
+    logger.info('extracting ice ocean interface')
+    exp_io_wd =  os.path.join(idir, dir_io, exp_basename + '.shp')
+    cmd = ['extract_interface.py', '-t', 'ice_ocean', '-o', exp_io_wd, exp_file]
     sub.call(cmd)
     logger.info('masking variables where ice thickness < 10m')
     nco.ncks(input=exp_file, output=exp_nc_wd, variable=','.join([x for x in pvars]), overwrite=True)
