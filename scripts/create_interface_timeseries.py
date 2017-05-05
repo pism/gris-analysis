@@ -69,3 +69,4 @@ del ds
 
 import pylab as plt
 plt.plot(feature_length_vector/1e3)
+plt.show()
