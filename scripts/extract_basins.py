@@ -94,7 +94,7 @@ GEOM = SHAPEFILE_PATH
 
 basins = range(1, 9)
 basins = ('1', '2', '3a', '3b', '4', '5', '6', '7a', '7b')
-basins = ['6']
+#basins = ['6']
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
     logger.info('Extracting basin {}'.format(basin))
@@ -116,21 +116,12 @@ for basin in basins:
                               prefix=prefix,
                               dir_output=odir)
     ret = ops.execute()
+    ifile = ret
     print('path to output file: {0}'.format(ret))
     ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
-    # logger.info('Calculating field sum and saving to \n {}'.format(ofile))
-    # cdo.fldsum(input=ret, output=ofile)
-    # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldmean', prefix]), 'nc']))
-    # logger.info('Calculating field sum and saving to \n {}'.format(ofile))
-    # cdo.fldmean(input=ret, output=ofile)
-    # cdo.seltimestep('1050/1250', input=ifile, output=ofile)
-    # ifile = ofile
-    # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_lgm', prefix]), 'nc']))
-    # logger.info('Updating units in \n {}'.format(ofile))
-    # opt = [c.Atted(mode="o", att_name="units", var_name="surface_mass_balance_average", value="kg year-1"),
-    #        c.Atted(mode="o", att_name="units", var_name="basal_mass_balance_average", value="kg year-1")]
-    # nco.ncatted(input=output, options=opt)
-    # ifile = ofile
-    # ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_runmean_1000yr', prefix]), 'nc']))
-    # cdo.runmean(10, input=ifile, output=ofile)
-
+    logger.info('Calculating field sum and saving to \n {}'.format(ofile))
+    tmpfile = cdo.selvar('discharge_mass_flux', input=ifile)
+    cdo.fldsum(input=tmpfile, output=ofile)
+    ifile = ofile
+    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['runmean_10yr', prefix]), 'nc']))
+    cdo.runmean('10', input=ifile, output=ofile)

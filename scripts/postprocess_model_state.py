@@ -96,7 +96,6 @@ for exp_file in exp_files:
     logger.info('extracting grounding line')
     exp_gl_wd =  os.path.join(idir, dir_gl, exp_basename + '.shp')
     cmd = ['extract_interface.py', '-t', 'grounding_line', '-o', exp_gl_wd, exp_file]
-    print ' '.join([x for x in cmd])
     #sub.call(cmd)
     logger.info('extracting ice ocean interface')
     exp_io_wd =  os.path.join(idir, dir_io, exp_basename + '.shp')
