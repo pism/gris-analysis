@@ -95,6 +95,7 @@ GEOM = SHAPEFILE_PATH
 basins = range(1, 9)
 basins = ('1', '2', '3a', '3b', '4', '5', '6', '7a', '7b')
 #basins = ['6']
+basins = ('CW', 'NW', 'NO', 'NE', 'SE', 'SW')
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
     logger.info('Extracting basin {}'.format(basin))

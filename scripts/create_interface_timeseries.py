@@ -44,10 +44,6 @@ logger.addHandler(fh)
 parser = ArgumentParser(
     description='''A script to extract interfaces (calving front, ice-ocean, or groundling line) from a PISM netCDF file, and save it as a shapefile (polygon).''')
 parser.add_argument("FILE", nargs=1)
-parser.add_argument("-o", "--output_filename", dest="out_file",
-                    help="Name of the output shape file", default='interface.shp')
-
-
 
 options = parser.parse_args()
 filename = options.FILE[0]
@@ -68,5 +64,5 @@ for feature in layer:
 del ds
 
 import pylab as plt
-plt.plot(feature_length_vector/1e3)
+plt.plot(k, feature_length_vector/1e3)
 plt.show()
