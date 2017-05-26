@@ -9,9 +9,14 @@ import os
 from netcdftime import datetime
 from cdo import Cdo
 cdo = Cdo()
-# from nco import Nco
-# from nco import custom as c
-# nco = Nco()
+from nco import Nco
+from nco import custom as c
+nco = Nco()
+
+try:
+    import subprocess32 as sub
+except:
+    import subprocess as sub
 
 import logging
 import logging.handlers
@@ -66,20 +71,10 @@ odir = options.odir
 if not os.path.isdir(odir):
     os.mkdir(odir)
 
+# VARIABLE='beta,cell_area,dHdt,dbdt,discharge_mass_flux,flux_divergence,height_above_flotation,ice_mass,sftgif,tauc,taub_mag,temppabase,tempsurf,thk,topg,usurf,uvelbase,vvelbase,velbase_mag,uvelsurf,vvelsurf,velsurf_mag'.split(',')
+# VARIABLE='beta,cell_area,dHdt,discharge_mass_flux,flux_divergence,height_above_flotation,ice_mass,sftgif,temppabase,thk,topg,usurf,velbase_mag,velsurf_mag'.split(',')
+# print VARIABLE
 ocgis.env.OVERWRITE = True
-
-## Only needed until I figure out how to use nco.ncap2
-try:
-    import subprocess32 as sub
-except:
-    import subprocess as sub
-
-# import time
-# start = time.time()
-# cmd = ['ncap2' , '-O', '-s', '''"cell_area_t[$time,$y,$x]=0.f; 'sz_idt=time.size(); for(*idt=0 ; idt<sz_idt ; idt++) {cell_area_t[idt,$y,$x]=cell_area;}"''', URI, URI]
-# sub.call(cmd)
-# end = time.time()
-# print end - start
 
 # Output name
 savename=URI[0:len(URI)-3] 
@@ -92,9 +87,7 @@ output_format = 'nc'
 ## bounding box for tiling or a Shapely geometry).
 GEOM = SHAPEFILE_PATH
 
-basins = range(1, 9)
-basins = ('1', '2', '3a', '3b', '4', '5', '6', '7a', '7b')
-#basins = ['6']
+mvars = 'discharge_mass_flux'
 basins = ('CW', 'NW', 'NO', 'NE', 'SE', 'SW')
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
@@ -119,10 +112,12 @@ for basin in basins:
     ret = ops.execute()
     ifile = ret
     print('path to output file: {0}'.format(ret))
-    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
-    logger.info('Calculating field sum and saving to \n {}'.format(ofile))
-    tmpfile = cdo.selvar('discharge_mass_flux', input=ifile)
-    cdo.fldsum(input=tmpfile, output=ofile)
-    ifile = ofile
-    ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['runmean_10yr', prefix]), 'nc']))
-    cdo.runmean('10', input=ifile, output=ofile)
+    scalar_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
+    logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
+    cdo.fldsum(input='-selvar,{} -seltimestep,2/10000 {}'.format(mvars, ifile), output=scalar_ofile)
+    runmean_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['runmean_10yr', prefix]), 'nc']))
+    logger.info('Calculating running mean and saving to \n {}'.format(runmean_ofile))
+    cdo.runmean('10', input=scalar_ofile, output=runmean_ofile)
+    anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['anomaly_runmean_10yr', prefix]), 'nc']))
+    logger.info('Calculating anomalies and saving to \n {}'.format(anomaly_ofile))
+    cdo.sub(input='{} -timmean -seltimestep,1/10 {}'.format(runmean_ofile, scalar_ofile), output=anomaly_ofile)

@@ -64,5 +64,5 @@ for feature in layer:
 del ds
 
 import pylab as plt
-plt.plot(k, feature_length_vector/1e3)
+plt.plot(feature_length_vector/1e3)
 plt.show()
