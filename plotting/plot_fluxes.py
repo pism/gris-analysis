@@ -17,7 +17,7 @@ all_basins = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GR']
 # Set up the option parser
 parser = ArgumentParser()
 parser.description = "A script for PISM output files to time series plots using pylab/matplotlib."
-parser.add_argument("FILE", nargs=1)
+parser.add_argument("FILE", nargs='*')
 parser.add_argument("--bounds", dest="bounds", nargs=2, type=float,
                     help="lower and upper bound for ordinate, eg. -1 1", default=None)
 parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
@@ -68,7 +68,7 @@ parser.add_argument("--title", dest="title",
 options = parser.parse_args()
 aspect_ratio = options.aspect_ratio
 basin = options.basin
-ifile = options.FILE[0]
+ifiles = options.FILE
 if options.labels != None:
     labels = options.labels.split(',')
 else:
@@ -109,86 +109,175 @@ lw, pad_inches = set_mode(print_mode, aspect_ratio=aspect_ratio)
 
 #plt.rcParams['legend.fancybox'] = True
 
-nc = NC(ifile, 'r')
-t = nc.variables["time"][:]
-
-date = np.arange(start_year + step,
-                 start_year + (len(t[:]) + 1) * step,
-                 step) 
-
 basin_col_dict = {'CW': '#998ec3',
-              'NE': '#fdb863',
-              'NO': '#018571',
-              'NW': '#d8daeb',
-              'SE': '#e66101',
-              'SW': '#542788',
-              'GR': '#000000'}
+                  'NE': '#fdb863',
+                  'NO': '#018571',
+                  'NW': '#d8daeb',
+                  'SE': '#e66101',
+                  'SW': '#542788',
+                  'GR': '#000000'}
+
+
+rcp_col_dict = {'RCP85': '#ca0020',
+                'RCP63': '#f4a582',
+                'RCP45': '#92c5de',
+                'RCP26': '#0571b0'}
+
+rcp_list = ['RCP26', 'RCP45', 'RCP63', 'RCP85']
+rcp_dict = {'RCP26': 'RCP 2.6',
+            'RCP45': 'RCP 4.5',
+            'RCP63': 'RCP 6.3',
+            'RCP85': 'RCP 8.5'}
 
 flux_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'sub_shelf_ice_flux', 'grounded_basal_ice_flux']
-abbr_dict = {'mass_rate_of_change_glacierized': '$\dot M$', 'discharge_flux': 'D', 'surface_ice_flux': 'SMB', 'sub_shelf_ice_flux': 'FMB', 'grounded_basal_ice_flux': 'BMB'}
-style_dict = {'mass_rate_of_change_glacierized': '-', 'discharge_flux': '--', 'surface_ice_flux': ':', 'sub_shelf_ice_flux': ':', 'grounded_basal_ice_flux': '-.'}
+flux_abbr_dict = {'mass_rate_of_change_glacierized': '$\dot M$', 'discharge_flux': 'D', 'surface_ice_flux': 'SMB', 'sub_shelf_ice_flux': 'FMB', 'grounded_basal_ice_flux': 'BMB'}
+flux_style_dict = {'mass_rate_of_change_glacierized': '-', 'discharge_flux': '--', 'surface_ice_flux': ':', 'sub_shelf_ice_flux': ':', 'grounded_basal_ice_flux': '-.'}
+flux_plot_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux']
+mass_plot_vars = ['limnsw']
 
-plot_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux']
+def plot_fluxes(plot_vars):
 
-fig = plt.figure()
-offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
-ax = fig.add_subplot(111, axisbg=axisbg)
+    ifile = ifiles[0]
+    nc = NC(ifile, 'r')
+    t = nc.variables["time"][:]
 
-for mvar in plot_vars:
-    var_vals = nc.variables[mvar][:] / 1e12
-    runmean_var_vals = smooth(var_vals, window_len=10)
-    plt.plot(date[2::], var_vals[2::],
-             color=basin_col_dict[basin],
-             lw=0.75,
-             ls=style_dict[mvar],
-             label=abbr_dict[mvar])
-    plt.plot(date[2::], runmean_var_vals[2::],
-             color=basin_col_dict[basin],
-             lw=1,
-             ls=style_dict[mvar])
+    date = np.arange(start_year + step,
+                 start_year + (len(t[:]) + 1) * step,
+                 step)
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+    
+    for mvar in plot_vars:
+        var_vals = nc.variables[mvar][:] / 1e12
+        runmean_var_vals = smooth(var_vals, window_len=10)
+        plt.plot(date[2::], var_vals[2::],
+                 color=basin_col_dict[basin],
+                 lw=0.75,
+                 ls=style_dict[mvar],
+                 label=abbr_dict[mvar])
+        plt.plot(date[2::], runmean_var_vals[2::],
+                 color=basin_col_dict[basin],
+                 lw=1,
+                 ls=style_dict[mvar])
 
-ax.legend(loc="upper right",
-          shadow=False,
-          bbox_to_anchor=(0, 0, 1, 1),
-          bbox_transform=plt.gcf().transFigure)
+        ax.legend(loc="upper right",
+                  shadow=False,
+                  bbox_to_anchor=(0, 0, 1, 1),
+                  bbox_transform=plt.gcf().transFigure)
 
-if twinx:
-    axSLE = ax.twinx()
-    ax.set_autoscalex_on(False)
-    axSLE.set_autoscalex_on(False)
+        if twinx:
+            axSLE = ax.twinx()
+            ax.set_autoscalex_on(False)
+            axSLE.set_autoscalex_on(False)
         
-ax.set_xlabel('yr')
-ax.set_ylabel('flux (Gt/yr')
+            ax.set_xlabel('yr')
+            ax.set_ylabel('flux (Gt/yr')
+            
+            if time_bounds:
+                ax.set_xlim(time_bounds[0], time_bounds[1])
+
+            if bounds:
+                ax.set_ylim(bounds[0], bounds[1])
+
+                ymin, ymax = ax.get_ylim()
+            if twinx:
+                # Plot twin axis on the right, in mmSLE
+                yminSLE = ymin * gt2mmSLE
+                ymaxSLE = ymax * gt2mmSLE
+                axSLE.set_xlim(date_start, date_end)
+                axSLE.set_ylim(yminSLE, ymaxSLE)
+                axSLE.set_ylabel(sle_label)
+
+            if rotate_xticks:
+                ticklabels = ax.get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(30)
+            else:
+                ticklabels = ax.get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(0)
+                    
+            if title is not None:
+                plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_fluxes'  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+def plot_mass(plot_vars=mass_plot_vars):
+
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    for k, rcp in enumerate(rcp_list):
+        ifile = ifiles[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+    
+        for mvar in plot_vars:
+            var_vals = nc.variables[mvar][:]
+            # plot anomalies
+            plt.plot(date[:], (var_vals[:] - var_vals[0]) / 1e12,
+                     color=rcp_col_dict[rcp],
+                     lw=0.75,
+                     label=rcp_dict[rcp])
+    nc.close()
+
+    ax.legend(loc="upper right",
+              shadow=False,
+              bbox_to_anchor=(0, 0, 1, 1),
+              bbox_transform=plt.gcf().transFigure)
+
+    if twinx:
+        axSLE = ax.twinx()
+        ax.set_autoscalex_on(False)
+        axSLE.set_autoscalex_on(False)
         
-if time_bounds:
-    ax.set_xlim(time_bounds[0], time_bounds[1])
+        ax.set_xlabel('yr')
+        ax.set_ylabel('cumulative mass change (Gt)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
 
-if bounds:
-    ax.set_ylim(bounds[0], bounds[1])
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
 
-ymin, ymax = ax.get_ylim()
-if twinx:
-    # Plot twin axis on the right, in mmSLE
-    yminSLE = ymin * gt2mmSLE
-    ymaxSLE = ymax * gt2mmSLE
-    axSLE.set_xlim(date_start, date_end)
-    axSLE.set_ylim(yminSLE, ymaxSLE)
-    axSLE.set_ylabel(sle_label)
+    ymin, ymax = ax.get_ylim()
+    if twinx:
+        # Plot twin axis on the right, in mmSLE
+        yminSLE = ymin * gt2mmSLE
+        ymaxSLE = ymax * gt2mmSLE
+        axSLE.set_ylim(yminSLE, ymaxSLE)
+        axSLE.set_ylabel('mm SLE')
 
-#ax.set_ylabel(var_ylabels[l])
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
 
-if rotate_xticks:
-    ticklabels = ax.get_xticklabels()
-    for tick in ticklabels:
-        tick.set_rotation(30)
-else:
-    ticklabels = ax.get_xticklabels()
-    for tick in ticklabels:
-        tick.set_rotation(0)
-if title is not None:
-    plt.title(title)
+    for out_format in out_formats:
+        out_file = outfile + '_mass'  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
-for out_format in out_formats:
-    out_file = outfile + '_fluxes'  + '.' + out_format
-    print "  - writing image %s ..." % out_file
-    fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+plot_mass(mass_plot_vars)
+#plot_fluxes(plot_vars=flux_plot_vars)

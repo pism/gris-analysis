@@ -37,11 +37,12 @@ fh.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 # create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
+info_formatter = logging.Formatter('%(name)s - %(message)s')
+debug_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
 
 # add formatter to ch and fh
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
+ch.setFormatter(info_formatter)
+fh.setFormatter(debug_formatter)
 
 # add ch to logger
 logger.addHandler(ch)
