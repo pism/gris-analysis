@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2011-2015 Andy Aschwanden
+# Copyright (C) 2017 Andy Aschwanden
 
 import numpy as np
 import pylab as plt
@@ -46,11 +46,6 @@ parser.add_argument("-p", "--print_size", dest="print_mode",
                   'onecol','publish','medium','presentation','twocol'", default="medium")
 parser.add_argument("--step", dest="step", type=int,
                     help="step for plotting values, if time-series is very long", default=1)
-parser.add_argument("--show", dest="show", action="store_true",
-                    help="show figure (in addition to save), Default=False", default=False)
-parser.add_argument("--shadow", dest="shadow", action="store_true",
-                    help='''add drop shadow to line plots, Default=False''',
-                    default=False)
 parser.add_argument("--start_year", dest="start_year", type=float,
                     help='''Start year''', default=2008)
 parser.add_argument("--rotate_xticks", dest="rotate_xticks", action="store_true",
@@ -59,11 +54,13 @@ parser.add_argument("--rotate_xticks", dest="rotate_xticks", action="store_true"
 parser.add_argument("-r", "--output_resolution", dest="out_res",
                     help='''Resolution ofoutput graphics in dots per
                   inch (DPI), default = 300''', default=300)
+parser.add_argument("--runmean", dest="runmean",
+                    help='''Calculate running mean''', default=None)
 parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                     help='''adds a second ordinate with units mmSLE,
                   Default=False''', default=False)
 parser.add_argument("--title", dest="title",
-                    help='''Plot title. default=False''', default=None)
+                    help='''Plot title.''', default=None)
 
 options = parser.parse_args()
 aspect_ratio = options.aspect_ratio
@@ -74,6 +71,7 @@ if options.labels != None:
 else:
     labels = None
 bounds = options.bounds
+runmean = options.runmean
 time_bounds = options.time_bounds
 golden_mean = get_golden_mean()
 normalize = options.normalize
@@ -83,8 +81,6 @@ out_formats = options.out_formats.split(',')
 print_mode = options.print_mode
 rotate_xticks = options.rotate_xticks
 step = options.step
-shadow = options.shadow
-show = options.show
 title = options.title
 twinx = options.twinx
 dashes = ['-', '--', '-.', ':', '-', '--', '-.', ':']
@@ -101,9 +97,6 @@ axisbg = '1'
 shadow_color = '0.25'
 numpoints = 1
 
-
-
-
 # set the print mode
 lw, pad_inches = set_mode(print_mode, aspect_ratio=aspect_ratio)
 
@@ -117,7 +110,6 @@ basin_col_dict = {'CW': '#998ec3',
                   'SW': '#542788',
                   'GR': '#000000'}
 
-
 rcp_col_dict = {'RCP85': '#ca0020',
                 'RCP63': '#f4a582',
                 'RCP45': '#92c5de',
@@ -130,10 +122,14 @@ rcp_dict = {'RCP26': 'RCP 2.6',
             'RCP85': 'RCP 8.5'}
 
 flux_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'sub_shelf_ice_flux', 'grounded_basal_ice_flux']
-flux_abbr_dict = {'mass_rate_of_change_glacierized': '$\dot M$', 'discharge_flux': 'D', 'surface_ice_flux': 'SMB', 'sub_shelf_ice_flux': 'FMB', 'grounded_basal_ice_flux': 'BMB'}
+flux_abbr_dict = {'mass_rate_of_change_glacierized': '$\dot \mathregular{M}$', 'discharge_flux': 'D', 'surface_ice_flux': 'SMB', 'sub_shelf_ice_flux': 'FMB', 'grounded_basal_ice_flux': 'BMB'}
 flux_style_dict = {'mass_rate_of_change_glacierized': '-', 'discharge_flux': '--', 'surface_ice_flux': ':', 'sub_shelf_ice_flux': ':', 'grounded_basal_ice_flux': '-.'}
-flux_plot_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux']
+flux_plot_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'grounded_basal_ice_flux']
+flux_plot_vars = ['discharge_flux']
 mass_plot_vars = ['limnsw']
+
+flux_ounits = 'Gt year-1'
+mass_ounits = 'Gt'
 
 def plot_fluxes(plot_vars):
 
@@ -150,62 +146,73 @@ def plot_fluxes(plot_vars):
     ax = fig.add_subplot(111, axisbg=axisbg)
     
     for mvar in plot_vars:
-        var_vals = nc.variables[mvar][:] / 1e12
-        runmean_var_vals = smooth(var_vals, window_len=10)
-        plt.plot(date[2::], var_vals[2::],
-                 color=basin_col_dict[basin],
-                 lw=0.75,
-                 ls=style_dict[mvar],
-                 label=abbr_dict[mvar])
-        plt.plot(date[2::], runmean_var_vals[2::],
-                 color=basin_col_dict[basin],
-                 lw=1,
-                 ls=style_dict[mvar])
+        var_vals = np.squeeze(nc.variables[mvar][:])
+        iunits = nc.variables[mvar].units
 
-        ax.legend(loc="upper right",
-                  shadow=False,
-                  bbox_to_anchor=(0, 0, 1, 1),
-                  bbox_transform=plt.gcf().transFigure)
+        var_vals = unit_converter(var_vals, iunits, flux_ounits)
+        if runmean is not None:
+            runmean_var_vals = smooth(var_vals, window_len=runmean)
+            plt.plot(date[2::], var_vals[2::],
+                     color=basin_col_dict[basin],
+                     lw=0.5,
+                     ls=flux_style_dict[mvar],
+                     label=flux_abbr_dict[mvar])
+            plt.plot(date[2::], runmean_var_vals[2::],
+                     color=basin_col_dict[basin],
+                     lw=1,
+                     ls=flux_style_dict[mvar])
+        else:
+            plt.plot(date[2::], var_vals[2::],
+                     color=basin_col_dict[basin],
+                     lw=1,
+                     ls=flux_style_dict[mvar],
+                     label=flux_abbr_dict[mvar])
 
-        if twinx:
-            axSLE = ax.twinx()
-            ax.set_autoscalex_on(False)
-            axSLE.set_autoscalex_on(False)
+    ax.legend(loc="upper right",
+              shadow=False,
+              bbox_to_anchor=(0, 0, 1, 1),
+              bbox_transform=plt.gcf().transFigure)
+
+    if twinx:
+        axSLE = ax.twinx()
+        ax.set_autoscalex_on(False)
+        axSLE.set_autoscalex_on(False)
         
-            ax.set_xlabel('yr')
-            ax.set_ylabel('flux (Gt/yr')
+    ax.set_xlabel('Year')
+    ax.set_ylabel('flux (Gt yr$^{\mathregular{-1}}$)')
             
-            if time_bounds:
-                ax.set_xlim(time_bounds[0], time_bounds[1])
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
 
-            if bounds:
-                ax.set_ylim(bounds[0], bounds[1])
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
 
-                ymin, ymax = ax.get_ylim()
-            if twinx:
-                # Plot twin axis on the right, in mmSLE
-                yminSLE = ymin * gt2mmSLE
-                ymaxSLE = ymax * gt2mmSLE
-                axSLE.set_xlim(date_start, date_end)
-                axSLE.set_ylim(yminSLE, ymaxSLE)
-                axSLE.set_ylabel(sle_label)
+    ymin, ymax = ax.get_ylim()
+    if twinx:
+        # Plot twin axis on the right, in mmSLE
+        yminSLE = ymin * gt2mmSLE
+        ymaxSLE = ymax * gt2mmSLE
+        axSLE.set_xlim(date_start, date_end)
+        axSLE.set_ylim(yminSLE, ymaxSLE)
+        axSLE.set_ylabel(sle_label)
 
-            if rotate_xticks:
-                ticklabels = ax.get_xticklabels()
-                for tick in ticklabels:
-                    tick.set_rotation(30)
-            else:
-                ticklabels = ax.get_xticklabels()
-                for tick in ticklabels:
-                    tick.set_rotation(0)
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
                     
-            if title is not None:
-                plt.title(title)
+    if title is not None:
+        plt.title(title)
 
     for out_format in out_formats:
         out_file = outfile + '_fluxes'  + '.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
 
 def plot_mass(plot_vars=mass_plot_vars):
 
@@ -226,9 +233,11 @@ def plot_mass(plot_vars=mass_plot_vars):
 
     
         for mvar in plot_vars:
-            var_vals = nc.variables[mvar][:]
+            var_vals = np.squeeze(nc.variables[mvar][:])
+            iunits = nc.variables[mvar].units
+            var_vals = unit_converter(var_vals, iunits, flux_ounits)
             # plot anomalies
-            plt.plot(date[:], (var_vals[:] - var_vals[0]) / 1e12,
+            plt.plot(date[:], (var_vals[:] - var_vals[0]),
                      color=rcp_col_dict[rcp],
                      lw=0.75,
                      label=rcp_dict[rcp])
@@ -244,7 +253,7 @@ def plot_mass(plot_vars=mass_plot_vars):
         ax.set_autoscalex_on(False)
         axSLE.set_autoscalex_on(False)
         
-        ax.set_xlabel('yr')
+        ax.set_xlabel('Year')
         ax.set_ylabel('cumulative mass change (Gt)')
         
     if time_bounds:
@@ -279,5 +288,5 @@ def plot_mass(plot_vars=mass_plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-plot_mass(mass_plot_vars)
-#plot_fluxes(plot_vars=flux_plot_vars)
+#plot_mass(mass_plot_vars)
+plot_fluxes(plot_vars=flux_plot_vars)
