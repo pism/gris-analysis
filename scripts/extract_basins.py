@@ -89,7 +89,7 @@ output_format = 'nc'
 GEOM = SHAPEFILE_PATH
 
 mvars = 'discharge_flux'
-basins = ('CW', 'NW', 'NO', 'NE', 'SE', 'SW')
+basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
     logger.info('Extracting basin {}'.format(basin))
@@ -115,8 +115,8 @@ for basin in basins:
     print('path to output file: {0}'.format(ret))
     scalar_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
-    cdo.fldsum(input='-setattribute,discharge_flux@units="kg year-1" -selvar,{} -expr,"discharge_flux=discharge_mass_flux*cell_area*1e6" -seltimestep,2/10000 {}'.format(mvars, ifile), output=scalar_ofile)
     # cell_area is in km2
+    cdo.fldsum(input='-setattribute,discharge_flux@units="Gt year-1" -selvar,{} -expr,"discharge_flux=discharge_mass_flux*cell_area*1e6*1e-12" -seltimestep,2/10000 {}'.format(mvars, ifile), output=scalar_ofile)
     runmean_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['runmean_10yr', prefix]), 'nc']))
     logger.info('Calculating running mean and saving to \n {}'.format(runmean_ofile))
     cdo.runmean('10', input=scalar_ofile, output=runmean_ofile)

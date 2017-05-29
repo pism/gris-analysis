@@ -168,6 +168,8 @@ def plot_fluxes(plot_vars):
                      ls=flux_style_dict[mvar],
                      label=flux_abbr_dict[mvar])
 
+    nc.close()
+    
     ax.legend(loc="upper right",
               shadow=False,
               bbox_to_anchor=(0, 0, 1, 1),
@@ -241,7 +243,7 @@ def plot_mass(plot_vars=mass_plot_vars):
                      color=rcp_col_dict[rcp],
                      lw=0.75,
                      label=rcp_dict[rcp])
-    nc.close()
+        nc.close()
 
     ax.legend(loc="upper right",
               shadow=False,
