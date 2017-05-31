@@ -59,6 +59,11 @@ parser.add_argument("--runmean", dest="runmean",
 parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                     help='''adds a second ordinate with units mmSLE,
                   Default=False''', default=False)
+parser.add_argument("--plot", dest="plot",
+                    help='''What to plot.''',
+                    choices=['basin_discharge', 'rel_basin_discharge'],
+                    default='basin_discharge')
+
 parser.add_argument("--title", dest="title",
                     help='''Plot title.''', default=None)
 
@@ -79,6 +84,7 @@ out_res = options.out_res
 outfile = options.outfile
 out_formats = options.out_formats.split(',')
 print_mode = options.print_mode
+plot = options.plot
 rotate_xticks = options.rotate_xticks
 step = options.step
 title = options.title
@@ -124,9 +130,9 @@ rcp_dict = {'RCP26': 'RCP 2.6',
 flux_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'sub_shelf_ice_flux', 'grounded_basal_ice_flux']
 flux_abbr_dict = {'mass_rate_of_change_glacierized': '$\dot \mathregular{M}$', 'discharge_flux': 'D', 'surface_ice_flux': 'SMB', 'sub_shelf_ice_flux': 'FMB', 'grounded_basal_ice_flux': 'BMB'}
 flux_style_dict = {'mass_rate_of_change_glacierized': '-', 'discharge_flux': '--', 'surface_ice_flux': ':', 'sub_shelf_ice_flux': ':', 'grounded_basal_ice_flux': '-.'}
-flux_plot_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'grounded_basal_ice_flux']
+#flux_plot_vars = ['discharge_flux', 'surface_ice_flux', 'grounded_basal_ice_flux']
 flux_plot_vars = ['discharge_flux']
-mass_plot_vars = ['limnsw']
+mass_plot_vars = ['mass_glacierized']
 
 flux_ounits = 'Gt year-1'
 mass_ounits = 'Gt'
@@ -152,17 +158,17 @@ def plot_fluxes(plot_vars):
         var_vals = unit_converter(var_vals, iunits, flux_ounits)
         if runmean is not None:
             runmean_var_vals = smooth(var_vals, window_len=runmean)
-            plt.plot(date[2::], var_vals[2::],
+            plt.plot(date[:], var_vals[:],
                      color=basin_col_dict[basin],
                      lw=0.5,
                      ls=flux_style_dict[mvar],
                      label=flux_abbr_dict[mvar])
-            plt.plot(date[2::], runmean_var_vals[2::],
+            plt.plot(date[:], runmean_var_vals[:],
                      color=basin_col_dict[basin],
                      lw=1,
                      ls=flux_style_dict[mvar])
         else:
-            plt.plot(date[2::], var_vals[2::],
+            plt.plot(date[:], var_vals[:],
                      color=basin_col_dict[basin],
                      lw=1,
                      ls=flux_style_dict[mvar],
@@ -181,7 +187,7 @@ def plot_fluxes(plot_vars):
         axSLE.set_autoscalex_on(False)
         
     ax.set_xlabel('Year')
-    ax.set_ylabel('flux (Gt yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
             
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -216,8 +222,7 @@ def plot_fluxes(plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-def plot_mass(plot_vars=mass_plot_vars):
-
+def plot_rcp(plot_vars=mass_plot_vars):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -233,11 +238,10 @@ def plot_mass(plot_vars=mass_plot_vars):
                          start_year + (len(t[:]) + 1) * step,
                          step) 
 
-    
         for mvar in plot_vars:
             var_vals = np.squeeze(nc.variables[mvar][:])
             iunits = nc.variables[mvar].units
-            var_vals = unit_converter(var_vals, iunits, flux_ounits)
+            var_vals = unit_converter(var_vals, iunits, mass_ounits)
             # plot anomalies
             plt.plot(date[:], (var_vals[:] - var_vals[0]),
                      color=rcp_col_dict[rcp],
@@ -250,13 +254,12 @@ def plot_mass(plot_vars=mass_plot_vars):
               bbox_to_anchor=(0, 0, 1, 1),
               bbox_transform=plt.gcf().transFigure)
 
-    if twinx:
-        axSLE = ax.twinx()
-        ax.set_autoscalex_on(False)
-        axSLE.set_autoscalex_on(False)
-        
-        ax.set_xlabel('Year')
-        ax.set_ylabel('cumulative mass change (Gt)')
+    axSLE = ax.twinx()
+    ax.set_autoscalex_on(False)
+    axSLE.set_autoscalex_on(False)
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('cumulative mass change (Gt)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -265,12 +268,11 @@ def plot_mass(plot_vars=mass_plot_vars):
         ax.set_ylim(bounds[0], bounds[1])
 
     ymin, ymax = ax.get_ylim()
-    if twinx:
-        # Plot twin axis on the right, in mmSLE
-        yminSLE = ymin * gt2mmSLE
-        ymaxSLE = ymax * gt2mmSLE
-        axSLE.set_ylim(yminSLE, ymaxSLE)
-        axSLE.set_ylabel('mm SLE')
+    # Plot twin axis on the right, in mmSLE
+    yminSLE = ymin * gt2mmSLE
+    ymaxSLE = ymax * gt2mmSLE
+    axSLE.set_ylim(yminSLE, ymaxSLE)
+    axSLE.set_ylabel('mm SLE')
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -290,5 +292,266 @@ def plot_mass(plot_vars=mass_plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-#plot_mass(mass_plot_vars)
-plot_fluxes(plot_vars=flux_plot_vars)
+def plot_mass(plot_vars=mass_plot_vars):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    for ifile in ifiles:
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        for mvar in plot_vars:
+            var_vals = np.squeeze(nc.variables[mvar][:])
+            iunits = nc.variables[mvar].units
+            var_vals = unit_converter(var_vals, iunits, mass_ounits)
+            # plot anomalies
+            plt.plot(date[:], (var_vals[:] - var_vals[0]),
+                     color=basin_col_dict[basin],
+                     lw=0.75,
+                     label=basin)
+        nc.close()
+
+    ax.legend(loc="upper right",
+              shadow=False,
+              bbox_to_anchor=(0, 0, 1, 1),
+              bbox_transform=plt.gcf().transFigure)
+
+    axSLE = ax.twinx()
+    ax.set_autoscalex_on(False)
+    axSLE.set_autoscalex_on(False)
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('cumulative mass change (Gt)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+    # Plot twin axis on the right, in mmSLE
+    yminSLE = ymin * gt2mmSLE
+    ymaxSLE = ymax * gt2mmSLE
+    axSLE.set_ylim(yminSLE, ymaxSLE)
+    axSLE.set_ylabel('mm SLE')
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_mass'  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+def plot_discharge_flux_all_basins(mvar='discharge_flux'):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    for k, ifile in enumerate(ifiles):
+        basin = all_basins[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        var_vals = np.squeeze(nc.variables[mvar][:])
+        iunits = nc.variables[mvar].units
+        var_vals = unit_converter(var_vals, iunits, flux_ounits)
+        ax.plot(date[:], (var_vals[:]),
+                 color=basin_col_dict[basin],
+                 lw=0.75,
+                 label=basin)
+        nc.close()
+
+    ax.legend(loc="upper right",
+              shadow=False,
+              bbox_to_anchor=(0, 0, 1, 1),
+              bbox_transform=plt.gcf().transFigure)
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    xmin, xmax = ax.get_xlim()
+    ax.hlines(0, xmin, xmax, lw=0.25)
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_discharge_flux'  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+def plot_rel_discharge_flux_all_basins(mvar='discharge_flux'):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    for k, ifile in enumerate(ifiles):
+        basin = all_basins[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        var_vals = np.squeeze(nc.variables[mvar][:]) * 100 - 100
+        ax.plot(date[:], (var_vals[:]),
+                 color=basin_col_dict[basin],
+                 lw=0.75,
+                 label=basin)
+        nc.close()
+
+    ax.legend(loc="upper right",
+              shadow=False,
+              bbox_to_anchor=(0, 0, 1, 1),
+              bbox_transform=plt.gcf().transFigure)
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('mass flux anomaly (%)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    xmin, xmax = ax.get_xlim()
+    ax.hlines(0, xmin, xmax, lw=0.25)
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_discharge_flux'  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+        
+def plot_basin_mass(plot_vars=mass_plot_vars):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    for k, ifile in enumerate(ifiles):
+        basin = all_basins[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        for mvar in plot_vars:
+            var_vals = np.squeeze(nc.variables[mvar][:])
+            iunits = nc.variables[mvar].units
+            var_vals = unit_converter(var_vals, iunits, mass_ounits)
+            # plot anomalies
+            plt.plot(date[:], (var_vals[:] - var_vals[0]),
+                     color=basin_col_dict[basin],
+                     lw=0.75,
+                     label=basin)
+        nc.close()
+
+    ax.legend(loc="upper right",
+              shadow=False,
+              bbox_to_anchor=(0, 0, 1, 1),
+              bbox_transform=plt.gcf().transFigure)
+
+    axSLE = ax.twinx()
+    ax.set_autoscalex_on(False)
+    axSLE.set_autoscalex_on(False)
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('cumulative mass change (Gt)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+    # Plot twin axis on the right, in mmSLE
+    yminSLE = ymin * gt2mmSLE
+    ymaxSLE = ymax * gt2mmSLE
+    axSLE.set_ylim(yminSLE, ymaxSLE)
+    axSLE.set_ylabel('mm SLE')
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_mass'  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+if plot == 'basin_discharge':
+    plot_discharge_flux_all_basins()
+elif plot == 'rel_basin_discharge':
+    plot_rel_discharge_flux_all_basins()
+
+#plot_basin_mass(mass_plot_vars)
+#plot_fluxes(plot_vars=flux_plot_vars)

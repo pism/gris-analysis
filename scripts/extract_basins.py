@@ -72,9 +72,6 @@ odir = options.odir
 if not os.path.isdir(odir):
     os.mkdir(odir)
 
-# VARIABLE='beta,cell_area,dHdt,dbdt,discharge_mass_flux,flux_divergence,height_above_flotation,ice_mass,sftgif,tauc,taub_mag,temppabase,tempsurf,thk,topg,usurf,uvelbase,vvelbase,velbase_mag,uvelsurf,vvelsurf,velsurf_mag'.split(',')
-# VARIABLE='beta,cell_area,dHdt,discharge_mass_flux,flux_divergence,height_above_flotation,ice_mass,sftgif,temppabase,thk,topg,usurf,velbase_mag,velsurf_mag'.split(',')
-# print VARIABLE
 ocgis.env.OVERWRITE = True
 
 # Output name
@@ -88,8 +85,9 @@ output_format = 'nc'
 ## bounding box for tiling or a Shapely geometry).
 GEOM = SHAPEFILE_PATH
 
-mvars = 'discharge_flux'
+mvars = 'discharge_flux,mass_glacierized'
 basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
+#basins = ('SE', 'SW')
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
     logger.info('Extracting basin {}'.format(basin))
@@ -100,7 +98,7 @@ for basin in basins:
                              ocgis.GeomCabinetIterator(path=SHAPEFILE_PATH))
         ## this argument must always come in as a list
         select_ugid = [select_geom[0]['properties']['UGID']]
-    prefix = 'basin_{basin}_{savename}'.format(basin=basin, savename=savename)
+    prefix = 'b_{basin}_{savename}'.format(basin=basin, savename=savename)
     ## parameterize the operations to be performed on the target dataset
     ops = ocgis.OcgOperations(dataset=rd,
                               geom=SHAPEFILE_PATH,
@@ -111,15 +109,18 @@ for basin in basins:
                               prefix=prefix,
                               dir_output=odir)
     ret = ops.execute()
-    ifile = ret
-    print('path to output file: {0}'.format(ret))
+    ifile = os.path.join(odir, prefix, prefix + '.nc')
     scalar_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
     # cell_area is in km2
-    cdo.fldsum(input='-setattribute,discharge_flux@units="Gt year-1" -selvar,{} -expr,"discharge_flux=discharge_mass_flux*cell_area*1e6*1e-12" -seltimestep,2/10000 {}'.format(mvars, ifile), output=scalar_ofile)
+    cdo.fldsum(input='-setattribute,discharge_flux@units="Gt year-1" -selvar,{} -expr,"discharge_flux=discharge_mass_flux*cell_area*1e6*1e-12;mass_glacierized=ice_mass;" -seltimestep,2/10000 {}'.format(mvars, ifile), output=scalar_ofile)
     runmean_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['runmean_10yr', prefix]), 'nc']))
     logger.info('Calculating running mean and saving to \n {}'.format(runmean_ofile))
     cdo.runmean('10', input=scalar_ofile, output=runmean_ofile)
-    anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['anomaly_runmean_10yr', prefix]), 'nc']))
-    logger.info('Calculating anomalies and saving to \n {}'.format(anomaly_ofile))
-    cdo.sub(input='{} -timmean -seltimestep,1/10 {}'.format(runmean_ofile, scalar_ofile), output=anomaly_ofile)
+    abs_anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['abs_anomaly_runmean_10yr', prefix]), 'nc']))
+    logger.info('Calculating anomalies and saving to \n {}'.format(abs_anomaly_ofile))
+    # Choose sign such that a positive anomaly means an increase in discharge
+    cdo.mulc('-1', input='-sub {} -timmean -seltimestep,1/10 {}'.format(runmean_ofile, scalar_ofile), output=abs_anomaly_ofile)
+    rel_anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['rel_anomaly_runmean_10yr', prefix]), 'nc']))
+    logger.info('Calculating anomalies and saving to \n {}'.format(rel_anomaly_ofile))
+    cdo.div(input=' {} -timmean -seltimestep,1/10 {}'.format(runmean_ofile, scalar_ofile), output=rel_anomaly_ofile)
