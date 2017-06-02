@@ -117,14 +117,14 @@ basin_col_dict = {'CW': '#998ec3',
                   'GR': '#000000'}
 
 rcp_col_dict = {'RCP85': '#ca0020',
-                'RCP63': '#f4a582',
+                'RCP60': '#f4a582',
                 'RCP45': '#92c5de',
                 'RCP26': '#0571b0'}
 
 rcp_list = ['RCP26', 'RCP45', 'RCP63', 'RCP85']
 rcp_dict = {'RCP26': 'RCP 2.6',
             'RCP45': 'RCP 4.5',
-            'RCP63': 'RCP 6.3',
+            'RCP60': 'RCP 6.0',
             'RCP85': 'RCP 8.5'}
 
 flux_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'sub_shelf_ice_flux', 'grounded_basal_ice_flux']
@@ -186,7 +186,7 @@ def plot_fluxes(plot_vars):
         ax.set_autoscalex_on(False)
         axSLE.set_autoscalex_on(False)
         
-    ax.set_xlabel('Year')
+    ax.set_xlabel('Year (CE)')
     ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
             
     if time_bounds:
@@ -258,7 +258,7 @@ def plot_rcp(plot_vars=mass_plot_vars):
     ax.set_autoscalex_on(False)
     axSLE.set_autoscalex_on(False)
     
-    ax.set_xlabel('Year')
+    ax.set_xlabel('Year (CE)')
     ax.set_ylabel('cumulative mass change (Gt)')
         
     if time_bounds:
@@ -327,7 +327,7 @@ def plot_mass(plot_vars=mass_plot_vars):
     ax.set_autoscalex_on(False)
     axSLE.set_autoscalex_on(False)
     
-    ax.set_xlabel('Year')
+    ax.set_xlabel('Year (CE)')
     ax.set_ylabel('cumulative mass change (Gt)')
         
     if time_bounds:
@@ -391,7 +391,7 @@ def plot_discharge_flux_all_basins(mvar='discharge_flux'):
               bbox_to_anchor=(0, 0, 1, 1),
               bbox_transform=plt.gcf().transFigure)
     
-    ax.set_xlabel('Year')
+    ax.set_xlabel('Year (CE)')
     ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
@@ -448,7 +448,7 @@ def plot_rel_discharge_flux_all_basins(mvar='discharge_flux'):
               bbox_to_anchor=(0, 0, 1, 1),
               bbox_transform=plt.gcf().transFigure)
     
-    ax.set_xlabel('Year')
+    ax.set_xlabel('Year (CE)')
     ax.set_ylabel('mass flux anomaly (%)')
         
     if time_bounds:
@@ -514,7 +514,7 @@ def plot_basin_mass(plot_vars=mass_plot_vars):
     ax.set_autoscalex_on(False)
     axSLE.set_autoscalex_on(False)
     
-    ax.set_xlabel('Year')
+    ax.set_xlabel('Year (CE)')
     ax.set_ylabel('cumulative mass change (Gt)')
         
     if time_bounds:
