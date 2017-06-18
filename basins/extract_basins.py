@@ -3,28 +3,14 @@
 
 
 from argparse import ArgumentParser
-import tempfile
 import ocgis
 import os
-from netcdftime import datetime
 from cdo import Cdo
 cdo = Cdo()
-from nco import Nco
-from nco import custom as c
-nco = Nco()
-
-try:
-    import subprocess32 as sub
-except:
-    import subprocess as sub
 
 import logging
 import logging.handlers
 
-try:
-    import pypismtools.pypismtools as ppt
-except:
-    import pypismtools as ppt
 
 # create logger
 logger = logging.getLogger('extract_basins')
