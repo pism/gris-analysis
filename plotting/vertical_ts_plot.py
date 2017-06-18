@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2011 Andy Aschwanden
+# Copyright (C) 2017 Andy Aschwanden
 
 import numpy as np
 import pylab as plt
@@ -45,20 +45,13 @@ parser.add_argument("-p", "--print_size", dest="print_mode",
                     choices=['onecol', 'medium', 'twocol',
                              'height', 'presentation', 'small_font'],
                     help="sets figure size and font size.'", default="medium")
-parser.add_argument("--show", dest="show", action="store_true",
-                    help="show figure (in addition to save), Default=False", default=False)
-parser.add_argument("--shadow", dest="shadow", action="store_true",
-                    help='''add drop shadow to line plots, Default=False''',
-                    default=False)
 parser.add_argument("--rotate_xticks", dest="rotate_xticks", action="store_true",
                     help="rotate x-ticks by 30 degrees, Default=False",
                     default=False)
 parser.add_argument("-r", "--output_resolution", dest="out_res",
                     help='''Resolution ofoutput graphics in dots per
                   inch (DPI), default = 300''', default=300)
-parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
-                    help='''adds a second ordinate with units mmSLE,
-                  Default=False''', default=False)
+
 
 var = 'enthalpy'
 
@@ -78,18 +71,12 @@ outfile = options.outfile
 out_formats = options.out_formats.split(',')
 print_mode = options.print_mode
 rotate_xticks = options.rotate_xticks
-shadow = options.shadow
-show = options.show
-twinx = options.twinx
 dashes = ['-', '--', '-.', ':', '-', '--', '-.', ':']
 output_order = ('profile', 'time')
 # stupid CDO changes dimension names...
 output_order_cdo = ('ncells', 'time')
 
 dx, dy = 4. / out_res, -4. / out_res
-
-# Conversion between giga tons (Gt) and millimeter sea-level equivalent (mmSLE)
-gt2mmSLE = 1. / 365
 
 
 # Plotting styles
@@ -171,7 +158,7 @@ for p in range(np):
         else:
             retLine, = ax.plot(profile_axis[profile_axis[::skip]<usurf], line[profile_axis[::skip]<usurf], color=my_colors[idx])
         lines.append(retLine)
-    ax.set_xlabel("distance from base [%s]" % profile_outunits)
+    ax.set_xlabel("distance from base (%s)" % profile_outunits)
     ax.set_ylabel(ylabel)
     if x_bounds:
         ax.set_xlim(x_bounds[0], x_bounds[1])
@@ -179,7 +166,6 @@ for p in range(np):
     if len(label) < 6:
         ax.legend(label)
     station_name = nc.variables['station_name'][p]
-    print station_name
     plt.title('{}'.format(station_name))
     outfile = 'station_' + station_name 
     for out_format in out_formats:

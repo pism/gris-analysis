@@ -56,31 +56,32 @@ def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
     return (theta, rho) 
 
-def hillshade(dem,dx,dy,azimuth,altitude,zf):
+def hillshade(dem, dx, dy, azimuth, altitude, zf):
    '''
    shaded relief using the ESRI algorithm
    '''
    # lighting azimuth
    azimuth = 360.0-azimuth+90 #convert to mathematic unit
-   if azimuth>360 or azimuth==360:
-      azimuth = azimuth-360
-   azimuth = azimuth * (np.pi/180) #  convert to radians
+   if (azimuth>360) or (azimuth==360):
+      azimuth = azimuth - 360
+   azimuth = azimuth * (np.pi / 180)  # convert to radians
 
    # lighting altitude
-   altitude = (90-altitude) * (np.pi/180) # convert to zenith angle in radians
+   altitude = (90 - altitude) * (np.pi / 180)  # convert to zenith angle in radians
 
    # calc slope and aspect (radians)
-   fx,fy = np.gradient(dem,dx) # uses simple, unweighted gradient of immediate $
-   [asp,grad] = cart2pol(fy,fx) # % convert to carthesian coordinates
+   fx, fy = np.gradient(dem, dx)  # uses simple, unweighted gradient of immediate
+   [asp, grad] = cart2pol(fy, fx)  # % convert to carthesian coordinates
 
-   grad = np.arctan(zf*grad) #steepest slope
+   grad = np.arctan(zf * grad) #steepest slope
    # convert asp
-   asp[asp<np.pi] = asp[asp<np.pi]+(np.pi/2)
-   asp[asp<0] = asp[asp<0]+(2*np.pi)
+   asp[asp<np.pi] = asp[asp < np.pi]+(np.pi / 2)
+   asp[asp<0] = asp[asp<0] + (2 * np.pi)
 
    ## hillshade calculation
-   h = 255.0*( (np.cos(altitude)*np.cos(grad) ) + ( np.sin(altitude)*np.sin(grad)*np.cos(azimuth - asp) ))
-   h[h<0]=0 # % set hillshade values to min of 0.
+   h = 255.0 * ((np.cos(altitude) * np.cos(grad))
+                + (np.sin(altitude) * np.sin(grad) * np.cos(azimuth - asp)))
+   h[h<0] = 0 # % set hillshade values to min of 0.
 
    return h
 
