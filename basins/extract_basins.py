@@ -127,7 +127,6 @@ mvars_dict = {'tendency_of_ice_mass': 'ice_mass',
 mvars = mvars_dict.keys()
 cvars = ['pism_config']
 basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
-basins = ('NW', 'SE', 'SW')
 runmean_steps = 10
 
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
