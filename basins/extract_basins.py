@@ -11,7 +11,6 @@ cdo = Cdo()
 import logging
 import logging.handlers
 
-
 # create logger
 logger = logging.getLogger('extract_basins')
 logger.setLevel(logging.DEBUG)
@@ -67,7 +66,7 @@ def calculate_time_series():
     ifile = os.path.join(odir, prefix, prefix + '.nc')
     scalar_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
-    cdo.fldsum(input='-seltimestep,10/10000 -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile)
+    cdo.fldsum(input='-fldsum -seltimestep,10/10000 -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile)
     scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['sum_fldsum', prefix]), 'nc']))
     logger.info('Calculating cumulative time sum and saving to \n {}'.format(scalar_sum_ofile))
     cdo.chname(','.join(','.join([mvar, mvars_dict[mvar]]) for mvar in mvars), input='-setattribute,{} -timcumsum {}'.format(','.join('@'.join([mvar, 'units=Gt']) for mvar in mvars), scalar_ofile), output=scalar_sum_ofile)
@@ -77,10 +76,10 @@ def calculate_time_series():
     abs_anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['abs_anomaly_runmean_{}yr'.format(runmean_steps), prefix]), 'nc']))
     logger.info('Calculating anomalies and saving to \n {}'.format(abs_anomaly_ofile))
     # Choose sign such that a positive anomaly means an increase in discharge
-    cdo.mulc('-1', input='-sub {} -timmean -seltimestep,1/{} {}'.format(runmean_steps, runmean_ofile, scalar_ofile), output=abs_anomaly_ofile)
+    cdo.mulc('-1', input='-sub {} -timmean -seltimestep,1/{} {}'.format(runmean_ofile, runmean_steps, scalar_ofile), output=abs_anomaly_ofile)
     rel_anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['rel_anomaly_runmean_{}yr'.format(runmean_steps), prefix]), 'nc']))
     logger.info('Calculating anomalies and saving to \n {}'.format(rel_anomaly_ofile))
-    cdo.div(input=' {} -timmean -seltimestep,1/{} {}'.format(runmean_steps, runmean_ofile, scalar_ofile), output=rel_anomaly_ofile)
+    cdo.div(input=' {} -timmean -seltimestep,1/{} {}'.format(runmean_ofile, runmean_steps, scalar_ofile), output=rel_anomaly_ofile)
 
 
 # set up the option parser
@@ -126,8 +125,9 @@ mvars_dict = {'tendency_of_ice_mass': 'ice_mass',
              'tendency_of_ice_mass_due_to_surface_mass_flux': 'surface_mass_flux_cumulative',
              'tendency_of_ice_mass_due_to_discharge': 'discharge_cumulative'}
 mvars = mvars_dict.keys()
-
+cvars = ['pism_config']
 basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
+basins = ('NW', 'SE', 'SW')
 runmean_steps = 10
 
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)

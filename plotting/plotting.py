@@ -31,10 +31,6 @@ parser.add_argument("-s", "--switch_sign", dest="switch_sign", action='store_tru
                     help="Switch sign of data", default=False)
 parser.add_argument("-l", "--labels", dest="labels",
                     help="comma-separated list with labels, put in quotes like 'label 1,label 2'", default=None)
-parser.add_argument("--index_ij", dest="index_ij", nargs=2, type=int,
-                    help="i and j index for spatial fields, eg. 10 10", default=[0, 0])
-parser.add_argument("--lon_lat", dest="lon_lat", nargs=2, type=float,
-                    help="lon and lat for spatial fields, eg. 10 10", default=None)
 parser.add_argument("-f", "--output_format", dest="out_formats",
                     help="Comma-separated list with output graphics suffix, default = pdf", default='pdf')
 parser.add_argument("-n", "--normalize", dest="normalize", action="store_true",
@@ -54,14 +50,14 @@ parser.add_argument("--rotate_xticks", dest="rotate_xticks", action="store_true"
 parser.add_argument("-r", "--output_resolution", dest="out_res",
                     help='''Resolution ofoutput graphics in dots per
                   inch (DPI), default = 300''', default=300)
-parser.add_argument("--runmean", dest="runmean",
+parser.add_argument("--runmean", dest="runmean", type=int,
                     help='''Calculate running mean''', default=None)
 parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                     help='''adds a second ordinate with units mmSLE,
                   Default=False''', default=False)
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
-                    choices=['basin_discharge', 'rel_basin_discharge'],
+                    choices=['basin_discharge', 'rel_basin_discharge', 'basin_mass', 'per_basin_fluxes'],
                     default='basin_discharge')
 
 parser.add_argument("--title", dest="title",
@@ -108,12 +104,12 @@ lw, pad_inches = set_mode(print_mode, aspect_ratio=aspect_ratio)
 
 #plt.rcParams['legend.fancybox'] = True
 
-basin_col_dict = {'CW': '#998ec3',
-                  'NE': '#fdb863',
-                  'NO': '#018571',
-                  'NW': '#d8daeb',
-                  'SE': '#e66101',
-                  'SW': '#542788',
+basin_col_dict = {'CW': '#542788',
+                  'NE': '#b35806',
+                  'NO': '#e08214',
+                  'NW': '#fdb863',
+                  'SE': '#b2abd2',
+                  'SW': '#8073ac',
                   'GR': '#000000'}
 
 rcp_col_dict = {'RCP85': '#ca0020',
@@ -127,12 +123,30 @@ rcp_dict = {'RCP26': 'RCP 2.6',
             'RCP60': 'RCP 6.0',
             'RCP85': 'RCP 8.5'}
 
-flux_vars = ['mass_rate_of_change_glacierized', 'discharge_flux', 'surface_ice_flux', 'sub_shelf_ice_flux', 'grounded_basal_ice_flux']
-flux_abbr_dict = {'mass_rate_of_change_glacierized': '$\dot \mathregular{M}$', 'discharge_flux': 'D', 'surface_ice_flux': 'SMB', 'sub_shelf_ice_flux': 'FMB', 'grounded_basal_ice_flux': 'BMB'}
-flux_style_dict = {'mass_rate_of_change_glacierized': '-', 'discharge_flux': '--', 'surface_ice_flux': ':', 'sub_shelf_ice_flux': ':', 'grounded_basal_ice_flux': '-.'}
-#flux_plot_vars = ['discharge_flux', 'surface_ice_flux', 'grounded_basal_ice_flux']
-flux_plot_vars = ['discharge_flux']
-mass_plot_vars = ['mass_glacierized']
+flux_to_mass_vars_dict = {'tendency_of_ice_mass': 'ice_mass',
+             'tendency_of_ice_mass_due_to_flow': 'flow_cumulative',
+             'tendency_of_ice_mass_due_to_conservation_error': 'conservation_error_cumulative',
+             'tendency_of_ice_mass_due_to_basal_mass_flux': 'basal_mass_flux_cumulative',
+             'tendency_of_ice_mass_due_to_surface_mass_flux': 'surface_mass_flux_cumulative',
+             'tendency_of_ice_mass_due_to_discharge': 'discharge_cumulative'}
+flux_vars = flux_to_mass_vars_dict.keys()
+
+flux_abbr_dict = {'tendency_of_ice_mass': '$\dot \mathregular{M}$',
+                  'tendency_of_ice_mass_due_to_flow': 'divQ',
+                  'tendency_of_ice_mass_due_to_conservation_error': 'e',
+                  'tendency_of_ice_mass_due_to_basal_mass_flux': 'BMB',
+                  'tendency_of_ice_mass_due_to_surface_mass_flux': 'SMB',
+                  'tendency_of_ice_mass_due_to_discharge': 'D'}
+
+flux_style_dict = {'tendency_of_ice_mass': '-',
+             'tendency_of_ice_mass_due_to_flow': ':',
+             'tendency_of_ice_mass_due_to_conservation_error': ':',
+             'tendency_of_ice_mass_due_to_basal_mass_flux': '-.',
+             'tendency_of_ice_mass_due_to_surface_mass_flux': ':',
+             'tendency_of_ice_mass_due_to_discharge': '--'}
+
+flux_plot_vars = ['tendency_of_ice_mass_due_to_discharge', 'tendency_of_ice_mass_due_to_surface_mass_flux']
+mass_plot_vars = ['ice_mass']
 
 flux_ounits = 'Gt year-1'
 mass_ounits = 'Gt'
@@ -160,7 +174,7 @@ def plot_fluxes(plot_vars):
             runmean_var_vals = smooth(var_vals, window_len=runmean)
             plt.plot(date[:], var_vals[:],
                      color=basin_col_dict[basin],
-                     lw=0.5,
+                     lw=0.25,
                      ls=flux_style_dict[mvar],
                      label=flux_abbr_dict[mvar])
             plt.plot(date[:], runmean_var_vals[:],
@@ -292,6 +306,81 @@ def plot_rcp(plot_vars=mass_plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
+def plot_fluxes_by_basin(plot_vars=['tendency_of_ice_mass', 'tendency_of_ice_mass_due_to_discharge', 'tendency_of_ice_mass_due_to_surface_mass_flux']):
+    '''
+    Make a plot per basin with all flux_plot_vars
+    '''
+    
+    for k, ifile in enumerate(ifiles):
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111, axisbg=axisbg)
+
+        basin = all_basins[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        for mvar in plot_vars:
+            var_vals = np.squeeze(nc.variables[mvar][:])
+            iunits = nc.variables[mvar].units
+
+            var_vals = unit_converter(var_vals, iunits, flux_ounits)
+            if runmean is not None:
+                runmean_var_vals = smooth(var_vals, window_len=runmean)
+                plt.plot(date[:], var_vals[:],
+                         color=basin_col_dict[basin],
+                         lw=0.25,
+                         ls=flux_style_dict[mvar])
+                plt.plot(date[:], runmean_var_vals[:],
+                         color=basin_col_dict[basin],
+                         lw=0.5,
+                         ls=flux_style_dict[mvar],
+                         label=flux_abbr_dict[mvar])
+            else:
+                plt.plot(date[:], var_vals[:],
+                         color=basin_col_dict[basin],
+                         lw=0.5,
+                         ls=flux_style_dict[mvar],
+                         label=flux_abbr_dict[mvar])
+        nc.close()
+
+        ax.legend(loc="upper right",
+                  shadow=False,
+                  bbox_to_anchor=(0, 0, 1, 1),
+                  bbox_transform=plt.gcf().transFigure)
+    
+        ax.set_xlabel('Year (CE)')
+        ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
+        
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+            
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_basin_{}'.format(basin)  + '_fluxes.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
 def plot_mass(plot_vars=mass_plot_vars):
     
     fig = plt.figure()
@@ -361,7 +450,7 @@ def plot_mass(plot_vars=mass_plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-def plot_discharge_flux_all_basins(mvar='discharge_flux'):
+def plot_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge'):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -380,10 +469,23 @@ def plot_discharge_flux_all_basins(mvar='discharge_flux'):
         var_vals = np.squeeze(nc.variables[mvar][:])
         iunits = nc.variables[mvar].units
         var_vals = unit_converter(var_vals, iunits, flux_ounits)
-        ax.plot(date[:], (var_vals[:]),
-                 color=basin_col_dict[basin],
-                 lw=0.75,
-                 label=basin)
+        if runmean is not None:
+            runmean_var_vals = smooth(var_vals, window_len=runmean)
+            plt.plot(date[:], var_vals[:],
+                     color=basin_col_dict[basin],
+                     lw=0.25,
+                     ls='-',
+                     label=basin)
+            plt.plot(date[:], runmean_var_vals[:],
+                     color=basin_col_dict[basin],
+                     lw=0.75,
+                     ls='-')
+        else:
+            plt.plot(date[:], var_vals[:],
+                     color=basin_col_dict[basin],
+                     lw=0.75,
+                     ls='-',
+                     label=basin)
         nc.close()
 
     ax.legend(loc="upper right",
@@ -420,7 +522,7 @@ def plot_discharge_flux_all_basins(mvar='discharge_flux'):
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
-def plot_rel_discharge_flux_all_basins(mvar='discharge_flux'):
+def plot_rel_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge'):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -473,7 +575,7 @@ def plot_rel_discharge_flux_all_basins(mvar='discharge_flux'):
             plt.title(title)
 
     for out_format in out_formats:
-        out_file = outfile + '_discharge_flux'  + '.' + out_format
+        out_file = outfile + '_discharge_flux_anomaly'  + '.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
@@ -552,6 +654,7 @@ if plot == 'basin_discharge':
     plot_discharge_flux_all_basins()
 elif plot == 'rel_basin_discharge':
     plot_rel_discharge_flux_all_basins()
-
-#plot_basin_mass(mass_plot_vars)
-#plot_fluxes(plot_vars=flux_plot_vars)
+elif plot == 'basin_mass':
+    plot_basin_mass()
+elif plot == 'per_basin_fluxes':
+    plot_fluxes_by_basin()
