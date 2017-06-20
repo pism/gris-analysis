@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 from netCDF4 import Dataset as NC
 
 # create logger
-logger = logging.getLogger('postprocess')
+logger = logging.getLogger('hillshade')
 logger.setLevel(logging.INFO)
 
 ch = logging.StreamHandler()
@@ -33,31 +33,61 @@ class Hillshade(object):
     Parameters
     ----------
 
+    ifile: netCDF file with dimensions ('time', 'y', 'x'). Other permutations are currently not supported
+    variable: variable used to create a hillshade
+
+    kwargs
+    ----------
+
+    altitude:
+    azimuth:
+    fill_value:
+    mask_variable: if variables_to_mask is not None, use this variable to mask them
+    thk_threshold: if thickness_mask is True, use this threshold
+    zf: 
     '''
 
-    def __init__(self, ifile, *args, **kwargs):
+    def __init__(self, ifile, variable='usurf', threshold_masking=True, variables_to_mask=None, *args, **kwargs):
         super(Hillshade, self).__init__(*args, **kwargs)
+
+        self.threshold_masking = threshold_masking
+        self.do_masking = False
         self.ifile = ifile
+        self.variable = variable
+        if variables_to_mask is not None:
+            self.variables_to_mask = variables_to_mask.split(',')
+            self.do_masking = True
+        else:
+            self.variables_to_mask = variables_to_mask
         self.params = {'altitude': 45,
                        'azimuth': 45,
                        'fill_value': 0,
+                       'threshold_masking_variable': 'thk',
+                       'threshold_masking_value': 10,
                        'zf': 5}
         for key, value in kwargs:
             if key in ('altitude', 'azimuth', 'fill_value', 'hillshade_var', 'zf'):
                 self.params[key] = value
 
-        self._check_dims_and_vars()
+        self._check_vars()
+        self.dx = self._get_dx()
+        self._create_vars()
 
-    def _check_dims_and_vars(self):
+    def _check_vars(self):
        
         nc = NC(self.ifile, 'r')
-        for mvar in ('time', 'thk'):
+        for mvar in (['time'] + [self.variable]):
             if mvar in nc.variables:
                 logger.info('variable {} found'.format(mvar))
             else:
                 logger.info('variable {} NOT found'.format(mvar))
-        #ds = nc.variables['run_stats'][]
-        self.dx = 1500
+
+        if self.do_masking:
+            for mvar in (self.variables_to_mask + [self.params['threshold_masking_variable']]):
+                if mvar in nc.variables:
+                    logger.info('variable {} found'.format(mvar))
+                else:
+                    logger.info('variable {} NOT found'.format(mvar))
         nc.close()
            
     def _cart2pol(self, x, y):
@@ -67,6 +97,35 @@ class Hillshade(object):
         theta = np.arctan2(y, x)
         rho = np.sqrt(x**2 + y**2)
         return (theta, rho) 
+
+    def _create_vars(self):
+        '''
+        create netCDF variables if they don't exist yet
+        '''
+
+        ifile = self.ifile
+        nc = NC(ifile, 'a')
+        variable = self.variable
+        hs_var = variable  + '_hs'
+        if hs_var  not in nc.variables:
+            nc.createVariable(hs_var, 'i', dimensions=('time', 'y', 'x'), fill_value=fill_value)
+        nc.close()
+                
+    def _get_dx(self):
+        
+        nc = NC(self.ifile, 'r')
+
+        x0, x1 = nc.variables['x'][0:2]
+        y0, y1 = nc.variables['y'][0:2]
+        
+        nc.close()
+
+        dx = x1 - x0
+        dy = y1 - y0
+
+        assert dx == dy
+
+        return dx
 
     def _hillshade(self, dem):
        '''
@@ -105,21 +164,28 @@ class Hillshade(object):
     def run(self):
         logger.info('Processing file {}'.format(ifile))
         fill_value = self.params['fill_value']
+        hs_var = self.variable  + '_hs'
         nc = NC(ifile, 'a')
         nt = len(nc.variables['time'][:])
-        if 'usurf_hs' not in nc.variables:
-            nc.createVariable('usurf_hs', 'i', dimensions=('time', 'y', 'x'), fill_value=fill_value)
         for t in range(nt):
             logger.info('Processing time {} of {}'.format(t, nt))
             dem = nc.variables['usurf'][t, Ellipsis]
-            mthk = nc.variables['thk'][t, Ellipsis]
-            mspeed = nc.variables['velsurf_mag'][t, Ellipsis]
             hs = self._hillshade(dem)
             hs[dem==0] = fill_value
-            hs[mthk<=10] = fill_value
-            mspeed[mthk<=10] = -2e9
-            nc.variables['usurf_hs'][t, Ellipsis] = hs
-            nc.variables['velsurf_mag'][t, Ellipsis] = mspeed
+            nc.variables[hs_var][t, Ellipsis] = hs
+            if self.threshold_masking:
+                m = nc.variables[self.params['threshold_masking_variable']][t, Ellipsis]
+                hs[m <= self.params['threshold_masking_value']] = fill_value
+            if self.do_masking:
+                for mvar in self.variables_to_mask:
+                    mt = nc.variables[self.params['threshold_masking_variable']][t, Ellipsis]
+                    m = nc.variables[mvar][t, Ellipsis]
+                    try:
+                        m_fill_value = nc.variables[mvar]._FillValue
+                    except:
+                        m_fill_value = fill_value
+                    m[mt < self.params['threshold_masking_value']] = m_fill_value
+                    nc.variables[mvar][t, Ellipsis] = m
             
         nc.close()
 
@@ -135,7 +201,6 @@ if __name__ == "__main__":
     options = parser.parse_args()
     ifile = options.FILE[0]
 
-    hs = Hillshade(ifile)
-    hs.run()
-                            
+    hs = Hillshade(ifile, variables_to_mask='velsurf_mag')
+    hs.run() 
 
