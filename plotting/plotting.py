@@ -57,7 +57,7 @@ parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                   Default=False''', default=False)
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
-                    choices=['basin_discharge', 'rel_basin_discharge', 'basin_mass', 'per_basin_fluxes'],
+                    choices=['basin_discharge', 'rel_basin_discharge', 'basin_mass', 'per_basin_fluxes', 'per_basin_cumulative'],
                     default='basin_discharge')
 
 parser.add_argument("--title", dest="title",
@@ -102,7 +102,6 @@ numpoints = 1
 # set the print mode
 lw, pad_inches = set_mode(print_mode, aspect_ratio=aspect_ratio)
 
-#plt.rcParams['legend.fancybox'] = True
 
 basin_col_dict = {'CW': '#542788',
                   'NE': '#b35806',
@@ -133,7 +132,7 @@ flux_vars = flux_to_mass_vars_dict.keys()
 
 flux_abbr_dict = {'tendency_of_ice_mass': '$\dot \mathregular{M}$',
                   'tendency_of_ice_mass_due_to_flow': 'divQ',
-                  'tendency_of_ice_mass_due_to_conservation_error': 'e',
+                  'tendency_of_ice_mass_due_to_conservation_error': '\dot e',
                   'tendency_of_ice_mass_due_to_basal_mass_flux': 'BMB',
                   'tendency_of_ice_mass_due_to_surface_mass_flux': 'SMB',
                   'tendency_of_ice_mass_due_to_discharge': 'D'}
@@ -144,6 +143,20 @@ flux_style_dict = {'tendency_of_ice_mass': '-',
              'tendency_of_ice_mass_due_to_basal_mass_flux': '-.',
              'tendency_of_ice_mass_due_to_surface_mass_flux': ':',
              'tendency_of_ice_mass_due_to_discharge': '--'}
+
+mass_abbr_dict = {'ice_mass': 'M',
+             'flow_cumulative': 'Q',
+             'conservation_error_cumulative': 'e',
+             'basal_mass_flux_cumulative': 'BMB',
+             'surface_mass_flux_cumulative': 'SMB',
+             'discharge_cumulative': 'D'}
+
+mass_style_dict = {'ice_mass': '-',
+             'flow_cumulative': ':',
+             'conservation_error_cumulative': ':',
+             'basal_mass_flux_cumulative': '-.',
+             'surface_mass_flux_cumulative': ':',
+             'discharge_cumulative': '--'}
 
 flux_plot_vars = ['tendency_of_ice_mass_due_to_discharge', 'tendency_of_ice_mass_due_to_surface_mass_flux']
 mass_plot_vars = ['ice_mass']
@@ -191,9 +204,9 @@ def plot_fluxes(plot_vars):
     nc.close()
     
     ax.legend(loc="upper right",
-              shadow=False,
-              bbox_to_anchor=(0, 0, 1, 1),
-              bbox_transform=plt.gcf().transFigure)
+              edgecolor='0',
+              bbox_to_anchor=(0, 0, 1.15, 1),
+                  bbox_transform=plt.gcf().transFigure)
 
     if twinx:
         axSLE = ax.twinx()
@@ -264,8 +277,8 @@ def plot_rcp(plot_vars=mass_plot_vars):
         nc.close()
 
     ax.legend(loc="upper right",
-              shadow=False,
-              bbox_to_anchor=(0, 0, 1, 1),
+              edgecolor='0',
+              bbox_to_anchor=(0, 0, 1.15, 1),
               bbox_transform=plt.gcf().transFigure)
 
     axSLE = ax.twinx()
@@ -351,8 +364,8 @@ def plot_fluxes_by_basin(plot_vars=['tendency_of_ice_mass', 'tendency_of_ice_mas
         nc.close()
 
         ax.legend(loc="upper right",
-                  shadow=False,
-                  bbox_to_anchor=(0, 0, 1, 1),
+                  edgecolor='0',
+                  bbox_to_anchor=(0, 0, 1.15, 1),
                   bbox_transform=plt.gcf().transFigure)
     
         ax.set_xlabel('Year (CE)')
@@ -381,7 +394,87 @@ def plot_fluxes_by_basin(plot_vars=['tendency_of_ice_mass', 'tendency_of_ice_mas
             print "  - writing image %s ..." % out_file
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
+
+def plot_cumulative_fluxes_by_basin(plot_vars=['ice_mass', 'discharge_cumulative', 'surface_mass_flux_cumulative']):
+    '''
+    Make a plot per basin with all flux_plot_vars
+    '''
+    
+    for k, ifile in enumerate(ifiles):
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111, axisbg=axisbg)
+
+        basin = all_basins[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        for mvar in plot_vars:
+            var_vals = np.squeeze(nc.variables[mvar][:])
+            iunits = nc.variables[mvar].units
+
+            var_vals = unit_converter(var_vals, iunits, mass_ounits)
+            if runmean is not None:
+                runmean_var_vals = smooth(var_vals, window_len=runmean)
+                plt.plot(date[:], var_vals[:],
+                         color=basin_col_dict[basin],
+                         lw=0.25,
+                         ls=mass_style_dict[mvar])
+                plt.plot(date[:], runmean_var_vals[:],
+                         color=basin_col_dict[basin],
+                         lw=0.5,
+                         ls=mass_style_dict[mvar],
+                         label=mass_abbr_dict[mvar])
+            else:
+                plt.plot(date[:], var_vals[:],
+                         color=basin_col_dict[basin],
+                         lw=0.5,
+                         ls=mass_style_dict[mvar],
+                         label=mass_abbr_dict[mvar])
+        nc.close()
+
+        ax.legend(loc="upper right",
+                  edgecolor='0',
+                  bbox_to_anchor=(0, 0, 1.15, 1),
+                  bbox_transform=plt.gcf().transFigure)
+    
+        ax.set_xlabel('Year (CE)')
+        ax.set_ylabel('cumulative mass change (Gt)')
+        
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+            
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_basin_{}'.format(basin)  + '_cumulative.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
 def plot_mass(plot_vars=mass_plot_vars):
+    '''
+    Plot mass time series for all basins in one plot
+    '''
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -408,8 +501,8 @@ def plot_mass(plot_vars=mass_plot_vars):
         nc.close()
 
     ax.legend(loc="upper right",
-              shadow=False,
-              bbox_to_anchor=(0, 0, 1, 1),
+              edgecolor='0',
+              bbox_to_anchor=(0, 0, 1.15, 1),
               bbox_transform=plt.gcf().transFigure)
 
     axSLE = ax.twinx()
@@ -451,6 +544,9 @@ def plot_mass(plot_vars=mass_plot_vars):
 
 
 def plot_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge'):
+    '''
+    Plot discharge flux for all basins in one plot
+    '''
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -474,12 +570,12 @@ def plot_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge')
             plt.plot(date[:], var_vals[:],
                      color=basin_col_dict[basin],
                      lw=0.25,
-                     ls='-',
-                     label=basin)
+                     ls='-')
             plt.plot(date[:], runmean_var_vals[:],
                      color=basin_col_dict[basin],
                      lw=0.75,
-                     ls='-')
+                     ls='-',
+                     label=basin)
         else:
             plt.plot(date[:], var_vals[:],
                      color=basin_col_dict[basin],
@@ -489,8 +585,8 @@ def plot_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge')
         nc.close()
 
     ax.legend(loc="upper right",
-              shadow=False,
-              bbox_to_anchor=(0, 0, 1, 1),
+              edgecolor='0',
+              bbox_to_anchor=(0, 0, 1.15, 1),
               bbox_transform=plt.gcf().transFigure)
     
     ax.set_xlabel('Year (CE)')
@@ -658,3 +754,5 @@ elif plot == 'basin_mass':
     plot_basin_mass()
 elif plot == 'per_basin_fluxes':
     plot_fluxes_by_basin()
+elif plot == 'per_basin_cumulative':
+    plot_cumulative_fluxes_by_basin()
