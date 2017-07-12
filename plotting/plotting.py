@@ -294,9 +294,9 @@ def plot_rcp_mass(plot_vars=mass_plot_vars):
         for mvar in plot_vars:
             var_vals = np.squeeze(nc.variables[mvar][:])
             iunits = nc.variables[mvar].units
-            var_vals = unit_converter(var_vals, iunits, mass_ounits)
+            var_vals = -unit_converter(var_vals, iunits, mass_ounits) * gt2mSLE
             # plot anomalies
-            plt.plot(date[:], -var_vals[:] * gt2mSLE,
+            plt.plot(date[:], var_vals[:],
                      color=rcp_col_dict[rcp],
                      lw=0.5,
                      label=rcp_dict[rcp])
@@ -361,7 +361,7 @@ def plot_fluxes_by_basin(plot_vars=['tendency_of_ice_mass', 'tendency_of_ice_mas
             var_vals = np.squeeze(nc.variables[mvar][:])
             iunits = nc.variables[mvar].units
 
-            var_vals = unit_converter(var_vals, iunits, flux_ounits)
+            var_vals = -unit_converter(var_vals, iunits, flux_ounits) * gt2mSLE
             if runmean is not None:
                 runmean_var_vals = smooth(var_vals, window_len=runmean)
                 plt.plot(date[:], var_vals[:],
@@ -619,7 +619,7 @@ def plot_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge'):
 
     legend = ax.legend(loc="upper right",
                        edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.15, 1),
+                       bbox_to_anchor=(0, 0, 1.07, 0.9),
                        bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.2)
     
