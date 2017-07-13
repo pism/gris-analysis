@@ -21,7 +21,7 @@ parser.add_argument("FILE", nargs='*')
 parser.add_argument("--bounds", dest="bounds", nargs=2, type=float,
                     help="lower and upper bound for ordinate, eg. -1 1", default=None)
 parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
-                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 3008])
+                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 2100])
 parser.add_argument("-b", "--basin", dest="basin",
                     choices=all_basins,
                     help="Basin to plot", default='GR')
@@ -52,7 +52,9 @@ parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                   Default=False''', default=False)
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
-                    choices=['basin_discharge', 'basin_smb', 'rel_basin_discharge', 'basin_mass', 'per_basin_fluxes', 'per_basin_cumulative', 'rcp_mass'],
+                    choices=['basin_discharge', 'basin_smb', 'rel_basin_discharge', 'basin_mass', 'basin_mass_d',
+                             'basin_d_cumulative',
+                             'per_basin_fluxes', 'per_basin_cumulative', 'rcp_mass', 'rcp_d'],
                     default='basin_discharge')
 
 parser.add_argument("--title", dest="title",
@@ -122,12 +124,12 @@ params = {'backend': 'ps',
 plt.rcParams.update(params)
 
 
-basin_col_dict = {'CW': '#542788',
-                  'NE': '#b35806',
-                  'NO': '#e08214',
-                  'NW': '#fdb863',
-                  'SE': '#b2abd2',
-                  'SW': '#8073ac',
+basin_col_dict = {'SW': '#542788',
+                  'CW': '#b35806',
+                  'NE': '#e08214',
+                  'NO': '#fdb863',
+                  'NW': '#b2abd2',
+                  'SE': '#8073ac',
                   'GR': '#000000'}
 
 rcp_col_dict = {'RCP85': '#d94701',
@@ -332,7 +334,7 @@ def plot_rcp_mass(plot_vars=mass_plot_vars):
             plt.title(title)
 
     for out_format in out_formats:
-        out_file = 'rcp' + '_mass'  + '.' + out_format
+        out_file = 'rcp' + '_'  + plot_vars + '.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
@@ -435,10 +437,17 @@ def plot_cumulative_fluxes_by_basin(plot_vars=['ice_mass', 'discharge_cumulative
                          step) 
 
         for mvar in plot_vars:
-            var_vals = np.squeeze(nc.variables[mvar][:])
-            iunits = nc.variables[mvar].units
-
-            var_vals = unit_converter(var_vals, iunits, mass_ounits)
+            if mvar=='discharge_cumulative':
+                d_var_vals_sum = 0
+                for d_var in ('discharge_cumulative', 'basal_mass_flux_cumulative'):
+                    d_var_vals = -np.squeeze(nc.variables[d_var][:]) * gt2mSLE
+                    iunits = nc.variables[d_var].units
+                    d_var_vals_sum += unit_converter(d_var_vals, iunits, mass_ounits)
+                var_vals = d_var_vals_sum
+            else:
+                var_vals = np.squeeze(nc.variables[mvar][:])
+                iunits = nc.variables[mvar].units
+                var_vals = unit_converter(var_vals, iunits, mass_ounits)
             if runmean is not None:
                 runmean_var_vals = smooth(var_vals, window_len=runmean)
                 plt.plot(date[:], var_vals[:],
@@ -711,12 +720,14 @@ def plot_rel_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_dischar
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
-def plot_basin_mass(plot_vars=mass_plot_vars):
+def plot_basin_mass(plot_var='ice_mass'):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111, axisbg=axisbg)
 
+    my_var_vals = 0
+    print('cumulative SLE {}m'.format(my_var_vals))
     for k, ifile in enumerate(ifiles):
         basin = all_basins[k]
         print('reading {}'.format(ifile))
@@ -727,42 +738,51 @@ def plot_basin_mass(plot_vars=mass_plot_vars):
                          start_year + (len(t[:]) + 1) * step,
                          step) 
 
-        for mvar in plot_vars:
-            var_vals = np.squeeze(nc.variables[mvar][:])
+        mvar = plot_var
+        if plot_var == 'ice_mass':
+            var_vals = -np.squeeze(nc.variables[mvar][:]) * gt2mSLE
             iunits = nc.variables[mvar].units
             var_vals = unit_converter(var_vals, iunits, mass_ounits)
-            # plot anomalies
-            plt.plot(date[:], (var_vals[:] - var_vals[0]),
-                     color=basin_col_dict[basin],
-                     lw=0.75,
-                     label=basin)
+        elif plot_var == 'discharge_cumulative':
+            d_var_vals = 0
+            for d_var in ('discharge_cumulative', 'basal_mass_flux_cumulative'):
+                tmp_d_var_vals = -np.squeeze(nc.variables[d_var][:]) * gt2mSLE
+                iunits = nc.variables[d_var].units
+                d_var_vals += unit_converter(tmp_d_var_vals, iunits, mass_ounits)
+            var_vals = d_var_vals
+        else:
+            pass    
+        # plot anomalies
+        ax.fill_between(date[:], my_var_vals, my_var_vals + var_vals[:],
+                        color=basin_col_dict[basin],
+                        linewidth=0,
+                        label=basin)
+        offset = 10
+        try:
+            x_sle, y_sle = time_bounds[-1] + offset, my_var_vals[-1]
+        except:  # first iteration
+            x_sle, y_sle = time_bounds[-1] + offset, my_var_vals
+        print('basin {}: {}'.format(basin, var_vals[-1]))
+        plt.text( x_sle, y_sle, '{: 1.2f}'.format(var_vals[-1]),
+                          color=basin_col_dict[basin])
         nc.close()
+        my_var_vals += var_vals
+        print('cumulative SLE {}m'.format(my_var_vals[-1]))
 
     legend = ax.legend(loc="upper right",
                        edgecolor='0',
                        bbox_to_anchor=(0, 0, 1.15, 1),
                        bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.2)
-
-    axSLE = ax.twinx()
-    ax.set_autoscalex_on(False)
-    axSLE.set_autoscalex_on(False)
     
     ax.set_xlabel('Year (CE)')
-    ax.set_ylabel('cumulative mass change (Gt)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
 
     if bounds:
         ax.set_ylim(bounds[0], bounds[1])
-
-    ymin, ymax = ax.get_ylim()
-    # Plot twin axis on the right, in mmSLE
-    yminSLE = ymin * gt2mmSLE
-    ymaxSLE = ymax * gt2mmSLE
-    axSLE.set_ylim(yminSLE, ymaxSLE)
-    axSLE.set_ylabel('mm SLE')
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -777,22 +797,143 @@ def plot_basin_mass(plot_vars=mass_plot_vars):
             plt.title(title)
 
     for out_format in out_formats:
-        out_file = outfile + '_mass'  + '.' + out_format
+        out_file = outfile + '_' + mvar  + '.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
+def plot_basin_mass_d():
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    mass_var_vals_positive_cum = 0
+    mass_var_vals_negative_cum = 0
+    for k, ifile in enumerate(ifiles):
+        basin = all_basins[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        idx = np.where(np.array(date) == time_bounds[-1])[0][0]
+
+        mvar = 'ice_mass'
+        mass_var_vals = -np.squeeze(nc.variables[mvar][:]) * gt2mSLE
+        iunits = nc.variables[mvar].units
+        mass_var_vals = unit_converter(mass_var_vals, iunits, mass_ounits)
+        if mass_var_vals[idx] > 0:
+            ax.fill_between(date[:], mass_var_vals_positive_cum, mass_var_vals_positive_cum + mass_var_vals[:],
+                            color=basin_col_dict[basin],
+                            linewidth=0,
+                            label=basin)
+        else:
+            print mass_var_vals[idx]
+            ax.fill_between(date[:], mass_var_vals_negative_cum, mass_var_vals_negative_cum + mass_var_vals[:],
+                            color=basin_col_dict[basin],
+                            linewidth=0,
+                            label=basin)
+            plt.rcParams['hatch.color'] = basin_col_dict[basin]
+            plt.rcParams['hatch.linewidth'] = 0.1
+            ax.fill_between(date[:], mass_var_vals_negative_cum, mass_var_vals_negative_cum + mass_var_vals[:],
+                            facecolor="none", hatch="XXXXX", edgecolor="k",
+                            linewidth=0.0)
+        d_var_vals_sum = 0
+        for d_var in ('discharge_cumulative', 'basal_mass_flux_cumulative'):
+            d_var_vals = -np.squeeze(nc.variables[d_var][:]) * gt2mSLE
+            iunits = nc.variables[d_var].units
+            d_var_vals_sum += unit_converter(d_var_vals, iunits, mass_ounits)
+        # if mass_var_vals[idx] > 0:
+        #     ax.fill_between(date[:], mass_var_vals_positive_cum, mass_var_vals_positive_cum + d_var_vals_sum[:],
+        #                     color='0.8',
+        #                     alpha=0.5,
+        #                     linewidth=0)
+
+        if mass_var_vals[idx] > 0:
+            ax.plot(date[:], mass_var_vals_positive_cum + mass_var_vals[:],
+                    color='k',
+                    linewidth=0.1)
+        else:
+            ax.plot(date[:], mass_var_vals_negative_cum + mass_var_vals[:],
+                    color='k',
+                    linewidth=0.1)
+
+        offset = 0
+        if mass_var_vals[idx] > 0:
+            try:
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_positive_cum[idx]
+            except:  # first iteratio
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_positive_cum
+        else:
+            try:
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_negative_cum[idx] + mass_var_vals[idx] 
+            except:  # first iteration
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_negative_cum + mass_var_vals[idx] 
+        # contribution of cumulative discharge to cumulative mass loss
+        # d_to_mass_percent = d_var_vals_sum[idx] / mass_var_vals[idx] * 100
+        # if d_to_mass_percent > 0:
+        plt.text( x_sle, y_sle, '{: 1.2f}m'.format(mass_var_vals[idx]),
+                  color=basin_col_dict[basin])
+        nc.close()
+        if mass_var_vals[idx] > 0:
+            mass_var_vals_positive_cum += mass_var_vals
+        else:
+            mass_var_vals_negative_cum += mass_var_vals
+
+    ax.hlines(0, time_bounds[0], time_bounds[-1], lw=0.25)
+
+    legend = ax.legend(loc="upper right",
+                       edgecolor='0',
+                       bbox_to_anchor=(0, 0, 1.15, 1),
+                       bbox_transform=plt.gcf().transFigure)
+    legend.get_frame().set_linewidth(0.2)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[-1])
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_' + mvar  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 if plot == 'basin_discharge':
     plot_flux_all_basins()
 elif plot == 'basin_smb':
-    plot_flux_all_basins(mvar='tendency_of_ice_mass_due_to_surface_mass_flux')
+    plot_flux_all_basins(plot_vars='tendency_of_ice_mass_due_to_surface_mass_flux')
 elif plot == 'rel_basin_discharge':
     plot_rel_discharge_flux_all_basins()
 elif plot == 'basin_mass':
     plot_basin_mass()
+elif plot == 'basin_mass_d':
+    plot_basin_mass_d()
+elif plot == 'basin_d_cumulative':
+    plot_basin_mass(plot_var='discharge_cumulative')
 elif plot == 'per_basin_fluxes':
     plot_fluxes_by_basin()
 elif plot == 'per_basin_cumulative':
     plot_cumulative_fluxes_by_basin()
 elif plot == 'rcp_mass':
-    plot_rcp_mass()
+    plot_rcp_mass(plot_vars='ice_mass')
+elif plot == 'rcp_d':
+    plot_rcp_mass(plot_vars='discharge_cumulative')
