@@ -21,7 +21,7 @@ parser.add_argument("FILE", nargs='*')
 parser.add_argument("--bounds", dest="bounds", nargs=2, type=float,
                     help="lower and upper bound for ordinate, eg. -1 1", default=None)
 parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
-                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 2100])
+                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 3000])
 parser.add_argument("-b", "--basin", dest="basin",
                     choices=all_basins,
                     help="Basin to plot", default='GR')
@@ -132,14 +132,16 @@ basin_col_dict = {'SW': '#542788',
                   'SE': '#8073ac',
                   'GR': '#000000'}
 
-rcp_col_dict = {'RCP85': '#d94701',
+rcp_col_dict = {'CTRL': 'k',
+                'RCP85': '#d94701',
                 'RCP45': '#fd8d3c',
                 'RCP26': '#fdbe85'}
 
-rcp_list = ['RCP26', 'RCP45', 'RCP85']
+rcp_list = ['RCP26', 'RCP45', 'RCP85', 'CTRL']
 rcp_dict = {'RCP26': 'RCP 2.6',
             'RCP45': 'RCP 4.5',
-            'RCP85': 'RCP 8.5'}
+            'RCP85': 'RCP 8.5',
+            'CTRL': 'CTRL'}
 
 flux_to_mass_vars_dict = {'tendency_of_ice_mass': 'ice_mass',
              'tendency_of_ice_mass_due_to_flow': 'flow_cumulative',
@@ -277,7 +279,7 @@ def plot_fluxes(plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-def plot_rcp_mass(plot_vars=mass_plot_vars):
+def plot_rcp_mass(plot_var=mass_plot_vars):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -292,16 +294,14 @@ def plot_rcp_mass(plot_vars=mass_plot_vars):
         date = np.arange(start_year + step,
                          start_year + (len(t[:]) + 1) * step,
                          step) 
-
-        for mvar in plot_vars:
-            var_vals = np.squeeze(nc.variables[mvar][:])
-            iunits = nc.variables[mvar].units
-            var_vals = -unit_converter(var_vals, iunits, mass_ounits) * gt2mSLE
-            # plot anomalies
-            plt.plot(date[:], var_vals[:],
-                     color=rcp_col_dict[rcp],
-                     lw=0.5,
-                     label=rcp_dict[rcp])
+        mvar = plot_var
+        var_vals = np.squeeze(nc.variables[mvar][:])
+        iunits = nc.variables[mvar].units
+        var_vals = -unit_converter(var_vals, iunits, mass_ounits) * gt2mSLE
+        plt.plot(date[:], var_vals[:],
+                 color=rcp_col_dict[rcp],
+                 lw=0.5,
+                 label=rcp_dict[rcp])
         nc.close()
 
     legend = ax.legend(loc="upper right",
@@ -334,7 +334,7 @@ def plot_rcp_mass(plot_vars=mass_plot_vars):
             plt.title(title)
 
     for out_format in out_formats:
-        out_file = 'rcp' + '_'  + plot_vars + '.' + out_format
+        out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
@@ -435,6 +435,7 @@ def plot_cumulative_fluxes_by_basin(plot_vars=['ice_mass', 'discharge_cumulative
         date = np.arange(start_year + step,
                          start_year + (len(t[:]) + 1) * step,
                          step) 
+        idx = np.where(np.array(date) == time_bounds[-1])[0][0]
 
         for mvar in plot_vars:
             if mvar=='discharge_cumulative':
@@ -934,6 +935,6 @@ elif plot == 'per_basin_fluxes':
 elif plot == 'per_basin_cumulative':
     plot_cumulative_fluxes_by_basin()
 elif plot == 'rcp_mass':
-    plot_rcp_mass(plot_vars='ice_mass')
+    plot_rcp_mass(plot_var='ice_mass')
 elif plot == 'rcp_d':
-    plot_rcp_mass(plot_vars='discharge_cumulative')
+    plot_rcp_mass(plot_var='discharge_cumulative')
