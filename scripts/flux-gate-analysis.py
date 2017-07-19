@@ -28,7 +28,7 @@ import cf_units
 
 # Set up the option parser
 parser = ArgumentParser()
-parser.description = "Analyze flux gates. Used for 'Complex Greenland Outlet Galcier Flow Captured'."
+parser.description = "Analyze flux gates. Used for 'Complex Greenland Outlet Glacier Flow Captured'."
 parser.add_argument("FILE", nargs='*')
 parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float,
                     help='''Plot aspect ratio"''', default=0.8)

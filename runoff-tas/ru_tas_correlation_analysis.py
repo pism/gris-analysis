@@ -45,34 +45,74 @@ params = {'backend': 'ps',
 
 plt.rcParams.update(params)
 
-colors = ['#542788',
-          '#b35806',
-          '#e08214',
-          '#fdb863',
-          '#b2abd2',
-          '#8073ac',
-          '#000000']
+
+gcm_marker_dict = {'CanESM2': 'd',
+                   'MIROC5': 'o',
+                   'NorESM1': 's'}
+rcp_col_dict = {'45': '#fdae6b',
+                '85': '#e6550d'}
+
+col_dict = {
+    'CanESM2': {'45': '#9ecae1', '85': '#3182bd'},
+    'MIROC5': {'45': '#a1d99b', '85': '#31a354'},
+    'NorESM1': {'45': '#bcbddc', '85': '#756bb1'}}
 
 fig, ax = plt.subplots()
 
+rus = []
+tass = []
+p_ols = []
 for k, ifile in enumerate(options.FILE):
     print ifile, k
     nc = NC(ifile, 'r')
-
+    forcing = nc.forcing
+    gcm, rcp = forcing.split('-')
+    rcp = rcp.split('rcp')[-1]
     tas = np.squeeze(nc.variables['ST'][:]) 
     ru = np.squeeze(nc.variables['RU'][:])
     tas -= tas.min()
     ru /= ru.min()
-    ax.scatter(tas, ru, s=1, c=colors[k])
+
+    rus.append(ru)
+    tass.append(tas)
+    print gcm, rcp
+    ax.scatter(tas, ru, s=2.5, facecolors='none', edgecolors=col_dict[gcm][rcp], label='{}-RCP{}'.format(gcm, rcp), lw=0.5)
 
     tasS = pa.Series(data=tas, index=tas)
     ruS = pa.Series(data=ru, index=tas)
     # Perform Ordinary Least Squares regression analysis
-    p_ols = sm.OLS(ruS, sm.add_constant(tasS)).fit()
-    print p_ols.summary()
+    m_ols = sm.OLS(ruS, sm.add_constant(tasS)).fit()
+    p_ols.append(m_ols)
+    print m_ols.summary()
+    m_ols.rsquared
+    bias, trend = m_ols.params
+    # ax.plot(tas, bias + trend * tas, color=col_dict[gcm][rcp], lw=0.2)
     nc.close()
     
+ru_cat = rus[0]
+tas_cat = tass[0]
+for k in range(len(rus)):
+    if k>0:
+        ru_cat = np.concatenate((ru_cat, rus[k]))
+        tas_cat = np.concatenate((tas_cat, tass[k]))
 
-    
-plt.savefig('tas_ru.pdf')
-plt.show()
+tasS = pa.Series(data=tas_cat, index=tas_cat)
+ruS = pa.Series(data=ru_cat, index=tas_cat)
+# Perform Ordinary Least Squares regression analysis
+p_ols = sm.OLS(ruS, sm.add_constant(tasS)).fit()
+print p_ols.summary()
+bias, trend = p_ols.params
+print bias, trend
+ax.plot(tas_cat, bias + trend * tas_cat, color='k', lw=0.5)
+ax.text(0, 3, 'r$^2$={:1.2f}'.format(p_ols.rsquared))
+ax.text(0, 3.5, 'y={:1.2f}x + {:1.2f}'.format(trend, bias))
+ax.set_xlabel('temperature (non-dimensional)')
+ax.set_ylabel('runoff (non-dimensional)')
+
+legend = ax.legend(loc="upper right",
+                   edgecolor='0',
+                   bbox_to_anchor=(0, 0, 1.2, 1),
+                   bbox_transform=plt.gcf().transFigure)
+legend.get_frame().set_linewidth(0.2)
+
+plt.savefig('tas_ru.pdf', bbox_inches='tight')

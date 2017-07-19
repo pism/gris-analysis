@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 # create formatter
-formatter = logging.Formatter('%(name)s - %(module)s - %(message)s')
+formatter = logging.Formatter('%(name)s - %(message)s')
 
 # add formatter to ch and fh
 ch.setFormatter(formatter)
@@ -24,6 +24,15 @@ ch.setFormatter(formatter)
 # add ch to logger
 logger.addHandler(ch)
 
+# See http://pubs.usgs.gov/of/1992/of92-422/of92-422.pdf
+#     // W225 = sin^2(aspect - 225) = 0.5 * (1 - 2 * sin(aspect) * cos(aspect))
+#     // W270 = sin^2(aspect - 270) = cos^2(aspect)
+#     // W315 = sin^2(aspect - 315) = 0.5 * (1 + 2 * sin(aspect) * cos(aspect))
+#     // W360 = sin^2(aspect - 360) = sin^2(aspect)
+#     // hillshade=  0.5 * (W225 * hillshade(az=225) +
+#     //                    W270 * hillshade(az=270) +
+#     //                    W315 * hillshade(az=315) +
+#     //                    W360 * hillshade(az=360))
 
 class Hillshade(object):
 
@@ -74,7 +83,8 @@ class Hillshade(object):
         self._create_vars()
 
     def _check_vars(self):
-       
+
+        logger.info('Checking for variables')
         nc = NC(self.ifile, 'r')
         for mvar in (['time'] + [self.variable]):
             if mvar in nc.variables:
@@ -106,9 +116,10 @@ class Hillshade(object):
         ifile = self.ifile
         nc = NC(ifile, 'a')
         variable = self.variable
-        hs_var = variable  + '_hs'
+        hs_var = self.variable + '_hs'
         if hs_var  not in nc.variables:
-            nc.createVariable(hs_var, 'i', dimensions=('time', 'y', 'x'), fill_value=fill_value)
+            hs = nc.createVariable(hs_var, 'i', dimensions=('time', 'y', 'x'), fill_value=self.params['fill_value'])
+            hs.grid_mapping = 'mapping'
         nc.close()
                 
     def _get_dx(self):

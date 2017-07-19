@@ -44,25 +44,34 @@ logger.addHandler(fh)
 parser = ArgumentParser(
     description='''A script to extract interfaces (calving front, ice-ocean, or groundling line) from a PISM netCDF file, and save it as a shapefile (polygon).''')
 parser.add_argument("FILE", nargs=1)
+parser.add_argument("-o", "--output_filename", dest="out_file",
+                    help="Name of the output file", default='plot.pdf')
 
 options = parser.parse_args()
 filename = options.FILE[0]
+ofile = options.out_file
 
 driver = ogr.GetDriverByName('ESRI Shapefile')
 ds = driver.Open(filename)
 layer = ds.GetLayer()
 cnt = layer.GetFeatureCount()
-last_feature = layer.GetFeature(cnt-1)
-nt = last_feature.GetField('timestep')
-feature_length_vector = np.zeros(nt)
+dates = []
+t = []
+lengths = []
+
 for feature in layer:
-    k = feature.GetField('timestep')
+    dates.append(feature.GetField('timestamp'))
+    t.append(feature.GetField('timestep'))
     geom = feature.GetGeometryRef()
     length = geom.GetArea() / 2.
-    feature_length_vector[k-1] =+ length
+    lengths.append(length)
 
 del ds
 
+dates = np.array(dates)
+t = np.array(t)
+lengths = np.array(lengths)
+
 import pylab as plt
-plt.plot(feature_length_vector/1e3)
-plt.show()
+plt.plot(t, lengths/1e3, 'o')
+plt.savefig(ofile)
