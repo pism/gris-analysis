@@ -89,7 +89,7 @@ fill_value = -2.0e9
 v_str = ' '.join('='.join([x, str(fill_value) + ';']) for x in pvars)
 ncap2_str = '{}; where(thk<{}) {{ {} }};'.format(float2double_str, thickness_threshold, v_str)
 ncap2_str = 'where(thk<{}) {{ {} }};'.format(thickness_threshold, v_str)
-exp_files = glob(os.path.join(idir, 'state', '*1200*.nc'))
+exp_files = glob(os.path.join(idir, 'state', 'gris*lapse_*.nc'))
 for exp_file in exp_files:
     logger.info('Processing file {}'.format(exp_file))
     exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
@@ -98,11 +98,11 @@ for exp_file in exp_files:
     logger.info('extracting grounding line')
     exp_gl_wd =  os.path.join(idir, dir_gl, exp_basename + '.shp')
     cmd = ['extract_interface.py', '-t', 'grounding_line', '-o', exp_gl_wd, exp_file]
-    sub.call(cmd)
+    #sub.call(cmd)
     logger.info('extracting ice ocean interface')
     exp_io_wd =  os.path.join(idir, dir_io, exp_basename + '.shp')
     cmd = ['extract_interface.py', '-t', 'ice_ocean', '-o', exp_io_wd, exp_file]
-    sub.call(cmd)
+    #sub.call(cmd)
     logger.info('masking variables where ice thickness < 10m')
     nco.ncks(input=exp_file, output=exp_nc_wd, variable=','.join([x for x in pvars]), overwrite=True)
     nco.ncap2(input='-6 -s "{}" {}'.format(ncap2_str, exp_nc_wd), output=exp_nc_wd, overwrite=True)

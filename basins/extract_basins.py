@@ -34,7 +34,7 @@ logger.addHandler(ch)
 logger.addHandler(fh)
 
 script_path = os.path.dirname(os.path.realpath(__file__))
-default_basin_file = 'GRE_Basins_IMBIE2_v1.3.shp'
+default_basin_file = 'GRE_Basins_IMBIE2_v1.3_ext.shp'
 
 def extract_basins():
     '''
