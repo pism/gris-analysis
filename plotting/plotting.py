@@ -17,7 +17,6 @@ except:
 
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GRIS']
 rcp_list = ['RCP26', 'RCP45', 'RCP85']
-rcp_list = ['RCP45']
 
 # Set up the option parser
 parser = ArgumentParser()
@@ -64,7 +63,8 @@ parser.add_argument("--plot", dest="plot",
                              'basin_d_cumulative',
                              'basin_rel_discharge',
                              'flood_gate_length', 'flood_gate_area',
-                             'per_basin_fluxes', 'per_basin_cumulative', 'rcp_mass', 'rcp_lapse_mass', 'rcp_d'],
+                             'per_basin_fluxes', 'per_basin_cumulative',
+                             'rcp_mass', 'rcp_lapse_mass', 'rcp_d', 'rcp_flux', 'rcp_flux_rel'],
                     default='basin_discharge')
 
 parser.add_argument("--title", dest="title",
@@ -341,9 +341,153 @@ def plot_flood_gate_length_ts():
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
+def plot_rcp_flux():
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
+
+    for k, rcp in enumerate(rcp_list):
+        ifile = ifiles[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        d_var_vals_sum = 0
+        for d_var in ('tendency_of_ice_mass_due_to_discharge', 'tendency_of_ice_mass_due_to_basal_mass_flux'):
+            d_var_vals = -np.squeeze(nc.variables[d_var][:])
+            iunits = nc.variables[d_var].units
+            d_var_vals_sum += unit_converter(d_var_vals, iunits, flux_ounits)
+
+        nc.close()
+
+        if runmean is not None:
+            runmean_var_vals = smooth(d_var_vals_sum, window_len=runmean)
+            plt.plot(date[:], d_var_vals_sum[:],
+                     color=rcp_col_dict[rcp],
+                     lw=0.25,
+                     label=rcp)
+            plt.plot(date[:], runmean_var_vals[:],
+                     color=rcp_col_dict[rcp],
+                     lw=0.5)
+        else:
+            plt.plot(date[:], d_var_vals_sum[:],
+                     color=rcp_col_dict[rcp],
+                     lw=0.5,
+                     label=rcp)
+
+    # legend = ax.legend(loc="upper right",
+    #                    edgecolor='0',
+    #                    bbox_to_anchor=(0, 0, .35, 0.87),
+    #                    bbox_transform=plt.gcf().transFigure)
+    # legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('flux (Gt yr$^{-1}$)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_' + basin + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
+def plot_rcp_flux_relative():
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111, axisbg=axisbg)
 
+    for k, rcp in enumerate(rcp_list):
+        ifile = ifiles[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        mass_var = 'tendency_of_ice_mass'
+        mass_var_vals = -np.squeeze(nc.variables[mass_var][:])
+        iunits = nc.variables[mass_var].units
+        mass_var_vals = unit_converter(mass_var_vals, iunits, flux_ounits)
+
+        
+        d_var_vals_sum = 0
+        for d_var in ('tendency_of_ice_mass_due_to_discharge', 'tendency_of_ice_mass_due_to_basal_mass_flux'):
+            d_var_vals = -np.squeeze(nc.variables[d_var][:])
+            iunits = nc.variables[d_var].units
+            d_var_vals_sum += unit_converter(d_var_vals, iunits, flux_ounits)
+
+        nc.close()
+
+        runmean = 10
+        runmean_d_var_vals = smooth(d_var_vals_sum, window_len=runmean)
+        runmean_mass_var_vals = smooth(mass_var_vals, window_len=runmean)
+        runmean_rel_flux_vals = runmean_d_var_vals / runmean_mass_var_vals * 100
+        plt.plot(date[:], runmean_rel_flux_vals[:],
+                 color=rcp_col_dict[rcp],
+                 lw=0.5)
+
+    # legend = ax.legend(loc="upper right",
+    #                    edgecolor='0',
+    #                    bbox_to_anchor=(0, 0, .35, 0.87),
+    #                    bbox_transform=plt.gcf().transFigure)
+    # legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('rel. discharge (%)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_rel_' + basin + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+    
 def plot_fluxes(plot_vars):
 
     ifile = ifiles[0]
@@ -1280,6 +1424,10 @@ elif plot == 'per_basin_cumulative':
     plot_cumulative_fluxes_by_basin()
 elif plot == 'rcp_mass':
     plot_rcp_mass(plot_var='ice_mass')
+elif plot == 'rcp_flux':
+    plot_rcp_flux()
+elif plot == 'rcp_flux_rel':
+    plot_rcp_flux_relative()
 elif plot == 'rcp_lapse_mass':
     plot_rcp_lapse_mass(plot_var='ice_mass')
 elif plot == 'rcp_d':

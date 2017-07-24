@@ -212,6 +212,6 @@ if __name__ == "__main__":
     options = parser.parse_args()
     ifile = options.FILE[0]
 
-    hs = Hillshade(ifile, variables_to_mask='velsurf_mag')
+    hs = Hillshade(ifile, variables_to_mask='velsurf_mag,usurf_hs,usurf,thk')
     hs.run() 
 
