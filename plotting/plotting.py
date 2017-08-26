@@ -4,6 +4,7 @@
 
 from argparse import ArgumentParser
 import matplotlib.transforms as transforms
+from matplotlib.ticker import FormatStrFormatter
 from netCDF4 import Dataset as NC
 
 from cdo import Cdo
@@ -21,6 +22,7 @@ except:
 
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GRIS']
 rcp_list = ['26', '45', '85']
+rcp_list = ['85', '45', '26']
 rcp_list = ['85', '45', '26']
 
 # Set up the option parser
@@ -65,6 +67,7 @@ parser.add_argument("--plot", dest="plot",
                     choices=['basin_discharge', 'basin_smb', 'rel_basin_discharge', 'basin_mass', 'basin_mass_d',
                              'basin_d_cumulative',
                              'basin_rel_discharge',
+                             'fluxes',
                              'flood_gate_length', 'flood_gate_area',
                              'per_basin_fluxes', 'per_basin_cumulative',
                              'rcp_mass', 'rcp_lapse_mass', 'rcp_d', 'rcp_flux', 'rcp_flux_rel',
@@ -102,6 +105,7 @@ dx, dy = 4. / out_res, -4. / out_res
 
 # Conversion between giga tons (Gt) and millimeter sea-level equivalent (mmSLE)
 gt2mmSLE = 1. / 365
+gt2cmSLE = 1. / 365 / 10.
 gt2mSLE = 1. / 365 / 1000.
 
 start_year = options.start_year
@@ -496,48 +500,40 @@ def plot_rcp_flux_relative():
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
     
-def plot_fluxes(plot_vars):
-
-    ifile = ifiles[0]
-    nc = NC(ifile, 'r')
-    t = nc.variables["time"][:]
-
-    date = np.arange(start_year + step,
-                 start_year + (len(t[:]) + 1) * step,
-                 step)
+def plot_fluxes(plot_vars=['discharge_flux']):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
-    
-    for mvar in plot_vars:
-        var_vals = np.squeeze(nc.variables[mvar][:])
-        iunits = nc.variables[mvar].units
 
-        var_vals = unit_converter(var_vals, iunits, flux_ounits)
-        if runmean is not None:
+    mcolors = ['#e41a1c',
+               '#377eb8',
+               '#4daf4a',
+               '#984ea3',
+               '#ff7f00']
+
+    for ifile in ifiles:
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step)
+        for k, mvar in enumerate(plot_vars):
+            var_vals = np.squeeze(nc.variables[mvar][:])
+            iunits = nc.variables[mvar].units
+            
+            var_vals = unit_converter(var_vals, iunits, flux_ounits)
             runmean_var_vals = smooth(var_vals, window_len=runmean)
-            plt.plot(date[:], var_vals[:],
-                     color=basin_col_dict[basin],
-                     lw=0.25,
-                     ls=flux_style_dict[mvar],
-                     label=flux_abbr_dict[mvar])
             plt.plot(date[:], runmean_var_vals[:],
-                     color=basin_col_dict[basin],
+                     color=mcolors[k],
                      lw=0.5,
-                     ls=flux_style_dict[mvar])
-        else:
-            plt.plot(date[:], var_vals[:],
-                     color=basin_col_dict[basin],
-                     lw=0.5,
-                     ls=flux_style_dict[mvar],
-                     label=flux_abbr_dict[mvar])
-
-    nc.close()
+                     label=mvar)
+        nc.close()
     
     legend = ax.legend(loc="upper right",
                        edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.15, 1),
+                       bbox_to_anchor=(0, 0, 1.25, 1),
                        bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.2)
 
@@ -666,31 +662,15 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
 
         mass_ensmin_vals = cdf_mass_ensmin.variables[plot_var][:]
         iunits = cdf_mass_ensmin[plot_var].units
-        mass_ensmin_vals = -unit_converter(mass_ensmin_vals, iunits, flux_ounits) * gt2mSLE
+        mass_ensmin_vals = -unit_converter(mass_ensmin_vals, iunits, mass_ounits) * gt2mSLE
 
         mass_ensmax_vals = cdf_mass_ensmax.variables[plot_var][:]
         iunits = cdf_mass_ensmax[plot_var].units
-        mass_ensmax_vals = -unit_converter(mass_ensmax_vals, iunits, flux_ounits) * gt2mSLE
+        mass_ensmax_vals = -unit_converter(mass_ensmax_vals, iunits, mass_ounits) * gt2mSLE
 
         mass_ensmean_vals = cdf_mass_ensmean.variables[plot_var][:]
         iunits = cdf_mass_ensmean[plot_var].units
         mass_ensmean_vals = -unit_converter(mass_ensmean_vals, iunits, mass_ounits) * gt2mSLE
-
-        tmp_ensmin = cdo.ensmin(input=rcp_files)
-        cdf_d_ensmin = cdo.expr('d_cumulative=discharge_cumulative+sub_shelf_ice_flux_cumulative+grounded_basal_ice_flux_cumulative', input=tmp_ensmin, returnCdf=True)
-        tmp_ensmax = cdo.ensmax(input=rcp_files)
-        cdf_d_ensmax = cdo.expr('d_cumulative=discharge_cumulative+sub_shelf_ice_flux_cumulative+grounded_basal_ice_flux_cumulative', input=tmp_ensmax, returnCdf=True)
-        tmp_ensmean = cdo.ensmean(input=rcp_files)
-        cdf_d_ensmean = cdo.expr('d_cumulative=discharge_cumulative+sub_shelf_ice_flux_cumulative+grounded_basal_ice_flux_cumulative', input=tmp_ensmean, returnCdf=True)
-
-        d_ensmin_vals = cdf_d_ensmin.variables['d_cumulative'][:]
-        d_ensmin_vals = -unit_converter(d_ensmin_vals, iunits, mass_ounits) * gt2mSLE
-
-        d_ensmax_vals = cdf_d_ensmax.variables['d_cumulative'][:]
-        d_ensmax_vals = -unit_converter(d_ensmax_vals, iunits, mass_ounits) * gt2mSLE
-
-        d_ensmean_vals = cdf_d_ensmean.variables['d_cumulative'][:]
-        d_ensmean_vals = -unit_converter(d_ensmean_vals, iunits, mass_ounits) * gt2mSLE
 
         date = np.arange(start_year + step,
                          start_year + (len(t[:]) + 1) * step,
@@ -701,15 +681,12 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                         linewidth=0,
                         label=rcp_dict[rcp])
 
-        # ensemble mean
-        # ax.plot(date[:],  ensmean_vals,
-        #                 color='k',
-        #                 linewidth=0.2)
+        ax.plot(date[:], mass_ensmean_vals,
+                        color=rcp_col_dict[rcp],
+                        linewidth=0.5)
 
         idx = np.where(np.array(date) == time_bounds[-1])[0][0]
-        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}'.format(time_bounds[-1],  mass_ensmax_vals[idx], mass_ensmin_vals[idx], mass_ensmean_vals[idx]))
-        print('D dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}'.format(time_bounds[-1],  d_ensmax_vals[idx], d_ensmin_vals[idx], d_ensmean_vals[idx]))
-        print('D/MASS dGMSL {}: {:3.2f}% - {:1.2f}%, mean {:1.2f}%'.format(time_bounds[-1],  d_ensmax_vals[idx] / mass_ensmax_vals[idx]* 100, d_ensmin_vals[idx] / mass_ensmin_vals[idx] * 100, d_ensmean_vals[idx] / mass_ensmean_vals[idx] * 100))
+        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; RELATIVE {:2.1f}%'.format(time_bounds[-1],  mass_ensmax_vals[idx], mass_ensmin_vals[idx], mass_ensmean_vals[idx], (mass_ensmin_vals[idx] - mass_ensmax_vals[idx]) / mass_ensmean_vals[idx] * 100))
 
 
     legend = ax.legend(loc="upper right",
@@ -728,6 +705,9 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         ax.set_ylim(bounds[0], bounds[1])
 
     ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -751,7 +731,7 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
-    
+
     for k, rcp in enumerate(rcp_list):
 
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
@@ -787,27 +767,27 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
 
         mass_flux_ensmin = cdf_flux_ensmin.variables['mass_rate_of_change_glacierized']
         iunits = mass_flux_ensmin.units
-        mass_flux_ensmin_vals = unit_converter(mass_flux_ensmin[:], iunits, flux_ounits)
+        mass_flux_ensmin_vals = -unit_converter(mass_flux_ensmin[:], iunits, flux_ounits)
 
         mass_flux_ensmax = cdf_flux_ensmax.variables['mass_rate_of_change_glacierized']
         iunits = mass_flux_ensmax.units
-        mass_flux_ensmax_vals = unit_converter(mass_flux_ensmax[:], iunits, flux_ounits) 
+        mass_flux_ensmax_vals = -unit_converter(mass_flux_ensmax[:], iunits, flux_ounits) 
 
         mass_flux_ensmean = cdf_flux_ensmean.variables['mass_rate_of_change_glacierized']
         iunits = mass_flux_ensmean.units
-        mass_flux_ensmean_vals = unit_converter(mass_flux_ensmean[:], iunits, flux_ounits)
+        mass_flux_ensmean_vals = -unit_converter(mass_flux_ensmean[:], iunits, flux_ounits)
 
         smb_flux_ensmin = cdf_flux_ensmin.variables['surface_ice_flux']
         iunits = smb_flux_ensmin.units
-        smb_flux_ensmin_vals = unit_converter(smb_flux_ensmin[:], iunits, flux_ounits)
+        smb_flux_ensmin_vals = -unit_converter(smb_flux_ensmin[:], iunits, flux_ounits)
 
         smb_flux_ensmax = cdf_flux_ensmax.variables['surface_ice_flux']
         iunits = smb_flux_ensmax.units
-        smb_flux_ensmax_vals = unit_converter(smb_flux_ensmax[:], iunits, flux_ounits) 
+        smb_flux_ensmax_vals = -unit_converter(smb_flux_ensmax[:], iunits, flux_ounits) 
 
         smb_flux_ensmean = cdf_flux_ensmean.variables['surface_ice_flux']
         iunits = smb_flux_ensmean.units
-        smb_flux_ensmean_vals = unit_converter(smb_flux_ensmean[:], iunits, flux_ounits)
+        smb_flux_ensmean_vals = -unit_converter(smb_flux_ensmean[:], iunits, flux_ounits)
 
         if openmp_n > 1:
             tmp_ensmin = cdo.ensmin(input=rcp_files, options='-P {N}'.format(N=openmp_n))
@@ -826,16 +806,16 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
         cdf_d_ensstd = cdo.runmean(runmean_window, input='-expr,discharge=discharge_flux+sub_shelf_ice_flux+grounded_basal_ice_flux {}'.format(tmp_ensstd), returnCdf=True)
 
         d_flux_ensmin = cdf_d_ensmin.variables['discharge']
-        d_flux_ensmin_vals = unit_converter(d_flux_ensmin[:], iunits, flux_ounits)
+        d_flux_ensmin_vals = -unit_converter(d_flux_ensmin[:], iunits, flux_ounits)
 
         d_flux_ensmax = cdf_d_ensmax.variables['discharge']
-        d_flux_ensmax_vals = unit_converter(d_flux_ensmax[:], iunits, flux_ounits)
+        d_flux_ensmax_vals = -unit_converter(d_flux_ensmax[:], iunits, flux_ounits)
 
         d_flux_ensmean = cdf_d_ensmean.variables['discharge']
-        d_flux_ensmean_vals = unit_converter(d_flux_ensmean[:], iunits, flux_ounits)
+        d_flux_ensmean_vals = -unit_converter(d_flux_ensmean[:], iunits, flux_ounits)
 
         d_flux_ensstd = cdf_d_ensstd.variables['discharge']
-        d_flux_ensstd_vals = unit_converter(d_flux_ensstd[:], iunits, flux_ounits)
+        d_flux_ensstd_vals = -unit_converter(d_flux_ensstd[:], iunits, flux_ounits)
 
         date = np.arange(start_year + step,
                          start_year + (len(t[:]) + 1) * step,
@@ -855,7 +835,7 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
             ensmin_vals = mass_flux_ensmin_vals
             ensmax_vals = mass_flux_ensmax_vals
 
-        rel = True
+        rel = False
         if rel:
             ensmean_vals /= mass_flux_ensmean_vals
             ensmin_vals /= mass_flux_ensmin_vals
@@ -864,13 +844,13 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
             ensmin_vals *= 100
             ensmax_vals *= 100
             
-        ax.fill_between(date[:], ensmin_vals, ensmax_vals,
+        ax.fill_between(date[:], ensmin_vals * gt2cmSLE, ensmax_vals * gt2cmSLE,
                         color=rcp_col_dict[rcp],
                         linewidth=0,
                         label=rcp_dict[rcp])
 
         # ensemble mean
-        ax.plot(date[:],  ensmean_vals,
+        ax.plot(date[:],  ensmean_vals * gt2cmSLE,
                 color='w',
                 linestyle=':',
                 linewidth=0.2)
@@ -882,13 +862,22 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
     #                    bbox_transform=plt.gcf().transFigure)
     # legend.get_frame().set_linewidth(0.0)
 
+    # 2014 rates 
+    p_sle_2014 = ax.fill_between([2010, 2020], 0.29 - 0.03, 0.29 + 0.03,
+                                color='0.8',
+                                linewidth=0)
+    p_sle_2014.set_zorder(-101)
+    l_sle_2014 = ax.hlines(0.29, 2010, 2020,
+                           linewidth=0.2, linestyle=':', color='0.6')
+    l_sle_2014.set_zorder(-100)
+    
     if rel:
         ax.hlines(25, time_bounds[0], time_bounds[1], linewidth=0.2, linestyle=':')
     ax.set_xlabel('Year (CE)')
     if rel:
         ax.set_ylabel('rel. contribution (%)')
     else:
-        ax.set_ylabel('flux (Gt yr$^{-1}$)')
+        ax.set_ylabel('sea-level rise (mm yr$^{-1}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -897,6 +886,8 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
         ax.set_ylim(bounds[0], bounds[1])
 
     ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -915,6 +906,187 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
+
+def plot_ens_flux(plot_var=mass_plot_vars):
+    
+    for k, rcp in enumerate(rcp_list):
+
+        rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        print('Reading files for {}'.format(rcp_dict[rcp]))
+
+        if openmp_n > 1:
+            tmp_flux_ensmin = cdo.ensmin(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+            tmp_flux_ensmax = cdo.ensmax(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+            tmp_flux_ensmean = cdo.ensmean(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+        else:
+            tmp_flux_ensmin = cdo.ensmin(input=rcp_files)
+            tmp_flux_ensmax = cdo.ensmax(input=rcp_files)
+            tmp_flux_ensmean = cdo.ensmean(input=rcp_files)
+
+        cdf_flux_ensmin = cdo.runmean(runmean_window, input=tmp_flux_ensmin, returnCdf=True)
+        cdf_flux_ensmax = cdo.runmean(runmean_window, input=tmp_flux_ensmax, returnCdf=True)
+        cdf_flux_ensmean = cdo.runmean(runmean_window, input=tmp_flux_ensmean, returnCdf=True)
+
+        t = cdf_flux_ensmax.variables['time'][:]
+
+        mass_ensmin = cdf_flux_ensmin.variables['mass_glacierized']
+        iunits = mass_ensmin.units
+        mass_ensmin_vals = unit_converter(mass_ensmin[:], iunits, mass_ounits)
+
+        mass_ensmax = cdf_flux_ensmax.variables['mass_glacierized']
+        iunits = mass_ensmax.units
+        mass_ensmax_vals = unit_converter(mass_ensmax[:], iunits, mass_ounits)
+
+        mass_ensmean = cdf_flux_ensmean.variables['mass_glacierized']
+        iunits = mass_ensmean.units
+        mass_ensmean_vals = unit_converter(mass_ensmean[:], iunits, mass_ounits)
+
+        mass_flux_ensmin = cdf_flux_ensmin.variables['mass_rate_of_change_glacierized']
+        iunits = mass_flux_ensmin.units
+        mass_flux_ensmin_vals = -unit_converter(mass_flux_ensmin[:], iunits, flux_ounits)
+
+        mass_flux_ensmax = cdf_flux_ensmax.variables['mass_rate_of_change_glacierized']
+        iunits = mass_flux_ensmax.units
+        mass_flux_ensmax_vals = -unit_converter(mass_flux_ensmax[:], iunits, flux_ounits) 
+
+        mass_flux_ensmean = cdf_flux_ensmean.variables['mass_rate_of_change_glacierized']
+        iunits = mass_flux_ensmean.units
+        mass_flux_ensmean_vals = -unit_converter(mass_flux_ensmean[:], iunits, flux_ounits)
+
+        smb_flux_ensmin = cdf_flux_ensmin.variables['surface_ice_flux']
+        iunits = smb_flux_ensmin.units
+        smb_flux_ensmin_vals = -unit_converter(smb_flux_ensmin[:], iunits, flux_ounits)
+
+        smb_flux_ensmax = cdf_flux_ensmax.variables['surface_ice_flux']
+        iunits = smb_flux_ensmax.units
+        smb_flux_ensmax_vals = -unit_converter(smb_flux_ensmax[:], iunits, flux_ounits) 
+
+        smb_flux_ensmean = cdf_flux_ensmean.variables['surface_ice_flux']
+        iunits = smb_flux_ensmean.units
+        smb_flux_ensmean_vals = -unit_converter(smb_flux_ensmean[:], iunits, flux_ounits)
+
+        if openmp_n > 1:
+            tmp_ensmin = cdo.ensmin(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+            tmp_ensmax = cdo.ensmax(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+            tmp_ensmean = cdo.ensmean(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+            tmp_ensstd = cdo.ensstd(input=rcp_files, options='-P {N}'.format(N=openmp_n))
+        else:
+            tmp_ensmin = cdo.ensmin(input=rcp_files)
+            tmp_ensmax = cdo.ensmax(input=rcp_files)
+            tmp_ensmean = cdo.ensmean(input=rcp_files)
+            tmp_ensstd = cdo.ensstd(input=rcp_files)
+
+        cdf_d_ensmin = cdo.runmean(runmean_window, input='-expr,discharge=discharge_flux+sub_shelf_ice_flux+grounded_basal_ice_flux {}'.format(tmp_ensmin), returnCdf=True)
+        cdf_d_ensmax = cdo.runmean(runmean_window, input='-expr,discharge=discharge_flux+sub_shelf_ice_flux+grounded_basal_ice_flux {}'.format(tmp_ensmax), returnCdf=True)
+        cdf_d_ensmean = cdo.runmean(runmean_window, input='-expr,discharge=discharge_flux+sub_shelf_ice_flux+grounded_basal_ice_flux {}'.format(tmp_ensmean), returnCdf=True)
+        cdf_d_ensstd = cdo.runmean(runmean_window, input='-expr,discharge=discharge_flux+sub_shelf_ice_flux+grounded_basal_ice_flux {}'.format(tmp_ensstd), returnCdf=True)
+
+        d_flux_ensmin = cdf_d_ensmin.variables['discharge']
+        d_flux_ensmin_vals = -unit_converter(d_flux_ensmin[:], iunits, flux_ounits)
+
+        d_flux_ensmax = cdf_d_ensmax.variables['discharge']
+        d_flux_ensmax_vals = -unit_converter(d_flux_ensmax[:], iunits, flux_ounits)
+
+        d_flux_ensmean = cdf_d_ensmean.variables['discharge']
+        d_flux_ensmean_vals = -unit_converter(d_flux_ensmean[:], iunits, flux_ounits)
+
+        d_flux_ensstd = cdf_d_ensstd.variables['discharge']
+        d_flux_ensstd_vals = -unit_converter(d_flux_ensstd[:], iunits, flux_ounits)
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+
+        if plot_var == 'discharge':
+            ensmean_vals = d_flux_ensmean_vals
+            ensmin_vals = d_flux_ensmin_vals
+            ensmax_vals = d_flux_ensmax_vals
+        elif plot_var == 'smb':
+            ensmean_vals = smb_flux_ensmean_vals
+            ensmin_vals = smb_flux_ensmin_vals
+            ensmax_vals = smb_flux_ensmax_vals
+        else:
+            ensmean_vals = mass_flux_ensmean_vals
+            ensmin_vals = mass_flux_ensmin_vals
+            ensmax_vals = mass_flux_ensmax_vals
+
+        rel = False
+        if rel:
+            ensmean_vals /= mass_flux_ensmean_vals
+            ensmin_vals /= mass_flux_ensmin_vals
+            ensmax_vals /= mass_flux_ensmax_vals
+            ensmean_vals *= 100
+            ensmin_vals *= 100
+            ensmax_vals *= 100
+            
+        ax.fill_between(date[:], ensmin_vals * gt2cmSLE, ensmax_vals * gt2cmSLE,
+                        color=rcp_col_dict[rcp],
+                        linewidth=0,
+                        label=rcp_dict[rcp])
+
+        # ensemble mean
+        ax.plot(date[:],  ensmean_vals * gt2cmSLE,
+                color='w',
+                linestyle=':',
+                linewidth=0.2)
+
+
+    # legend = ax.legend(loc="upper right",
+    #                    edgecolor='0',
+    #                    bbox_to_anchor=(0, 0, .35, 0.28),
+    #                    bbox_transform=plt.gcf().transFigure)
+    # legend.get_frame().set_linewidth(0.0)
+
+    # 2014 rates 
+    p_sle_2014 = ax.fill_between([2010, 2020], 0.29 - 0.03, 0.29 + 0.03,
+                                color='0.8',
+                                linewidth=0)
+    p_sle_2014.set_zorder(-101)
+    l_sle_2014 = ax.hlines(0.29, 2010, 2020,
+                           linewidth=0.2, linestyle=':', color='0.6')
+    l_sle_2014.set_zorder(-100)
+    
+    if rel:
+        ax.hlines(25, time_bounds[0], time_bounds[1], linewidth=0.2, linestyle=':')
+    ax.set_xlabel('Year (CE)')
+    if rel:
+        ax.set_ylabel('rel. contribution (%)')
+    else:
+        ax.set_ylabel('sea-level rise (mm yr$^{-1}$)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_rcp' + '_'  + plot_var + '_flux.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+        
 def plot_rcp_mass(plot_var=mass_plot_vars):
     
     fig = plt.figure()
@@ -1809,6 +1981,8 @@ elif plot == 'basin_smb':
     plot_flux_all_basins(plot_vars='tendency_of_ice_mass_due_to_surface_mass_flux')
 elif plot == 'rel_basin_discharge':
     plot_rel_discharge_flux_all_basins()
+elif plot == 'fluxes':
+    plot_fluxes(plot_vars=['mass_rate_of_change_glacierized', 'discharge_flux','sub_shelf_ice_flux', 'surface_runoff_mass_flux', 'surface_accumulation_mass_flux'])
 elif plot == 'basin_mass':
     plot_basin_mass()
 elif plot == 'basin_mass_d':
