@@ -22,8 +22,6 @@ except:
 
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GRIS']
 rcp_list = ['26', '45', '85']
-rcp_list = ['85', '45', '26']
-rcp_list = ['85', '45', '26']
 
 # Set up the option parser
 parser = ArgumentParser()
@@ -686,8 +684,16 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                         linewidth=0.5)
 
         idx = np.where(np.array(date) == time_bounds[-1])[0][0]
-        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; RELATIVE {:2.1f}%'.format(time_bounds[-1],  mass_ensmax_vals[idx], mass_ensmin_vals[idx], mass_ensmean_vals[idx], (mass_ensmin_vals[idx] - mass_ensmax_vals[idx]) / mass_ensmean_vals[idx] * 100))
+        m_max = mass_ensmax_vals[idx]
+        m_min = mass_ensmin_vals[idx]
+        m_mean = mass_ensmean_vals[idx]
+        m_rel = np.abs(m_max - m_min) / m_mean * 100
+        
+        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; RELATIVE {:2.1f}%'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
 
+        x_sle, y_sle = time_bounds[-1], m_mean
+        plt.text( x_sle, y_sle, '{: 3.1f}%'.format(m_rel),
+                  color=rcp_col_dict[rcp])
 
     legend = ax.legend(loc="upper right",
                        edgecolor='0',
@@ -707,7 +713,6 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
     ymin, ymax = ax.get_ylim()
 
     ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
-
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
