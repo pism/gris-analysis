@@ -40,6 +40,9 @@ parser.add_argument("-f", "--output_format", dest="out_formats",
                     help="Comma-separated list with output graphics suffix, default = pdf", default='pdf')
 parser.add_argument("-n", "--parallel_threads", dest="openmp_n",
                     help="Number of OpenMP threads for operators such as enssstat, Default=1", default=1)
+parser.add_argument("--no_legends", dest="do_legend", action="store_false",
+                    help="Do not plot legend",
+                    default=True)
 parser.add_argument("-o", "--output_file", dest="outfile",
                     help="output file name without suffix, i.e. ts_control -> ts_control_variable", default='unnamed')
 parser.add_argument("--step", dest="step", type=int,
@@ -86,6 +89,7 @@ if options.labels != None:
 else:
     labels = None
 bounds = options.bounds
+do_legend = options.do_legend
 runmean = options.runmean
 time_bounds = options.time_bounds
 openmp_n = options.openmp_n
@@ -317,11 +321,12 @@ def plot_flood_gate_length_ts():
                 lw=0.5,
                 label=rcp_dict[rcp])
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, .35, 0.87),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.87),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('length (km)')
@@ -390,11 +395,12 @@ def plot_rcp_flux():
                      lw=0.5,
                      label=rcp)
 
-    # legend = ax.legend(loc="upper right",
-    #                    edgecolor='0',
-    #                    bbox_to_anchor=(0, 0, .35, 0.87),
-    #                    bbox_transform=plt.gcf().transFigure)
-    # legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.87),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('flux (Gt yr$^{-1}$)')
@@ -463,11 +469,12 @@ def plot_rcp_flux_relative():
                  color=rcp_col_dict[rcp],
                  lw=0.5)
 
-    # legend = ax.legend(loc="upper right",
-    #                    edgecolor='0',
-    #                    bbox_to_anchor=(0, 0, .35, 0.87),
-    #                    bbox_transform=plt.gcf().transFigure)
-    # legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.87),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('rel. discharge (%)')
@@ -528,12 +535,13 @@ def plot_fluxes(plot_vars=['discharge_flux']):
                      lw=0.5,
                      label=mvar)
         nc.close()
-    
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.25, 1),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.2)
+
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, 1.25, 1),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.2)
 
     if twinx:
         axSLE = ax.twinx()
@@ -607,11 +615,12 @@ def plot_rcp_cold(plot_var='rel_area_cold'):
                         label=rcp_dict[rcp])
 
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, .35, 0.87),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.87),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('(%)')
@@ -689,17 +698,18 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         m_mean = mass_ensmean_vals[idx]
         m_rel = np.abs(m_max - m_min)
         
-        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; DIFF {:1.2f}'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
+        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; DIFF {:1.2f}%'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
 
         x_sle, y_sle = time_bounds[-1], m_mean
         plt.text( x_sle, y_sle, '{: 1.2f}'.format(m_rel),
                   color=rcp_col_dict[rcp])
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, .35, 0.88),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.88),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
@@ -860,12 +870,12 @@ def plot_rcp_ens_flux(plot_var=mass_plot_vars):
                 linestyle=':',
                 linewidth=0.2)
 
-
-    # legend = ax.legend(loc="upper right",
-    #                    edgecolor='0',
-    #                    bbox_to_anchor=(0, 0, .35, 0.28),
-    #                    bbox_transform=plt.gcf().transFigure)
-    # legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.28),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
 
     # 2014 rates 
     p_sle_2014 = ax.fill_between([2010, 2020], 0.29 - 0.03, 0.29 + 0.03,
@@ -1041,12 +1051,12 @@ def plot_ens_flux(plot_var=mass_plot_vars):
                 linestyle=':',
                 linewidth=0.2)
 
-
-    # legend = ax.legend(loc="upper right",
-    #                    edgecolor='0',
-    #                    bbox_to_anchor=(0, 0, .35, 0.28),
-    #                    bbox_transform=plt.gcf().transFigure)
-    # legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.28),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
 
     # 2014 rates 
     p_sle_2014 = ax.fill_between([2010, 2020], 0.29 - 0.03, 0.29 + 0.03,
@@ -1144,11 +1154,12 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
           Year 2200: {: 1.2f}m
           Year 3000: {: 1.2f}m\n'''.format(rcp, var_vals[idx_2100][0], var_vals[idx_2200][0], var_vals[idx_3000][0]))
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, .35, 0.87),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.87),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
@@ -1235,11 +1246,12 @@ def plot_rcp_lapse_mass(plot_var=mass_plot_vars):
         plt.text( x_sle, y_sle, '{: 3.0f}%'.format(sle_percent_diff),
                           color=rcp_col_dict[rcp])
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, .35, 0.87),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.0)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.87),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
@@ -1289,13 +1301,13 @@ def plot_ens_d_by_basin():
                          start_year + (len(t[:]) + 1) * step,
                          step) 
 
-
-        legend = ax.legend(loc="upper right",
-                           edgecolor='0',
-                           bbox_to_anchor=(0, 0, 1.15, 1),
-                           bbox_transform=plt.gcf().transFigure)
-        legend.get_frame().set_linewidth(0.2)
-    
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, 1.15, 1),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.2)
+        
         ax.set_xlabel('Year (CE)')
         ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
         
@@ -1367,11 +1379,12 @@ def plot_fluxes_by_basin(plot_vars=['tendency_of_ice_mass', 'tendency_of_ice_mas
                          label=flux_abbr_dict[mvar])
         nc.close()
 
-        legend = ax.legend(loc="upper right",
-                           edgecolor='0',
-                           bbox_to_anchor=(0, 0, 1.15, 1),
-                           bbox_transform=plt.gcf().transFigure)
-        legend.get_frame().set_linewidth(0.2)
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, 1.15, 1),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.2)
     
         ax.set_xlabel('Year (CE)')
         ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
@@ -1452,11 +1465,12 @@ def plot_cumulative_fluxes_by_basin(plot_vars=['ice_mass', 'discharge_cumulative
                          label=mass_abbr_dict[mvar])
         nc.close()
 
-        legend = ax.legend(loc="upper right",
-                           edgecolor='0',
-                           bbox_to_anchor=(0, 0, 1.15, 1),
-                           bbox_transform=plt.gcf().transFigure)
-        legend.get_frame().set_linewidth(0.2)
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, 1.15, 1),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.2)
     
         ax.set_xlabel('Year (CE)')
         ax.set_ylabel('cumulative mass change (Gt)')
@@ -1525,11 +1539,12 @@ def plot_mass(plot_vars=mass_plot_vars):
                      label=basin)
         nc.close()
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.15, 1),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.2)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, 1.15, 1),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.2)
 
     axSLE = ax.twinx()
     ax.set_autoscalex_on(False)
@@ -1610,12 +1625,13 @@ def plot_flux_all_basins(mvar='tendency_of_ice_mass_due_to_discharge'):
                      label=basin)
         nc.close()
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.07, 0.9),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.2)
-    
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, 1.07, 0.9),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.2)
+        
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
         
@@ -1688,11 +1704,12 @@ def plot_basin_rel_discharge():
 
     ax.hlines(0, time_bounds[0], time_bounds[-1], lw=0.25)
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.15, 1),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.2)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, 1.15, 1),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.2)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('rel.')
@@ -1744,11 +1761,12 @@ def plot_rel_discharge_flux_all_basins(mvar='tendency_of_ice_mass_due_to_dischar
                  label=basin)
         nc.close()
 
-    legend = ax.legend(loc="upper right",
-                       edgecolor='0',
-                       bbox_to_anchor=(0, 0, 1.15, 1),
-                       bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.2)
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, 1.15, 1),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.2)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('mass flux anomaly (%)')
