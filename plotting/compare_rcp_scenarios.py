@@ -84,7 +84,7 @@ def generate_frame(index, output_filename):
     img_width = canvas_size[0]
 
     # create the output image
-    img = PIL.Image.new("RGBA", canvas_size, color=(255,255,255,255))
+    img = PIL.Image.new("RGB", canvas_size, color=(255,255,255,255))
 
     # paste individual panels into the output image
     img.paste(rcp26, (border, header))
