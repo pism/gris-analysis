@@ -10,20 +10,6 @@ font = ImageFont.truetype("/Library/Fonts/Arial Bold.ttf", 40)
 topo_colorbar = PIL.Image.open("data/colorbars/greenland-topography_horizontal.png")
 speed_colorbar = PIL.Image.open("data/colorbars/speed_blue_red_nonlin_0_1500_horizontal.png")
 
-def open_pdf(filename, size):
-    "Open a PDF by using ImageMagick to convert it to PNG. This should be removed once all figures are PNGs."
-    tmp = tempfile.NamedTemporaryFile()
-    tmp_name = tmp.name + ".png"
-    tmp.close()
-
-    os.system("convert -density 300 -resize {size}x{size} {input} {out}".format(size=size,
-                                                                                 input=filename,
-                                                                                 out=tmp_name))
-    img = PIL.Image.open(tmp_name)
-
-    os.remove(tmp_name)
-
-    return img
 
 def text(draw, text, x, y, color):
     "Draw text 'text', centered at (x,y), using color 'color' (R,G,B)."
@@ -45,7 +31,7 @@ def generate_frame(index, output_filename):
     rcp45_filename = "data/rcp45/frame%04d.png" % index
     rcp85_filename = "data/rcp85/frame%04d.png" % index
 
-    ts_filename = "data/ts_plots/dgmsl_ice_mass_%04d.pdf" % index
+    ts_filename = "data/ts_plots/dgmsl_ice_mass_%04d.png" % index
 
     rcp26 = PIL.Image.open(rcp26_filename)
     rcp45 = PIL.Image.open(rcp45_filename)
@@ -69,7 +55,8 @@ def generate_frame(index, output_filename):
 
     # open the ts plot
     # FIXME: replace this with calls opening a PNG and resizing it
-    ts = open_pdf(ts_filename, panel_width * 3)
+    ts = PIL.Image.open(ts_filename)
+    ts = ts.resize(size(ts.size, panel_width * 3), resample=1)
     ts_height = ts.size[1]
 
     # resize colorbars
@@ -84,7 +71,7 @@ def generate_frame(index, output_filename):
     img_width = canvas_size[0]
 
     # create the output image
-    img = PIL.Image.new("RGB", canvas_size, color=(255,255,255,255))
+    img = PIL.Image.new("RGBA", canvas_size, color=(255,255,255,255))
 
     # paste individual panels into the output image
     img.paste(rcp26, (border, header))
@@ -128,10 +115,10 @@ def generate_frame(index, output_filename):
 import sys
 
 # max index to process
-N = 10
+N = 1000
 
 for k in range(N):
-    generate_frame(k, "foo_%04d.png" % k)
+    generate_frame(k, "output/gris_g3600m_rcps_%04d.png" % k)
     sys.stderr.write(".")
 
 print ""
