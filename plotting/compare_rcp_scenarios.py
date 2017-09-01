@@ -54,7 +54,6 @@ def generate_frame(index, output_filename):
     rcp85 = rcp85.resize(panel_size, resample=1)
 
     # open the ts plot
-    # FIXME: replace this with calls opening a PNG and resizing it
     ts = PIL.Image.open(ts_filename)
     ts = ts.resize(size(ts.size, panel_width * 3), resample=1)
     ts_height = ts.size[1]
@@ -71,14 +70,14 @@ def generate_frame(index, output_filename):
     img_width = canvas_size[0]
 
     # create the output image
-    img = PIL.Image.new("RGBA", canvas_size, color=(255,255,255,255))
+    img = PIL.Image.new("RGB", canvas_size, color=(255,255,255))
 
     # paste individual panels into the output image
     img.paste(rcp26, (border, header))
-    img.paste(topo, (border, header + panel_height + border))
+    img.paste(topo, (border, header + panel_height + border), mask=topo.split()[3])
     img.paste(rcp45, (2*border + panel_width, header))
     img.paste(rcp85, (3*border + 2*panel_width, header))
-    img.paste(speed, (3*border + 2*panel_width, header + panel_height + border))
+    img.paste(speed, (3*border + 2*panel_width, header + panel_height + border), mask=speed.split()[3])
 
     img.paste(ts, (img_width / 2 - panel_width * 3 / 2,
                    header + panel_height + border + bar_height + border))
