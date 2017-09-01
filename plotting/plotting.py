@@ -30,7 +30,7 @@ parser.add_argument("FILE", nargs='*')
 parser.add_argument("--bounds", dest="bounds", nargs=2, type=float,
                     help="lower and upper bound for ordinate, eg. -1 1", default=None)
 parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
-                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2009, 3000])
+                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2009, 3009])
 parser.add_argument("-b", "--basin", dest="basin",
                     choices=basin_list,
                     help="Basin to plot", default='GRIS')
@@ -65,7 +65,8 @@ parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                   Default=False''', default=False)
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
-                    choices=['basin_discharge', 'basin_smb', 'rel_basin_discharge', 'basin_mass', 'basin_mass_d',
+                    choices=['anim_rcp_mass',
+                             'basin_discharge', 'basin_smb', 'rel_basin_discharge', 'basin_mass', 'basin_mass_d',
                              'basin_d_cumulative',
                              'basin_rel_discharge',
                              'fluxes',
@@ -698,7 +699,7 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         m_mean = mass_ensmean_vals[idx]
         m_rel = np.abs(m_max - m_min)
         
-        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; DIFF {:1.2f}%'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
+        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; DIFF {:1.2f}'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
 
         x_sle, y_sle = time_bounds[-1], m_mean
         plt.text( x_sle, y_sle, '{: 1.2f}'.format(m_rel),
@@ -740,6 +741,90 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+def anim_rcp_mass(plot_var=mass_plot_vars):
+
+    for frame in range(1000):
+    
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+        ax.grid(axis='y', lw=0.15, color='k', ls=':')
+        
+        for k, rcp in enumerate(rcp_list):
+
+            rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+            print('Reading files for {}'.format(rcp_dict[rcp]))
+
+            cdf_mass_ensmean = cdo.ensmean(input=rcp_files, returnCdf=True)
+
+            mass_ensmean_vals = cdf_mass_ensmean.variables[plot_var][:]
+            iunits = cdf_mass_ensmean[plot_var].units
+            mass_ensmean_vals = -unit_converter(mass_ensmean_vals, iunits, mass_ounits) * gt2mSLE
+
+            t = cdf_mass_ensmean.variables['time'][:]
+
+            date = np.arange(start_year + step,
+                             start_year + (len(t[:]) + 1) * step,
+                             step) 
+
+
+            ax.plot(date[:], mass_ensmean_vals,
+                    alpha=0.5,
+                    color=rcp_col_dict[rcp],
+                    linewidth=0.5)
+
+            ax.plot(date[0:frame], mass_ensmean_vals[0:frame],
+                    color=rcp_col_dict[rcp],
+                    linewidth=0.5)
+                
+            ax.plot(date[frame], mass_ensmean_vals[frame],
+                    marker='o',
+                    markersize=2,
+                    color=rcp_col_dict[rcp],
+                    linewidth=0,
+                    label=rcp_dict[rcp])
+
+
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, .35, 0.88),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.0)
+
+        ax.set_xlabel('Year (CE)')
+        ax.set_ylabel('sea-level (m)')
+
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                    tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+
+        if title is not None:
+                plt.title(title)
+
+        for out_format in out_formats:
+            out_file = '{}_{}_{:04}.{}'.format(outfile, plot_var, frame, out_format)
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
 
 def plot_rcp_ens_flux(plot_var=mass_plot_vars):
     
@@ -2030,6 +2115,8 @@ elif plot == 'rcp_ens_mass_flux':
     plot_rcp_ens_flux(plot_var='mass')
 elif plot == 'rcp_ens_mass':
     plot_rcp_ens_mass(plot_var='ice_mass')
+elif plot == 'anim_rcp_mass':
+    anim_rcp_mass(plot_var='ice_mass')
 elif plot == 'rcp_flux':
     plot_rcp_flux()
 elif plot == 'rcp_flux_rel':
