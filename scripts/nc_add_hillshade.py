@@ -208,10 +208,16 @@ if __name__ == "__main__":
     parser.description = "Postprocessing files."
     parser.add_argument("FILE", nargs=1,
                         help="file", default=None)
+    parser.add_argument("-z", dest='zf',
+                        help="ZFactor", default=2.5)
+    parser.add_argument("--multidirectional", dest='multidirectional', action='store_true',
+                        help="Multidirectional hillshade", default=False)
 
     options = parser.parse_args()
     ifile = options.FILE[0]
-
+    multidirectional = options.multidirectional
+    zf = options.zf
+    
     hs = Hillshade(ifile, variables_to_mask='velsurf_mag,usurf_hs,usurf,thk')
     hs.run() 
 
