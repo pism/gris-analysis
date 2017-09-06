@@ -30,7 +30,7 @@ parser.add_argument("FILE", nargs='*')
 parser.add_argument("--bounds", dest="bounds", nargs=2, type=float,
                     help="lower and upper bound for ordinate, eg. -1 1", default=None)
 parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
-                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2009, 3009])
+                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 3008])
 parser.add_argument("-b", "--basin", dest="basin",
                     choices=basin_list,
                     help="Basin to plot", default='GRIS')

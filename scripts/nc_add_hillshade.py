@@ -56,9 +56,7 @@ class Hillshade(object):
     zf: 
     '''
 
-    def __init__(self, ifile, variable='usurf', threshold_masking=True, variables_to_mask=None, *args, **kwargs):
-        super(Hillshade, self).__init__(*args, **kwargs)
-
+    def __init__(self, ifile, variable='usurf', threshold_masking=True, variables_to_mask=None, multidirectional=False, *args, **kwargs):
         self.threshold_masking = threshold_masking
         self.do_masking = False
         self.ifile = ifile
@@ -68,15 +66,16 @@ class Hillshade(object):
             self.do_masking = True
         else:
             self.variables_to_mask = variables_to_mask
+        self.multidirectional = multidirectional
         self.params = {'altitude': 45,
                        'azimuth': 45,
                        'fill_value': 0,
                        'threshold_masking_variable': 'thk',
                        'threshold_masking_value': 10,
-                       'zf': 5}
-        for key, value in kwargs:
+                       'zf': 1}
+        for key in kwargs:
             if key in ('altitude', 'azimuth', 'fill_value', 'hillshade_var', 'zf'):
-                self.params[key] = value
+                self.params[key] = kwargs[key]
 
         self._check_vars()
         self.dx = self._get_dx()
@@ -208,7 +207,7 @@ if __name__ == "__main__":
     parser.description = "Postprocessing files."
     parser.add_argument("FILE", nargs=1,
                         help="file", default=None)
-    parser.add_argument("-z", dest='zf',
+    parser.add_argument("-z", dest='zf', type=float,
                         help="ZFactor", default=2.5)
     parser.add_argument("--multidirectional", dest='multidirectional', action='store_true',
                         help="Multidirectional hillshade", default=False)
@@ -218,6 +217,6 @@ if __name__ == "__main__":
     multidirectional = options.multidirectional
     zf = options.zf
     
-    hs = Hillshade(ifile, variables_to_mask='velsurf_mag,usurf_hs,usurf,thk')
+    hs = Hillshade(ifile, variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
     hs.run() 
 
