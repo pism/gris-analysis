@@ -22,6 +22,7 @@ except:
 
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GRIS']
 rcp_list = ['26', '45', '85']
+rcp_list = ['45']
 
 # Set up the option parser
 parser = ArgumentParser()
@@ -69,6 +70,7 @@ parser.add_argument("--plot", dest="plot",
                              'basin_discharge', 'basin_smb', 'rel_basin_discharge', 'basin_mass', 'basin_mass_d',
                              'basin_d_cumulative',
                              'basin_rel_discharge',
+                             'ens_mass',
                              'fluxes',
                              'flood_gate_length', 'flood_gate_area',
                              'per_basin_fluxes', 'per_basin_cumulative',
@@ -665,18 +667,23 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         
         cdf_mass_ensmin = cdo.ensmin(input=rcp_files, returnCdf=True)
         cdf_mass_ensmax = cdo.ensmax(input=rcp_files, returnCdf=True)
+        cdf_mass_ensstd = cdo.ensstd(input=rcp_files, returnCdf=True)
         cdf_mass_ensmean = cdo.ensmean(input=rcp_files, returnCdf=True)
         t = cdf_mass_ensmax.variables['time'][:]
 
-        mass_ensmin_vals = cdf_mass_ensmin.variables[plot_var][:]
+        mass_ensmin_vals = cdf_mass_ensmin.variables[plot_var][:] - cdf_mass_ensmin.variables[plot_var][0]
         iunits = cdf_mass_ensmin[plot_var].units
         mass_ensmin_vals = -unit_converter(mass_ensmin_vals, iunits, mass_ounits) * gt2mSLE
 
-        mass_ensmax_vals = cdf_mass_ensmax.variables[plot_var][:]
+        mass_ensmax_vals = cdf_mass_ensmax.variables[plot_var][:] -  cdf_mass_ensmax.variables[plot_var][0]
         iunits = cdf_mass_ensmax[plot_var].units
         mass_ensmax_vals = -unit_converter(mass_ensmax_vals, iunits, mass_ounits) * gt2mSLE
 
-        mass_ensmean_vals = cdf_mass_ensmean.variables[plot_var][:]
+        mass_ensstd_vals = cdf_mass_ensstd.variables[plot_var][:] - cdf_mass_ensstd.variables[plot_var][0]
+        iunits = cdf_mass_ensstd[plot_var].units
+        mass_ensstd_vals = -unit_converter(mass_ensstd_vals, iunits, mass_ounits) * gt2mSLE
+
+        mass_ensmean_vals = cdf_mass_ensmean.variables[plot_var][:] - cdf_mass_ensmean.variables[plot_var][0]
         iunits = cdf_mass_ensmean[plot_var].units
         mass_ensmean_vals = -unit_converter(mass_ensmean_vals, iunits, mass_ounits) * gt2mSLE
 
@@ -684,13 +691,21 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                          start_year + (len(t[:]) + 1) * step,
                          step) 
 
+        # ensemble min/max
         ax.fill_between(date[:], mass_ensmin_vals, mass_ensmax_vals,
+                        alpha=0.5,
                         color=rcp_col_dict[rcp],
                         linewidth=0,
                         label=rcp_dict[rcp])
 
-        ax.plot(date[:], mass_ensmean_vals,
+        # ensemble +- 1 sigma
+        ax.fill_between(date[:], mass_ensmean_vals-mass_ensstd_vals, mass_ensmean_vals+mass_ensstd_vals,
                         color=rcp_col_dict[rcp],
+                        linewidth=0,
+                        label=rcp_dict[rcp])
+        
+        ax.plot(date[:], mass_ensmean_vals,
+                        color='k',
                         linewidth=0.5)
 
         idx = np.where(np.array(date) == time_bounds[-1])[0][0]
@@ -711,6 +726,109 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+def plot_ens_mass(plot_var=mass_plot_vars):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+    
+    rcp_files = ifiles
+    rcp = '45'
+
+    print('Reading files for {}'.format(rcp_dict[rcp]))
+
+    cdf_mass_ensmin = cdo.ensmin(input=rcp_files, returnCdf=True)
+    cdf_mass_ensmax = cdo.ensmax(input=rcp_files, returnCdf=True)
+    cdf_mass_ensstd = cdo.ensstd(input=rcp_files, returnCdf=True)
+    cdf_mass_ensmean = cdo.ensmean(input=rcp_files, returnCdf=True)
+    t = cdf_mass_ensmax.variables['time'][:]
+
+    mass_ensmin_vals = cdf_mass_ensmin.variables[plot_var][:] - cdf_mass_ensmin.variables[plot_var][0]
+    iunits = cdf_mass_ensmin[plot_var].units
+    mass_ensmin_vals = -unit_converter(mass_ensmin_vals, iunits, mass_ounits) * gt2mSLE
+
+    mass_ensmax_vals = cdf_mass_ensmax.variables[plot_var][:] -  cdf_mass_ensmax.variables[plot_var][0]
+    iunits = cdf_mass_ensmax[plot_var].units
+    mass_ensmax_vals = -unit_converter(mass_ensmax_vals, iunits, mass_ounits) * gt2mSLE
+
+    mass_ensstd_vals = cdf_mass_ensstd.variables[plot_var][:] - cdf_mass_ensstd.variables[plot_var][0]
+    iunits = cdf_mass_ensstd[plot_var].units
+    mass_ensstd_vals = -unit_converter(mass_ensstd_vals, iunits, mass_ounits) * gt2mSLE
+
+    mass_ensmean_vals = cdf_mass_ensmean.variables[plot_var][:] - cdf_mass_ensmean.variables[plot_var][0]
+    iunits = cdf_mass_ensmean[plot_var].units
+    mass_ensmean_vals = -unit_converter(mass_ensmean_vals, iunits, mass_ounits) * gt2mSLE
+
+    date = np.arange(start_year + step,
+                     start_year + (len(t[:]) + 1) * step,
+                     step) 
+
+    # ensemble min/max
+    ax.fill_between(date[:], mass_ensmin_vals, mass_ensmax_vals,
+                    alpha=0.5,
+                    color=rcp_col_dict[rcp],
+                    linewidth=0)
+
+    # ensemble +- 1 sigma
+    ax.fill_between(date[:], mass_ensmean_vals-mass_ensstd_vals, mass_ensmean_vals+mass_ensstd_vals,
+                    color=rcp_col_dict[rcp],
+                    linewidth=0)
+
+    ax.plot(date[:], mass_ensmean_vals,
+                    color='k',
+                    linewidth=0.5)
+
+    idx = np.where(np.array(date) == time_bounds[-1])[0][0]
+    m_max = mass_ensmax_vals[idx]
+    m_min = mass_ensmin_vals[idx]
+    m_mean = mass_ensmean_vals[idx]
+    m_std = mass_ensstd_vals[idx]
+    m_rel = np.abs(m_max - m_min)
+
+    print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; DIFF {:1.2f}'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
+
+    x_sle, y_sle = time_bounds[-1], m_mean
+    plt.text( x_sle, y_sle, '{: 1.2f}$\pm${: 1.2f}'.format(m_mean, m_std),
+              color=rcp_col_dict[rcp])
+
+    # if do_legend:
+    #     legend = ax.legend(loc="upper right",
+    #                        edgecolor='0',
+    #                        bbox_to_anchor=(0, 0, .35, 0.88),
+    #                        bbox_transform=plt.gcf().transFigure)
+    #     legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
@@ -2113,6 +2231,8 @@ elif plot == 'rcp_ens_smb_flux':
     plot_rcp_ens_flux(plot_var='smb')
 elif plot == 'rcp_ens_mass_flux':
     plot_rcp_ens_flux(plot_var='mass')
+elif plot == 'ens_mass':
+    plot_ens_mass(plot_var='ice_mass')
 elif plot == 'rcp_ens_mass':
     plot_rcp_ens_mass(plot_var='ice_mass')
 elif plot == 'anim_rcp_mass':
