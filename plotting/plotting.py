@@ -22,7 +22,6 @@ except:
 
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GRIS']
 rcp_list = ['26', '45', '85']
-rcp_list = ['45']
 
 # Set up the option parser
 parser = ArgumentParser()
@@ -105,6 +104,11 @@ step = options.step
 title = options.title
 twinx = options.twinx
 dashes = ['-', '--', '-.', ':', '-', '--', '-.', ':']
+
+if openmp_n > 1:
+    pthreads = '-P {}'.format(openmp_n)
+else:
+    pthreads = ''
 
 dx, dy = 4. / out_res, -4. / out_res
 
@@ -665,19 +669,9 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
 
         print('Reading files for {}'.format(rcp_dict[rcp]))
         
-        cdf_mass_ensmin = cdo.ensmin(input=rcp_files, returnCdf=True)
-        cdf_mass_ensmax = cdo.ensmax(input=rcp_files, returnCdf=True)
-        cdf_mass_ensstd = cdo.ensstd(input=rcp_files, returnCdf=True)
-        cdf_mass_ensmean = cdo.ensmean(input=rcp_files, returnCdf=True)
-        t = cdf_mass_ensmax.variables['time'][:]
-
-        mass_ensmin_vals = cdf_mass_ensmin.variables[plot_var][:] - cdf_mass_ensmin.variables[plot_var][0]
-        iunits = cdf_mass_ensmin[plot_var].units
-        mass_ensmin_vals = -unit_converter(mass_ensmin_vals, iunits, mass_ounits) * gt2mSLE
-
-        mass_ensmax_vals = cdf_mass_ensmax.variables[plot_var][:] -  cdf_mass_ensmax.variables[plot_var][0]
-        iunits = cdf_mass_ensmax[plot_var].units
-        mass_ensmax_vals = -unit_converter(mass_ensmax_vals, iunits, mass_ounits) * gt2mSLE
+        cdf_mass_ensstd = cdo.ensstd(input=rcp_files, returnCdf=True, options=pthreads)
+        cdf_mass_ensmean = cdo.ensmean(input=rcp_files, returnCdf=True, options=pthreads)
+        t = cdf_mass_ensmean.variables['time'][:]
 
         mass_ensstd_vals = cdf_mass_ensstd.variables[plot_var][:] - cdf_mass_ensstd.variables[plot_var][0]
         iunits = cdf_mass_ensstd[plot_var].units
@@ -691,33 +685,34 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                          start_year + (len(t[:]) + 1) * step,
                          step) 
 
-        # ensemble min/max
-        ax.fill_between(date[:], mass_ensmin_vals, mass_ensmax_vals,
-                        alpha=0.5,
-                        color=rcp_col_dict[rcp],
-                        linewidth=0,
-                        label=rcp_dict[rcp])
 
         # ensemble +- 1 sigma
         ax.fill_between(date[:], mass_ensmean_vals-mass_ensstd_vals, mass_ensmean_vals+mass_ensstd_vals,
                         color=rcp_col_dict[rcp],
-                        linewidth=0,
-                        label=rcp_dict[rcp])
+                        alpha=0.5,
+                        linewidth=0)
         
         ax.plot(date[:], mass_ensmean_vals,
-                        color='k',
-                        linewidth=0.5)
+                        color=rcp_col_dict[rcp],
+                        linewidth=0.5,
+                        label=rcp_dict[rcp])
+
+        ax.plot(date[:], mass_ensmean_vals+mass_ensstd_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='dashed',
+                linewidth=0.25)
+
+        ax.plot(date[:], mass_ensmean_vals-mass_ensstd_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='dashed',
+                linewidth=0.25)
 
         idx = np.where(np.array(date) == time_bounds[-1])[0][0]
-        m_max = mass_ensmax_vals[idx]
-        m_min = mass_ensmin_vals[idx]
         m_mean = mass_ensmean_vals[idx]
-        m_rel = np.abs(m_max - m_min)
+        m_std = np.abs(mass_ensstd_vals[idx])
         
-        print('MASS dGMSL {}: {:1.2f} - {:1.2f}, mean {:1.2f}; DIFF {:1.2f}'.format(time_bounds[-1],  m_max, m_min, m_mean, m_rel))
-
         x_sle, y_sle = time_bounds[-1], m_mean
-        plt.text( x_sle, y_sle, '{: 1.2f}'.format(m_rel),
+        plt.text( x_sle, y_sle, '{: 1.2f}$\pm${:1.2f}'.format(m_mean, m_std),
                   color=rcp_col_dict[rcp])
 
     if do_legend:
