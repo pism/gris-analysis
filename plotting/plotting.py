@@ -75,6 +75,8 @@ parser.add_argument("--plot", dest="plot",
                              'per_basin_fluxes', 'per_basin_cumulative',
                              'rcp_mass', 'rcp_lapse_mass', 'rcp_d', 'rcp_flux', 'rcp_flux_rel',
                              'rcp_ens_mass',
+                             'rcp_ens_pctl_mass',
+                             'rcp_ens_traj_mass',
                              'rcp_ens_d_flux', 'rcp_ens_smb_flux', 'rcp_ens_mass_flux',
                              'rcp_ens_area', 'rcp_ens_volume'],
                     default='basin_discharge')
@@ -713,6 +715,204 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         
         x_sle, y_sle = time_bounds[-1], m_mean
         plt.text( x_sle, y_sle, '{: 1.2f}$\pm${:1.2f}'.format(m_mean, m_std),
+                  color=rcp_col_dict[rcp])
+
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.88),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+def plot_rcp_ens_pctl_mass(plot_var=mass_plot_vars):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+    
+    for k, rcp in enumerate(rcp_list):
+
+        rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        print('Reading files for {}'.format(rcp_dict[rcp]))
+        
+        cdf_mass_enspctl = cdo.enspctl('66',input=rcp_files, returnCdf=True, options=pthreads)
+        cdf_mass_ensmedian = cdo.enspctl('50', input=rcp_files, returnCdf=True, options=pthreads)
+        t = cdf_mass_ensmedian.variables['time'][:]
+
+        mass_enspctl_vals = cdf_mass_enspctl.variables[plot_var][:] - cdf_mass_enspctl.variables[plot_var][0]
+        iunits = cdf_mass_enspctl[plot_var].units
+        mass_enspctl_vals = -unit_converter(mass_enspctl_vals, iunits, mass_ounits) * gt2mSLE
+
+        mass_ensmedian_vals = cdf_mass_ensmedian.variables[plot_var][:] - cdf_mass_ensmedian.variables[plot_var][0]
+        iunits = cdf_mass_ensmedian[plot_var].units
+        mass_ensmedian_vals = -unit_converter(mass_ensmedian_vals, iunits, mass_ounits) * gt2mSLE
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+
+        # ensemble +- 1 sigma
+        ax.fill_between(date[:], mass_ensmedian_vals-mass_enspctl_vals, mass_ensmedian_vals+mass_enspctl_vals,
+                        color=rcp_col_dict[rcp],
+                        alpha=0.5,
+                        linewidth=0)
+        
+        ax.plot(date[:], mass_ensmedian_vals,
+                        color=rcp_col_dict[rcp],
+                        linewidth=0.5,
+                        label=rcp_dict[rcp])
+
+        ax.plot(date[:], mass_ensmedian_vals+mass_enspctl_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='dashed',
+                linewidth=0.25)
+
+        ax.plot(date[:], mass_ensmedian_vals-mass_enspctl_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='dashed',
+                linewidth=0.25)
+
+        idx = np.where(np.array(date) == time_bounds[-1])[0][0]
+        m_median = mass_ensmedian_vals[idx]
+        m_pctl = np.abs(mass_enspctl_vals[idx])
+        
+        x_sle, y_sle = time_bounds[-1], m_median
+        plt.text( x_sle, y_sle, '{: 1.2f}$\pm${:1.2f}'.format(m_median, m_pctl),
+                  color=rcp_col_dict[rcp])
+
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.88),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+def plot_rcp_ens_traj_mass(plot_var=mass_plot_vars):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+    
+    for k, rcp in enumerate(rcp_list):
+
+        rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        print('Reading files for {}'.format(rcp_dict[rcp]))
+        
+        cdf_mass_enspctl = cdo.enspctl('34',input=rcp_files, returnCdf=True, options=pthreads)
+        cdf_mass_ensmedian = cdo.enspctl('50', input=rcp_files, returnCdf=True, options=pthreads)
+        t = cdf_mass_ensmedian.variables['time'][:]
+
+        mass_enspctl_vals = cdf_mass_enspctl.variables[plot_var][:] - cdf_mass_enspctl.variables[plot_var][0]
+        iunits = cdf_mass_enspctl[plot_var].units
+        mass_enspctl_vals = -unit_converter(mass_enspctl_vals, iunits, mass_ounits) * gt2mSLE
+
+        mass_ensmedian_vals = cdf_mass_ensmedian.variables[plot_var][:] - cdf_mass_ensmedian.variables[plot_var][0]
+        iunits = cdf_mass_ensmedian[plot_var].units
+        mass_ensmedian_vals = -unit_converter(mass_ensmedian_vals, iunits, mass_ounits) * gt2mSLE
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+
+        for rcp_file in rcp_files:
+            nc = NC(rcp_file, 'r')
+            cdf_rcp_mass_file = nc.variables[plot_var]
+            mass_vals =  nc.variables[plot_var][:] - nc.variables[plot_var][0]
+            iunits = cdf_rcp_mass_file.units
+            mass_vals = -unit_converter(mass_vals, iunits, mass_ounits) * gt2mSLE
+            ax.plot(date[:], mass_vals,
+                    alpha=0.25,
+                    linewidth=0.2,
+                    color=rcp_col_dict[rcp])
+            nc.close()
+            
+        ax.plot(date[:], mass_ensmedian_vals,
+                        color=rcp_col_dict[rcp],
+                        linewidth=0.5,
+                        label=rcp_dict[rcp])
+
+        ax.plot(date[:], mass_ensmedian_vals+mass_enspctl_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='dashed',
+                linewidth=0.25)
+
+        ax.plot(date[:], mass_ensmedian_vals-mass_enspctl_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='dashed',
+                linewidth=0.25)
+
+        idx = np.where(np.array(date) == time_bounds[-1])[0][0]
+        m_median = mass_ensmedian_vals[idx]
+        m_pctl = np.abs(mass_enspctl_vals[idx])
+        
+        x_sle, y_sle = time_bounds[-1], m_median
+        plt.text( x_sle, y_sle, '{: 1.2f}$\pm${:1.2f}'.format(m_median, m_pctl),
                   color=rcp_col_dict[rcp])
 
     if do_legend:
@@ -2230,6 +2430,10 @@ elif plot == 'ens_mass':
     plot_ens_mass(plot_var='ice_mass')
 elif plot == 'rcp_ens_mass':
     plot_rcp_ens_mass(plot_var='ice_mass')
+elif plot == 'rcp_ens_pctl_mass':
+    plot_rcp_ens_pctl_mass(plot_var='ice_mass')
+elif plot == 'rcp_ens_traj_mass':
+    plot_rcp_ens_traj_mass(plot_var='ice_mass')
 elif plot == 'anim_rcp_mass':
     anim_rcp_mass(plot_var='ice_mass')
 elif plot == 'rcp_flux':
