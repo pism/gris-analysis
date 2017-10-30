@@ -8,7 +8,7 @@ import re
 
 parser = ArgumentParser()
 parser.add_argument("FILE", nargs='*')
-parser.add_argument("--parameters", type=str, default="lhs_samples_20171022.csv")
+parser.add_argument("--parameters", type=str, default="../latin_hypercube/lhs_samples_20171026.csv")
 
 options = parser.parse_args()
 
@@ -28,7 +28,7 @@ def read_volumes(files):
         data[j]["ID"] = int(match.group(2))
 
         F = NC.Dataset(filename, "r")
-        data[j]["volume"] = F.variables["ice_volume"][-1]
+        data[j]["volume"] = F.variables["limnsw"][-1]
         F.close()
 
     return data
@@ -39,7 +39,7 @@ def read_parameters(filename):
 
     parameters = np.loadtxt(options.parameters, delimiter=",", skiprows=1)
 
-    fields = ["FICE","FSNOW","PRS","RFR","OCM","OCS","TCT","VCM","PPQ","SIA"]
+    fields = ["FICE","FSNOW","PRS","RFR","OCM","OCS","TCT","VCM","PPQ","SIAE"]
     dtype = np.dtype(zip(fields, ["f8"] * len(fields)))
 
     d = {}
@@ -98,17 +98,17 @@ def analyze(data, rcp):
     """Produce plots to analyze final ice volumes vs. parameter choices
     for a given RCP scenario."""
 
-    V_mean = np.mean(data["volume"])
+    V_median = np.median(data["volume"])
 
-    V_std = np.std(data["volume"])
+    V_std = np.abs(np.median(data["volume"]) - np.percentile(data["volume"], 34))
 
-    plot_runs(data, data["volume"] > V_mean + V_std,
-              "RCP {}, V > V_mean + sigma".format(rcp))
+    plot_runs(data, data["volume"] > V_median + V_std,
+              "RCP {}, V > V_median + sigma".format(rcp))
 
     plt.savefig("rcp_{}_high.png".format(rcp))
 
-    plot_runs(data, data["volume"] < V_mean - V_std,
-              "RCP {}, V < V_mean - sigma".format(rcp))
+    plot_runs(data, data["volume"] < V_median - V_std,
+              "RCP {}, V < V_median - sigma".format(rcp))
 
     plt.savefig("rcp_{}_low.png".format(rcp))
 
@@ -127,7 +127,8 @@ if __name__ == "__main__":
 
     data = combine(volumes, parameters)
 
-    for rcp in (26, 45, 85):
+    # for rcp in (26, 45, 85):
+    for rcp in [26]:
         analyze(data[data["RCP"] == rcp], rcp)
 
     plt.show()
