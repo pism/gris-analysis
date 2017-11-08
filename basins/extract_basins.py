@@ -50,6 +50,7 @@ def extract_basins():
         ## this argument must always come in as a list
         select_ugid = [select_geom[0]['properties']['UGID']]
     ## parameterize the operations to be performed on the target dataset
+    print odir
     ops = ocgis.OcgOperations(dataset=rd,
                               geom=SHAPEFILE_PATH,
                               aggregate=False,
@@ -71,17 +72,6 @@ def calculate_time_series():
     scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['cumsum', prefix]), 'nc']))
     logger.info('Calculating cumulative time sum and saving to \n {}'.format(scalar_sum_ofile))
     cdo.chname(','.join(','.join([mvar, mvars_dict[mvar]]) for mvar in mvars), input='-setattribute,{} -timcumsum {}'.format(','.join('@'.join([mvar, 'units=Gt']) for mvar in mvars), scalar_ofile), output=scalar_sum_ofile, overwrite=True)
-    runmean_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['runmean_{}yr'.format(runmean_steps), prefix]), 'nc']))
-    logger.info('Calculating running mean and saving to \n {}'.format(runmean_ofile))
-    cdo.runmean('{}'.format(runmean_steps), input=scalar_ofile, output=runmean_ofile, overwrite=True)
-    abs_anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['abs_anomaly_runmean_{}yr'.format(runmean_steps), prefix]), 'nc']))
-    logger.info('Calculating anomalies and saving to \n {}'.format(abs_anomaly_ofile))
-    # Choose sign such that a positive anomaly means an increase in discharge
-    cdo.mulc('-1', input='-sub {} -timmean -seltimestep,1/{} {}'.format(runmean_ofile, runmean_steps, scalar_ofile), output=abs_anomaly_ofile, overwrite=True)
-    rel_anomaly_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['rel_anomaly_runmean_{}yr'.format(runmean_steps), prefix]), 'nc']))
-    logger.info('Calculating anomalies and saving to \n {}'.format(rel_anomaly_ofile))
-    cdo.div(input=' {} -timmean -seltimestep,1/{} {}'.format(runmean_ofile, runmean_steps, scalar_ofile), output=rel_anomaly_ofile, overwrite=True)
-
 
 # set up the option parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -130,15 +120,18 @@ output_format = 'nc'
 GEOM = SHAPEFILE_PATH
 
 mvars_dict = {'tendency_of_ice_mass': 'ice_mass',
-             'tendency_of_ice_mass_due_to_flow': 'flow_cumulative',
-             'tendency_of_ice_mass_due_to_conservation_error': 'conservation_error_cumulative',
-             'tendency_of_ice_mass_due_to_basal_mass_flux': 'basal_mass_flux_cumulative',
-             'tendency_of_ice_mass_due_to_surface_mass_flux': 'surface_mass_flux_cumulative',
-             'tendency_of_ice_mass_due_to_discharge': 'discharge_cumulative'}
+              'tendency_of_ice_mass_due_to_flow': 'flow_cumulative',
+              'tendency_of_ice_mass_due_to_conservation_error': 'conservation_error_cumulative',
+              'tendency_of_ice_mass_due_to_basal_mass_flux': 'basal_mass_flux_cumulative',
+              'tendency_of_ice_mass_due_to_surface_mass_flux': 'surface_mass_flux_cumulative',
+              'tendency_of_ice_mass_due_to_discharge': 'discharge_cumulative',
+              'saccum': 'saccum',
+              'smelt': 'smelt',
+              'srunoff': 'srunoff'}
+
 mvars = mvars_dict.keys()
 cvars = ['pism_config']
 # basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
-runmean_steps = 10
 
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:

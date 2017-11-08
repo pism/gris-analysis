@@ -100,14 +100,15 @@ def analyze(data, rcp):
 
     V_median = np.median(data["volume"])
 
-    V_std = np.abs(np.median(data["volume"]) - np.percentile(data["volume"], 34))
+    V_16 = np.percentile(data["volume"], 16))
+    V_84 = np.percentile(data["volume"], 84))
 
-    plot_runs(data, data["volume"] > V_median + V_std,
+    plot_runs(data, data["volume"] > V_84,
               "RCP {}, V > V_median + sigma".format(rcp))
 
     plt.savefig("rcp_{}_high.png".format(rcp))
 
-    plot_runs(data, data["volume"] < V_median - V_std,
+    plot_runs(data, data["volume"] < V_16,
               "RCP {}, V < V_median - sigma".format(rcp))
 
     plt.savefig("rcp_{}_low.png".format(rcp))
