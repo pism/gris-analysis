@@ -24,7 +24,7 @@ try:
 except:
     from pypismtools.pypismtools import unit_converter, smooth
 
-basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW', 'GRIS']
+basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW']
 rcp_list = ['26', '45', '85']
 
 # Set up the option parser
@@ -70,6 +70,7 @@ parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
                     choices=['basin_mass',
+                             'basin_d',
                              'rcp_mass',
                              'rcp_accum',
                              'rcp_runoff',
@@ -953,7 +954,73 @@ def plot_basin_mass():
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)  
  
+def plot_basin_flux(plot_var='discharge'):
+    '''
+    Make a plot per basin with all flux_plot_vars
+    '''
 
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+
+    for basin in basin_list:
+
+        basin_file = [f for f in ifiles if 'b_{}'.format(basin) in f]
+        print basin_file
+
+        print('reading {}'.format(basin_file[0]))
+
+        if plot_var == 'discharge':
+            cdf = cdo.expr('discharge=tendency_of_ice_mass_due_to_discharge+tendency_of_ice_mass_due_to_basal_mass_flux', input=basin_file[0])
+            cdf_run = cdo.runmean('11', input=cdf, returnCdf=True, options=pthreads)
+        
+            iunits = 'Gt year-1'
+            var_vals = cdf_run.variables[plot_var][:]
+
+        t = cdf_run.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+
+        var_vals = unit_converter(np.squeeze(var_vals), iunits, flux_ounits)
+        plt.plot(date[:], var_vals[:],
+                 color=basin_col_dict[basin],
+                 lw=0.5)
+
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, 1.15, 1),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.2)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+            
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+        plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_'.format(basin)  + '_fluxes.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 if plot == 'rcp_mass':
     plot_rcp_mass(plot_var='limnsw')
@@ -970,3 +1037,5 @@ elif plot == 'rcp_traj':
     plot_rcp_traj_mass(plot_var='limnsw')
 elif plot == 'basin_mass':
     plot_basin_mass()
+elif plot == 'basin_d':
+    plot_basin_flux(plot_var='discharge')
