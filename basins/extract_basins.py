@@ -68,10 +68,7 @@ def calculate_time_series():
     ifile = os.path.join(odir, prefix, prefix + '.nc')
     scalar_ofile = os.path.join(odir, 'scalar', '.'.join(['_'.join(['ts', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
-    cdo.fldsum(input='-fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True, options='-L')
-    # scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['cumsum', prefix]), 'nc']))
-    # logger.info('Calculating cumulative time sum and saving to \n {}'.format(scalar_sum_ofile))
-    # cdo.chname(','.join(','.join([mvar, mvars_dict[mvar]]) for mvar in mvars), input='-setattribute,{} -timcumsum {}'.format(','.join('@'.join([mvar, 'units=Gt']) for mvar in mvars), scalar_ofile), output=scalar_sum_ofile, overwrite=True)
+    cdo.setattribute('discharge_flux@units="Gt year-1"', input='-aexpr,discharge=tendency_of_ice_mass_due_to_discharge+tendency_of_ice_mass_due_to_basal_mass_flux -fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True, options='-L')
 
 # set up the option parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
