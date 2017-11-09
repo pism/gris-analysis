@@ -136,7 +136,7 @@ mvars = ['ice_mass',
        'tendency_of_ice_mass_due_to_basal_mass_flux',
        'tendency_of_ice_mass_due_to_surface_mass_flux',
        'tendency_of_ice_mass_due_to_discharge',
-       'surfac_accumulation_rate',
+       'surface_accumulation_rate',
        'surface_melt_rate',
        'surface_runoff_rate']
 
