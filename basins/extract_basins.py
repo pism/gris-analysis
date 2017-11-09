@@ -68,7 +68,7 @@ def calculate_time_series():
     ifile = os.path.join(odir, prefix, prefix + '.nc')
     scalar_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
-    cdo.fldsum(input='-fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True)
+    cdo.fldsum(input='-fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True, options='-L')
     # scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['cumsum', prefix]), 'nc']))
     # logger.info('Calculating cumulative time sum and saving to \n {}'.format(scalar_sum_ofile))
     # cdo.chname(','.join(','.join([mvar, mvars_dict[mvar]]) for mvar in mvars), input='-setattribute,{} -timcumsum {}'.format(','.join('@'.join([mvar, 'units=Gt']) for mvar in mvars), scalar_ofile), output=scalar_sum_ofile, overwrite=True)
