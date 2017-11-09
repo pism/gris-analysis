@@ -69,7 +69,8 @@ parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
                   Default=False''', default=False)
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
-                    choices=['rcp_mass',
+                    choices=['basin_mass',
+                             'rcp_mass',
                              'rcp_accum',
                              'rcp_runoff',
                              'rcp_d',
@@ -852,7 +853,105 @@ def plot_rcp_traj_mass(plot_var=mass_plot_vars):
                     fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
+def plot_basin_mass():
     
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+
+    mass_var_vals_positive_cum = 0
+    mass_var_vals_negative_cum = 0
+    for k, ifile in enumerate(ifiles):
+        basin = basin_list[k]
+        print('reading {}'.format(ifile))
+        nc = NC(ifile, 'r')
+        t = nc.variables["time"][:]
+
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        idx = np.where(np.array(date) == time_bounds[-1])[0][0]
+        mvar = 'ice_mass'
+        mass_var_vals = -np.squeeze(nc.variables[mvar][:] - nc.variables[mvar][0]) * gt2mSLE
+        iunits = nc.variables[mvar].units
+        mass_var_vals = unit_converter(mass_var_vals, iunits, mass_ounits)
+        if mass_var_vals[idx] > 0:
+            ax.fill_between(date[:], mass_var_vals_positive_cum, mass_var_vals_positive_cum + mass_var_vals[:],
+                            color=basin_col_dict[basin],
+                            linewidth=0,
+                            label=basin)
+        else:
+            print mass_var_vals[idx]
+            ax.fill_between(date[:], mass_var_vals_negative_cum, mass_var_vals_negative_cum + mass_var_vals[:],
+                            color=basin_col_dict[basin],
+                            linewidth=0,
+                            label=basin)
+            plt.rcParams['hatch.color'] = basin_col_dict[basin]
+            plt.rcParams['hatch.linewidth'] = 0.1
+            ax.fill_between(date[:], mass_var_vals_negative_cum, mass_var_vals_negative_cum + mass_var_vals[:],
+                            facecolor="none", hatch="XXXXX", edgecolor="k",
+                            linewidth=0.0)
+
+        if mass_var_vals[idx] > 0:
+            ax.plot(date[:], mass_var_vals_positive_cum + mass_var_vals[:],
+                    color='k',
+                    linewidth=0.1)
+        else:
+            ax.plot(date[:], mass_var_vals_negative_cum + mass_var_vals[:],
+                    color='k',
+                    linewidth=0.1)
+
+        offset = 0
+        if mass_var_vals[idx] > 0:
+            try:
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_positive_cum[idx]
+            except:  # first iteratio
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_positive_cum
+        else:
+            try:
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_negative_cum[idx] + mass_var_vals[idx] 
+            except:  # first iteration
+                x_sle, y_sle = date[idx] + offset, mass_var_vals_negative_cum + mass_var_vals[idx] 
+        nc.close()
+        if mass_var_vals[idx] > 0:
+            mass_var_vals_positive_cum += mass_var_vals
+        else:
+            mass_var_vals_negative_cum += mass_var_vals
+
+    ax.hlines(0, time_bounds[0], time_bounds[-1], lw=0.25)
+
+    legend = ax.legend(loc="upper right",
+                       edgecolor='0',
+                       bbox_to_anchor=(0, 0, 1.15, 1),
+                       bbox_transform=plt.gcf().transFigure)
+    legend.get_frame().set_linewidth(0.2)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[-1])
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_' + mvar  + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)  
  
 
 
@@ -869,4 +968,5 @@ elif plot == 'rcp_d':
     plot_rcp_flux_cumulative(plot_var='tendency_of_ice_mass_due_to_discharge')
 elif plot == 'rcp_traj':
     plot_rcp_traj_mass(plot_var='limnsw')
-
+elif plot == 'basin_mass':
+    plot_basin_mass()

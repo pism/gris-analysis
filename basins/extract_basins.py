@@ -69,9 +69,9 @@ def calculate_time_series():
     scalar_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
     cdo.fldsum(input='-fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True)
-    scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['cumsum', prefix]), 'nc']))
-    logger.info('Calculating cumulative time sum and saving to \n {}'.format(scalar_sum_ofile))
-    cdo.chname(','.join(','.join([mvar, mvars_dict[mvar]]) for mvar in mvars), input='-setattribute,{} -timcumsum {}'.format(','.join('@'.join([mvar, 'units=Gt']) for mvar in mvars), scalar_ofile), output=scalar_sum_ofile, overwrite=True)
+    # scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['cumsum', prefix]), 'nc']))
+    # logger.info('Calculating cumulative time sum and saving to \n {}'.format(scalar_sum_ofile))
+    # cdo.chname(','.join(','.join([mvar, mvars_dict[mvar]]) for mvar in mvars), input='-setattribute,{} -timcumsum {}'.format(','.join('@'.join([mvar, 'units=Gt']) for mvar in mvars), scalar_ofile), output=scalar_sum_ofile, overwrite=True)
 
 # set up the option parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -130,6 +130,16 @@ mvars_dict = {'tendency_of_ice_mass': 'ice_mass',
               'srunoff': 'srunoff'}
 
 mvars = mvars_dict.keys()
+mvars = ['ice_mass',
+       'tendency_of_ice_mass_due_to_flow',
+       'tendency_of_ice_mass_due_to_conservation_error',
+       'tendency_of_ice_mass_due_to_basal_mass_flux',
+       'tendency_of_ice_mass_due_to_surface_mass_flux',
+       'tendency_of_ice_mass_due_to_discharge',
+       'saccum',
+       'smelt',
+       'srunoff']
+
 cvars = ['pism_config']
 # basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
 
