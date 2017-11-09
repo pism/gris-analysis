@@ -66,7 +66,7 @@ def calculate_time_series():
     Calculate scalar time series with CDO
     '''
     ifile = os.path.join(odir, prefix, prefix + '.nc')
-    scalar_ofile = os.path.join(odir, 'scalar', '.'.join(['_'.join(['scalar_fldsum', prefix]), 'nc']))
+    scalar_ofile = os.path.join(odir, 'scalar', '.'.join(['_'.join(['ts', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
     cdo.fldsum(input='-fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True, options='-L')
     # scalar_sum_ofile = os.path.join(odir, prefix, '.'.join(['_'.join(['cumsum', prefix]), 'nc']))
