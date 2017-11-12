@@ -50,7 +50,6 @@ def extract_basins():
         ## this argument must always come in as a list
         select_ugid = [select_geom[0]['properties']['UGID']]
     ## parameterize the operations to be performed on the target dataset
-    print odir
     ops = ocgis.OcgOperations(dataset=rd,
                               geom=SHAPEFILE_PATH,
                               aggregate=False,

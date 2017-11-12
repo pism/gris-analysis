@@ -485,7 +485,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-def plot_rcp_flux_gt(plot_var=flux_plot_vars):
+def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
     
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -500,16 +500,23 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars):
 
         else:
 
-            print('Reading files for {}'.format(rcp_dict[rcp]))
-            
-            cdf_enspctl16 = cdo.enspctl('16',input=rcp_files, options=pthreads)
-            cdf_enspctl16 = cdo.runmean('11',input=cdf_enspctl16, returnCdf=True, options=pthreads)
-            cdf_enspctl84 = cdo.enspctl('84',input=rcp_files, options=pthreads)
-            cdf_enspctl84 = cdo.runmean('11',input=cdf_enspctl84, returnCdf=True, options=pthreads)
-            cdf_ensmedian = cdo.enspctl('50', input=rcp_files, options=pthreads)
-            cdf_ensmedian = cdo.runmean('11',input=cdf_ensmedian, returnCdf=True, options=pthreads)
-            t = cdf_ensmedian.variables['time'][:]
+            print('Reading {} for {}'.format(plot_var, rcp_dict[rcp]))
 
+            cdf_enspctl16 = cdo.enspctl('16',input=rcp_files, options=pthreads)
+            cdf_enspctl84 = cdo.enspctl('84',input=rcp_files, options=pthreads)
+            cdf_ensmedian = cdo.enspctl('50', input=rcp_files, options=pthreads)
+            t = cdf_ensmedian.variables['time'][:]
+            
+            if anomaly == True:
+                cdf_enspctl16 = cdo.runmean('11', input='-sub {} -timmean -selyear,2008/2018 {}'.format(cdf_enspctl16, cdf_enspctl16), returnCdf=True, options=pthreads)
+                cdf_enspctl84 = cdo.runmean('11', input='-sub {} -timmean -selyear,2008/2018 {}'.format(cdf_enspctl84, cdf_enspctl84), returnCdf=True, options=pthreads)
+                cdf_ensmedian = cdo.runmean('11', input='-sub {} -timmean -selyear,2008/2018 {}'.format(cdf_ensmeadian, cdf_ensmedian), returnCdf=True, options=pthreads)
+            else:
+                cdf_enspctl16 = cdo.runmean('11', input=cdf_enspctl16, returnCdf=True, options=pthreads)
+                cdf_enspctl84 = cdo.runmean('11', input=cdf_enspctl84, returnCdf=True, options=pthreads)
+                cdf_ensmedian = cdo.runmean('11', input=cdf_ensmeadian, returnCdf=True, options=pthreads)
+
+                
             enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
             iunits = cdf_enspctl16[plot_var].units
             enspctl16_vals = unit_converter(enspctl16_vals, iunits, flux_ounits)
@@ -530,7 +537,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars):
             # ensemble between 16th and 84th quantile
             ax.fill_between(date[:], enspctl16_vals, enspctl84_vals,
                             color=rcp_col_dict[rcp],
-                            alpha=0.5,
+                            alpha=0.4,
                             linewidth=0)
 
             ax.plot(date[:], ensmedian_vals,
@@ -570,9 +577,10 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars):
                 m_median = ensmedian_vals[idx]
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
-                m_ctrl = ctrl_vals[idx]
                 print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} Gt year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
-                print('     CTRL    {:1.2f} Gt year-1'.format(m_ctrl))
+                if ctrl_file:
+                    m_ctrl = ctrl_vals[idx]
+                    print('     CTRL    {:1.2f} Gt year-1'.format(m_ctrl))
 
 
     if do_legend:
