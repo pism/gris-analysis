@@ -71,6 +71,7 @@ parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
                     choices=['basin_mass',
                              'basin_d',
+                             'per_basin_flux',
                              'rcp_mass',
                              'rcp_accum',
                              'rcp_runoff',
@@ -1026,10 +1027,84 @@ def plot_basin_flux(plot_var='discharge'):
         plt.title(title)
 
     for out_format in out_formats:
-        out_file = outfile + '_'.format(basin)  + '_fluxes.' + out_format
+        out_file = outfile  + '_fluxes.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+                   
 
+def plot_per_basin_flux(plot_var='tendency_of_ice_mass'):
+    '''
+    Make a plot per basin with all flux_plot_vars
+    '''
+
+    for basin in basin_list:
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        print ifiles
+        print basin
+        for f in ifiles:
+            print f
+        basin_file = [f for f in ifiles if 'b_{}'.format(basin) in f]
+        print basin_file
+
+        for k, rcp in enumerate(rcp_list[::-1]):
+            rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+            print('reading {}'.format(rcp_file[0]))
+
+            cdf_run = cdo.runmean('11', input=rcp_file[0], returnCdf=True, options=pthreads)
+        
+            iunits = cdf_run.variables[plot_var].units
+            var_vals = cdf_run.variables[plot_var][:]
+
+            t = cdf_run.variables["time"][:]
+
+            date = np.arange(start_year + step,
+                             start_year + (len(t[:]) + 1) * step,
+                             step) 
+
+
+            var_vals = unit_converter(np.squeeze(var_vals), iunits, flux_ounits)
+            plt.plot(date[:], var_vals[:],
+                     color=basin_col_dict[basin],
+                     lw=0.5)
+
+            if do_legend:
+                   legend = ax.legend(loc="upper right",
+                                      edgecolor='0',
+                                      bbox_to_anchor=(0, 0, 1.15, 1),
+                                      bbox_transform=plt.gcf().transFigure)
+                   legend.get_frame().set_linewidth(0.2)
+    
+            ax.set_xlabel('Year (CE)')
+            ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
+        
+            if time_bounds:
+                ax.set_xlim(time_bounds[0], time_bounds[1])
+            
+            if bounds:
+                ax.set_ylim(bounds[0], bounds[1])
+
+            if rotate_xticks:
+                ticklabels = ax.get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(30)
+            else:
+                ticklabels = ax.get_xticklabels()
+                for tick in ticklabels:
+                   tick.set_rotation(0)
+                    
+            if title is not None:
+                plt.title(title)
+
+            for out_format in out_formats:
+                out_file = outfile  + + '_' + basins + '_fluxes.' + out_format
+                print "  - writing image %s ..." % out_file
+                fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+                   
 if plot == 'rcp_mass':
     plot_rcp_mass(plot_var='limnsw')
 elif plot == 'rcp_flux':
@@ -1047,3 +1122,5 @@ elif plot == 'basin_mass':
     plot_basin_mass()
 elif plot == 'basin_d':
     plot_basin_flux(plot_var='discharge')
+elif plot == 'per_basin_flux':
+    plot_per_basin_flux(plot_var='tendency_of_ice_mass_glacierized')
