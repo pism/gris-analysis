@@ -129,7 +129,7 @@ mvars_dict = {'tendency_of_ice_mass': 'ice_mass',
 
 mvars = mvars_dict.keys()
 mvars = ['ice_mass',
-       'tendency_of_ice_mass_glacierized',
+       'tendency_of_ice_mass',
        'tendency_of_ice_mass_due_to_flow',
        'tendency_of_ice_mass_due_to_conservation_error',
        'tendency_of_ice_mass_due_to_basal_mass_flux',
