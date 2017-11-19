@@ -28,11 +28,11 @@ parser.add_argument("FILE", nargs='*')
 parser.add_argument("--bounds", dest="bounds", nargs=2, type=float,
                     help="lower and upper bound for ordinate, eg. -1 1", default=None)
 parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
-                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 3008])
+                    help="lower and upper bound for abscissa, eg. 1990 2000", default=[2008, 3000])
 parser.add_argument("-s", "--switch_sign", dest="switch_sign", action='store_true',
                     help="Switch sign of data", default=False)
 parser.add_argument("-l", "--labels", dest="labels",
-                    help="comma-separated list with labels, put in quotes like 'label 1,label 2'", default='RCP 2.6,RCP 4.5,RCP 8.5')
+                    help="comma-separated list with labels, put in quotes like 'label 1,label 2'", default=None)
 parser.add_argument("--index_ij", dest="index_ij", nargs=2, type=int,
                     help="i and j index for spatial fields, eg. 10 10", default=[0, 0])
 parser.add_argument("--lon_lat", dest="lon_lat", nargs=2, type=float,
@@ -284,7 +284,7 @@ for var in variables:
         elif var in ("delta_T"):
             out_units = "K"
             var_unit_str = "K"
-            ylabel = ("temperature anomaly (%s)" % var_unit_str)
+            ylabel = ("T-anomaly (%s)" % var_unit_str)
         elif var in ("delta_SL"):
             out_units = "m"
             var_unit_str = "m"

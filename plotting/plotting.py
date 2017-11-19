@@ -72,6 +72,7 @@ parser.add_argument("--plot", dest="plot",
                     choices=['basin_mass',
                              'basin_d',
                              'per_basin_flux',
+                             'per_basin_d',
                              'rcp_mass',
                              'rcp_accum',
                              'rcp_runoff',
@@ -205,7 +206,10 @@ flux_style_dict = {'tendency_of_ice_mass': '-',
                    'tendency_of_ice_mass_due_to_basal_mass_flux': '-.',
                    'tendency_of_ice_mass_due_to_surface_mass_flux': ':',
                    'tendency_of_ice_mass_due_to_discharge': '--',
-                   'discharge_flux': '--'}
+                   'discharge': '--',
+                   'discharge_flux': '--',
+                   'surface_accumulation_rate': ':',
+                   'surface_runoff_rate': '-.'}
 
 mass_abbr_dict = {'ice_mass': 'M',
              'flow_cumulative': 'Q',
@@ -459,7 +463,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
         legend.get_frame().set_linewidth(0.0)
     
     ax.set_xlabel('Year (CE)')
-    ax.set_ylabel('$\Delta$(GMSL) (cm/yr)')
+    ax.set_ylabel('rate of GMSL rise (cm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1035,7 +1039,7 @@ def plot_basin_flux(plot_var='discharge'):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
                    
 
-def plot_per_basin_flux(plot_var='tendency_of_ice_mass'):
+def plot_per_basin_flux(plot_var=None):
     '''
     Make a plot per basin with all flux_plot_vars
     '''
@@ -1059,7 +1063,16 @@ def plot_per_basin_flux(plot_var='tendency_of_ice_mass'):
                              start_year + (len(t[:]) + 1) * step,
                              step) 
 
-            for m_var in ['tendency_of_ice_mass', 'discharge_flux']:
+            if plot_var is None:
+                m_vars = ['tendency_of_ice_mass_due_to_surface_mass_flux',
+                          'tendency_of_ice_mass_due_to_discharge']
+                label_var = 'fluxes'
+            else:
+                m_vars = [plot_var]
+                label_var = plot_var
+                
+            for m_var in m_vars:
+
                 iunits = cdf_run.variables[m_var].units
                 var_vals = cdf_run.variables[m_var][:]
 
@@ -1098,7 +1111,7 @@ def plot_per_basin_flux(plot_var='tendency_of_ice_mass'):
             plt.title(title)
 
         for out_format in out_formats:
-            out_file = outfile  + '_' + basin + '_' + plot_var + '.' + out_format
+            out_file = outfile  + '_' + basin + '_' + label_var + '.' + out_format
             print "  - writing image %s ..." % out_file
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
                    
@@ -1120,4 +1133,6 @@ elif plot == 'basin_mass':
 elif plot == 'basin_d':
     plot_basin_flux(plot_var='discharge')
 elif plot == 'per_basin_flux':
-    plot_per_basin_flux(plot_var='tendency_of_ice_mass')
+    plot_per_basin_flux()
+elif plot == 'per_basin_d':
+    plot_per_basin_flux(plot_var='discharge_flux')
