@@ -71,6 +71,7 @@ parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
                     choices=['basin_mass',
                              'basin_d',
+                             'ctrl_mass',
                              'per_basin_flux',
                              'per_basin_d',
                              'rcp_mass',
@@ -257,7 +258,6 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
         else:
 
             print('Reading files for {}'.format(rcp_dict[rcp]))
-            
             cdf_enspctl16 = cdo.enspctl('16',input=rcp_files, returnCdf=True, options=pthreads)
             cdf_enspctl84 = cdo.enspctl('84',input=rcp_files, returnCdf=True, options=pthreads)
             cdf_ensmedian = cdo.enspctl('50', input=rcp_files, returnCdf=True, options=pthreads)
@@ -325,7 +325,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
                 m_ctrl = ctrl_vals[idx]
-                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} m SLE'.format(m_year, m_pctl84, m_median, m_pctl16))
+                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} m SLE, {:1.2f} {:1.2f}'.format(m_year, m_pctl84, m_median, m_pctl16, m_pctl84 - m_median, m_pctl16 - m_median))
                 print('         CTRL {:1.2f} m SLE'.format(m_ctrl))
 
 
@@ -435,13 +435,13 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                 
                 cdf_ctrl = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
                 ctrl_t = cdf_ctrl.variables['time'][:]
-                cdf_date = np.arange(start_year + step,
+                ctrl_date = np.arange(start_year + step,
                                      start_year + (len(ctrl_t[:]) + 1) * step, step) 
                 
                 ctrl_vals = cdf_ctrl.variables[plot_var][:]
                 iunits = cdf_ctrl[plot_var].units
                 ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2cmSLE
-                ax.plot(cdf_date[:], ctrl_vals,
+                ax.plot(ctrl_date[:], ctrl_vals,
                         color=rcp_col_dict[rcp],
                         linestyle='dashed',
                         linewidth=0.5)
@@ -453,6 +453,22 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
                 print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} cm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+
+            idx = np.argmax(ensmedian_vals)
+            m_year = date[idx]
+            m_val = ensmedian_vals[idx]
+            print('Max loss rate 50th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))            
+            idx = np.argmax(enspctl16_vals)
+            m_val = enspctl16_vals[idx]
+            print('Max loss rate 16th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+            idx = np.argmax(enspctl84_vals)
+            m_year = date[idx]
+            m_val = enspctl84_vals[idx]
+            print('Max loss rate 84th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+            idx = np.argmax(enspctl84_vals)
+            m_year = ctrl_date[idx]
+            m_val = ctrl_vals[idx]
+            print('Max loss rate ctrl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
 
 
     if do_legend:

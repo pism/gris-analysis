@@ -87,7 +87,7 @@ parser.add_argument("--no_timeseries", dest="no_timeseries", action="store_true"
                     help="Don't calculate time-series", default=False)
 
 options = parser.parse_args()
-# basins = options.basins.split(',')
+basins = options.basins.split(',')
 no_extraction = options.no_extraction
 no_timeseries = options.no_timeseries
 
@@ -140,7 +140,7 @@ mvars = ['ice_mass',
        'surface_runoff_rate']
 
 cvars = ['pism_config']
-basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
+#basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
 
 rd = ocgis.RequestDataset(uri=URI, variable=VARIABLE)
 for basin in basins:
