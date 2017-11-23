@@ -241,7 +241,61 @@ lhs_params_dict = {'FICE': {'param_name': 'surface.pdd.factor_ice', 'vmin': 4, '
 }
 
 
+def plot_ctrl_mass(plot_var=mass_plot_vars):
+    
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
 
+    for ifile in ifiles:
+        cdf = cdo.readCdf(ifile)
+        t = cdf.variables['time'][:]
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+        var_vals = cdf.variables[plot_var][:] - cdf.variables[plot_var][0]
+        iunits = cdf.variables[plot_var].units
+        var_vals = -unit_converter(var_vals, iunits, mass_ounits) * gt2mSLE
+        plt.plot(date, var_vals)
+    
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.88),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year (CE)')
+    ax.set_ylabel('$\Delta$(GMSL) (m)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_ctrl' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+    
 def plot_rcp_mass(plot_var=mass_plot_vars):
     
     fig = plt.figure()
@@ -1131,7 +1185,9 @@ def plot_per_basin_flux(plot_var=None):
             print "  - writing image %s ..." % out_file
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
                    
-if plot == 'rcp_mass':
+if plot == 'ctrl_mass':
+    plot_ctrl_mass(plot_var='limnsw')
+elif plot == 'rcp_mass':
     plot_rcp_mass(plot_var='limnsw')
 elif plot == 'rcp_flux':
     plot_rcp_flux(plot_var='tendency_of_ice_mass_glacierized')
