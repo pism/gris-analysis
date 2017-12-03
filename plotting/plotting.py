@@ -1361,7 +1361,8 @@ def plot_per_basin_flux(plot_var=None):
                 var_vals = unit_converter(np.squeeze(var_vals), iunits, flux_ounits)
                 plt.plot(date[:], var_vals[:],
                          color=rcp_col_dict[rcp],
-                         ls=flux_style_dict[m_var],
+                         #ls=flux_style_dict[m_var],
+                         ls='solid',
                          lw=0.5)
 
         if do_legend:
