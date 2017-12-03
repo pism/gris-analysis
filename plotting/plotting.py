@@ -64,14 +64,12 @@ parser.add_argument("-r", "--output_resolution", dest="out_res",
                   inch (DPI), default = 300''', default=300)
 parser.add_argument("--runmean", dest="runmean", type=int,
                     help='''Calculate running mean''', default=None)
-parser.add_argument("-t", "--twinx", dest="twinx", action="store_true",
-                    help='''adds a second ordinate with units mmSLE,
-                  Default=False''', default=False)
 parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
                     choices=['basin_mass',
                              'basin_d',
                              'ctrl_mass',
+                             'flux_partitioning',
                              'per_basin_flux',
                              'per_basin_d',
                              'rcp_mass',
@@ -107,7 +105,6 @@ plot = options.plot
 rotate_xticks = options.rotate_xticks
 step = options.step
 title = options.title
-twinx = options.twinx
 ctrl_file = options.ctrl_file
 dashes = ['-', '--', '-.', ':', '-', '--', '-.', ':']
 
@@ -191,6 +188,8 @@ flux_abbr_dict = {'tendency_of_ice_mass_glacierized': '$\dot \mathregular{M}$',
                   'tendency_of_ice_mass_due_to_basal_mass_flux': 'BMB',
                   'tendency_of_ice_mass_due_to_surface_mass_flux': 'SMB',
                   'tendency_of_ice_mass_due_to_discharge': 'D',
+                  'surface_accumulation_rate': 'SN',
+                  'surface_runoff_rate': 'RU',
                   'discharge_flux': 'D'}
 
 flux_short_dict = {'tendency_of_ice_mass_glacierized': 'dmdt',
@@ -229,7 +228,9 @@ mass_style_dict = {'ice_mass': '-',
 flux_plot_vars = ['surface_accumulation_rate', 'surface_runoff_rate', 'surface_melt_rate', 'tendency_of_ice_mass_due_to_discharge', 'tendency_of_ice_mass_due_to_surface_mass_balance']
 mass_plot_vars = ['ice_mass']
 
+area_ounits = 'm2'
 flux_ounits = 'Gt year-1'
+specific_flux_ounits = 'kg m-2 year-1'
 mass_ounits = 'Gt'
 
 runmean_window = 11
@@ -562,6 +563,209 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
+
+def plot_flux_partitioning():
+    
+    
+    for k, rcp in enumerate(rcp_list[::-1]):
+        
+        rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
+        
+        cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
+        t = cdf.variables['time'][:]
+        date = np.arange(start_year + step,
+                              start_year + (len(t[:]) + 1) * step, step) 
+
+        area_var = 'ice_area_glacierized'
+        area_vals = cdf.variables[area_var][:]
+        area_iunits = cdf[area_var].units
+
+        tom_var = 'tendency_of_ice_mass'
+        tom_vals = cdf.variables[tom_var][:]
+        tom_s_vals = tom_vals / area_vals
+        tom_iunits = cdf[tom_var].units
+        tom_vals = unit_converter(tom_vals, tom_iunits, flux_ounits)
+        tom_s_iunits = cf_units.Unit(tom_iunits) / cf_units.Unit(area_iunits)
+        tom_s_vals = tom_s_iunits.convert(tom_s_vals, specific_flux_ounits) 
+        
+        snow_var = 'surface_accumulation_rate'
+        snow_vals = cdf.variables[snow_var][:]
+        snow_s_vals = snow_vals / area_vals
+        snow_iunits = cdf[snow_var].units
+        snow_vals = unit_converter(snow_vals, snow_iunits, flux_ounits)
+        snow_s_iunits = cf_units.Unit(snow_iunits) / cf_units.Unit(area_iunits)
+        snow_s_vals = snow_s_iunits.convert(snow_s_vals, specific_flux_ounits) 
+
+        ru_var = 'surface_runoff_rate'
+        ru_vals = cdf.variables[ru_var][:]
+        ru_s_vals = ru_vals / area_vals
+        ru_iunits = cdf[ru_var].units
+        ru_vals = -unit_converter(ru_vals, ru_iunits, flux_ounits)
+        ru_s_iunits = cf_units.Unit(ru_iunits) / cf_units.Unit(area_iunits)
+        ru_s_vals = -ru_s_iunits.convert(ru_s_vals, specific_flux_ounits) 
+
+        d_var = 'tendency_of_ice_mass_due_to_discharge'
+        d_vals = cdf.variables[d_var][:]
+        d_s_vals = d_vals / area_vals
+        d_iunits = cdf[d_var].units
+        d_vals = unit_converter(d_vals, d_iunits, flux_ounits)
+        d_s_iunits = cf_units.Unit(d_iunits) / cf_units.Unit(area_iunits)
+        d_s_vals = d_s_iunits.convert(d_s_vals, specific_flux_ounits)
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        ax.plot(date, tom_vals, label=flux_abbr_dict[tom_var])
+        ax.plot(date, snow_vals, label=flux_abbr_dict[snow_var])
+        ax.plot(date, ru_vals, label=flux_abbr_dict[ru_var])
+        ax.plot(date, d_vals, label=flux_abbr_dict[d_var])
+
+        axS = ax.twinx()
+
+        axS.plot(date, tom_s_vals, ls='dashed', label=flux_abbr_dict[tom_var])
+        axS.plot(date, snow_s_vals, ls='dashed', label=flux_abbr_dict[snow_var])
+        axS.plot(date, ru_s_vals, ls='dashed', label=flux_abbr_dict[ru_var])
+        axS.plot(date, d_s_vals, ls='dashed', label=flux_abbr_dict[d_var])
+
+        
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, .9, 0.9),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.0)
+    
+        ax.set_xlabel('Year (CE)')
+        ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
+        axS.set_ylabel('specific rate (Gt m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
+            
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+        yminS, ymaxS = axS.get_ylim()
+        y_min = np.min([ymin, yminS])
+        y_max = np.max([ymax, ymaxS])
+            
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_rcp_' + rcp + '_partitioning.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        ax.plot(date, -tom_s_vals + tom_s_vals[0], ls='solid', label=flux_abbr_dict[tom_var])
+        ax.plot(date, snow_s_vals - snow_s_vals[0], ls='solid', label=flux_abbr_dict[snow_var])
+        ax.plot(date, -ru_s_vals + ru_s_vals[0], ls='solid', label=flux_abbr_dict[ru_var])
+        ax.plot(date, -d_s_vals + d_s_vals[0], ls='solid', label=flux_abbr_dict[d_var])
+        
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, .9, 0.9),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.0)
+    
+        ax.set_xlabel('Year (CE)')
+        ax.set_ylabel('specific rate (Gt m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
+            
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+            
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_rcp_' + rcp + '_partitioning_anomalies.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+            
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        ax.fill_between(date, 0, snow_s_vals, label='SN')
+        ax.fill_between(date, 0, ru_s_vals, label='RU')
+        ax.fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, label='D')
+        ax.plot(date, tom_s_vals, color='k', label='MB')
+        
+        if do_legend:
+            legend = ax.legend(loc="upper right",
+                               edgecolor='0',
+                               bbox_to_anchor=(0, 0, .9, 0.9),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.0)
+    
+        ax.set_xlabel('Year (CE)')
+        ax.set_ylabel('specific rate (Gt m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
+            
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+        yminS, ymaxS = axS.get_ylim()
+        y_min = np.min([ymin, yminS])
+        y_max = np.max([ymax, ymaxS])
+            
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_rcp_' + rcp + '_partitioning_hist.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+            
 
 def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
     
@@ -969,7 +1173,6 @@ def plot_basin_mass():
                             linewidth=0,
                             label=basin)
         else:
-            print mass_var_vals[idx]
             ax.fill_between(date[:], mass_var_vals_negative_cum, mass_var_vals_negative_cum + mass_var_vals[:],
                             color=basin_col_dict[basin],
                             linewidth=0,
@@ -993,7 +1196,7 @@ def plot_basin_mass():
         if mass_var_vals[idx] > 0:
             try:
                 x_sle, y_sle = date[idx] + offset, mass_var_vals_positive_cum[idx]
-            except:  # first iteratio
+            except:  # first iteration
                 x_sle, y_sle = date[idx] + offset, mass_var_vals_positive_cum
         else:
             try:
@@ -1005,6 +1208,13 @@ def plot_basin_mass():
             mass_var_vals_positive_cum += mass_var_vals
         else:
             mass_var_vals_negative_cum += mass_var_vals
+
+        print('Basin {}'.format(basin))
+        for m_year in [2100, 2200, 2500, 3000]:
+            idx = np.where(np.array(date) == m_year)[0][0]
+            m = mass_var_vals[idx]
+            print('Year {}: {:1.2f} m SLE'.format(m_year, m))
+
 
     ax.hlines(0, time_bounds[0], time_bounds[-1], lw=0.25)
 
@@ -1022,6 +1232,8 @@ def plot_basin_mass():
 
     if bounds:
         ax.set_ylim(bounds[0], bounds[-1])
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -1208,3 +1420,5 @@ elif plot == 'per_basin_flux':
     plot_per_basin_flux()
 elif plot == 'per_basin_d':
     plot_per_basin_flux(plot_var='discharge_flux')
+elif plot == 'flux_partitioning':
+    plot_flux_partitioning()

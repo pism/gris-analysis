@@ -104,15 +104,36 @@ print p_ols.summary()
 bias, trend = p_ols.params
 print bias, trend
 ax.plot(tas_cat, bias + trend * tas_cat, color='k', lw=0.5)
-ax.text(0, 3, 'r$^2$={:1.2f}'.format(p_ols.rsquared))
-ax.text(0, 3.5, 'y={:1.2f}x + {:1.2f}'.format(trend, bias))
-ax.set_xlabel('temperature (non-dimensional)')
-ax.set_ylabel('runoff (non-dimensional)')
-
+ax.text(0.25, 3, 'r$^2$={:1.2f}'.format(p_ols.rsquared))
+ax.text(0.25, 3.5, 'y={:1.2f}x + {:1.2f}'.format(trend, bias))
+ax.set_ylabel('Runoff normalized (1)')
+ax.set_xlim(0, 10)
 legend = ax.legend(loc="upper right",
                    edgecolor='0',
-                   bbox_to_anchor=(0, 0, 1.2, 1),
+                   bbox_to_anchor=(0, 0, 1., 1),
                    bbox_transform=plt.gcf().transFigure)
 legend.get_frame().set_linewidth(0.2)
 
 plt.savefig('tas_ru.pdf', bbox_inches='tight')
+
+a = 0.5
+C = 0.15
+def m(x, alpha, beta, C, a):
+    return (1 + C * (a * x)**alpha * x**beta)
+
+T = np.linspace(0., 10, 101)
+fig, ax = plt.subplots()
+for alpha, beta in ([0.5, 1.0], [0.54, 1.17], [0.85, 1.61]):
+    ax.plot(T, m(T, alpha, beta, C, a), label='$\\alpha$={}, $\\beta$={}'.format(alpha, beta))
+ax.set_xlabel(u'Temperature anomaly (\u00B0C)')
+ax.set_ylabel('Melt scale factor (1)')
+ax.set_xlim(0, 10)
+ax.set_ylim(0, 25)
+ax.set_yticks([1, 5, 10, 15, 20, 25])
+legend = ax.legend(loc="lower left",
+                   edgecolor='0',
+                   bbox_to_anchor=(0.15, 0.4, 0.2, 0.2),
+                   bbox_transform=plt.gcf().transFigure)
+legend.get_frame().set_linewidth(0.)
+
+plt.savefig('temp2melt.pdf', bbox_inches='tight')
