@@ -616,6 +616,8 @@ def plot_flux_partitioning():
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
         ax = fig.add_subplot(111)
 
+        ax.hlines(0, time_bounds[0], time_bounds[1], linestyles='dotted', linewidth=0.2)
+
         ax.plot(date, tom_vals, label=flux_abbr_dict[tom_var])
         ax.plot(date, snow_vals, label=flux_abbr_dict[snow_var])
         ax.plot(date, ru_vals, label=flux_abbr_dict[ru_var])
@@ -627,7 +629,6 @@ def plot_flux_partitioning():
         axS.plot(date, snow_s_vals, ls='dashed', label=flux_abbr_dict[snow_var])
         axS.plot(date, ru_s_vals, ls='dashed', label=flux_abbr_dict[ru_var])
         axS.plot(date, d_s_vals, ls='dashed', label=flux_abbr_dict[d_var])
-
         
         if do_legend:
             legend = ax.legend(loc="upper right",
@@ -673,6 +674,8 @@ def plot_flux_partitioning():
         fig = plt.figure()
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
         ax = fig.add_subplot(111)
+
+        ax.hlines(0, time_bounds[0], time_bounds[1], linestyles='dotted', linewidth=0.2)
 
         ax.plot(date, -tom_s_vals + tom_s_vals[0], ls='solid', label=flux_abbr_dict[tom_var])
         ax.plot(date, snow_s_vals - snow_s_vals[0], ls='solid', label=flux_abbr_dict[snow_var])
@@ -721,6 +724,8 @@ def plot_flux_partitioning():
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
         ax = fig.add_subplot(111)
 
+        ax.hlines(0, time_bounds[0], time_bounds[1], linestyles='dotted', linewidth=0.2)
+        
         ax.fill_between(date, 0, snow_s_vals, label='SN')
         ax.fill_between(date, 0, ru_s_vals, label='RU')
         ax.fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, label='D')

@@ -5,8 +5,6 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import ocgis
 import os
-from cdo import Cdo
-cdo = Cdo()
 
 import logging
 import logging.handlers
@@ -40,6 +38,7 @@ def extract_basins():
     '''
     Extract basin using OCGIS
     '''
+    
     logger.info('Extracting basin {}'.format(basin))
 
     if GEOM is None:
@@ -64,6 +63,10 @@ def calculate_time_series():
     '''
     Calculate scalar time series with CDO
     '''
+    
+    from cdo import Cdo
+    cdo = Cdo()
+
     ifile = os.path.join(odir, prefix, prefix + '.nc')
     scalar_ofile = os.path.join(odir, 'scalar', '.'.join(['_'.join(['ts', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
