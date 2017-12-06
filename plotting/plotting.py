@@ -567,6 +567,8 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 def plot_flux_partitioning():
 
     fig, axa = plt.subplots(3, 3, sharex='col', sharey='row', figsize=[6, 4])
+    fig.subplots_adjust(hspace=0.05)
+    
     for k, rcp in enumerate(rcp_list):
         if rcp == '26':
             m = 0
@@ -618,6 +620,7 @@ def plot_flux_partitioning():
         d_s_vals = d_s_iunits.convert(d_s_vals, specific_flux_ounits)
 
         axa[0, m].plot(date, area_vals / 1e12)
+        axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
         
         axa[1, m].fill_between(date, 0, snow_vals, color='#3182bd', label='SN')
         axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU')
@@ -631,7 +634,7 @@ def plot_flux_partitioning():
 
         legend = axa[2, 0].legend(loc="lower left",
                            edgecolor='0',
-                           bbox_to_anchor=(.27, 0.1, 0, 0),
+                           bbox_to_anchor=(.27, 0.11, 0, 0),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
@@ -665,6 +668,7 @@ def plot_flux_partitioning():
         # if title is not None:
         #     plt.title(title)
 
+    
     for out_format in out_formats:
         out_file = outfile + '_partitioning.' + out_format
         print "  - writing image %s ..." % out_file
