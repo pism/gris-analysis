@@ -130,7 +130,7 @@ fontsize = 6
 lw = 0.5
 aspect_ratio = 0.35
 markersize = 2
-fig_width = 3.15  # inch
+fig_width = 3.1  # inch
 fig_height = aspect_ratio * fig_width  # inch
 fig_size = [fig_width, fig_height]
 
@@ -266,7 +266,7 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
         
     if time_bounds:
@@ -391,7 +391,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
         
     if time_bounds:
@@ -533,7 +533,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('rate of GMSL rise (cm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
@@ -565,10 +565,15 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 
 
 def plot_flux_partitioning():
-    
-    
-    for k, rcp in enumerate(rcp_list[::-1]):
-        
+
+    fig, axa = plt.subplots(3, 3, sharex='col', sharey='row', figsize=[6, 4])
+    for k, rcp in enumerate(rcp_list):
+        if rcp == '26':
+            m = 0
+        elif rcp == '45':
+            m = 1
+        else:
+            m = 2
         rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
         
         cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
@@ -612,164 +617,58 @@ def plot_flux_partitioning():
         d_s_iunits = cf_units.Unit(d_iunits) / cf_units.Unit(area_iunits)
         d_s_vals = d_s_iunits.convert(d_s_vals, specific_flux_ounits)
 
-        fig = plt.figure()
-        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
-        ax = fig.add_subplot(111)
-
-        ax.hlines(0, time_bounds[0], time_bounds[1], linestyles='dotted', linewidth=0.2)
-
-        ax.plot(date, tom_vals, label=flux_abbr_dict[tom_var])
-        ax.plot(date, snow_vals, label=flux_abbr_dict[snow_var])
-        ax.plot(date, ru_vals, label=flux_abbr_dict[ru_var])
-        ax.plot(date, d_vals, label=flux_abbr_dict[d_var])
-
-        axS = ax.twinx()
-
-        axS.plot(date, tom_s_vals, ls='dashed', label=flux_abbr_dict[tom_var])
-        axS.plot(date, snow_s_vals, ls='dashed', label=flux_abbr_dict[snow_var])
-        axS.plot(date, ru_s_vals, ls='dashed', label=flux_abbr_dict[ru_var])
-        axS.plot(date, d_s_vals, ls='dashed', label=flux_abbr_dict[d_var])
+        axa[0, m].plot(date, area_vals / 1e12)
         
-        if do_legend:
-            legend = ax.legend(loc="upper right",
-                               edgecolor='0',
-                               bbox_to_anchor=(0, 0, .9, 0.9),
-                               bbox_transform=plt.gcf().transFigure)
-            legend.get_frame().set_linewidth(0.0)
+        axa[1, m].fill_between(date, 0, snow_vals, color='#3182bd', label='SN')
+        axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU')
+        axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#31a354', label='D')
+        axa[1, m].plot(date, tom_vals, color='k', label='MB')
+
+        axa[2, m].fill_between(date, 0, snow_s_vals, color='#3182bd', label='SN')
+        axa[2, m].fill_between(date, 0, ru_s_vals, color='#fb6a4a', label='RU')
+        axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#31a354', label='D')
+        axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
+
+        legend = axa[2, 0].legend(loc="lower left",
+                           edgecolor='0',
+                           bbox_to_anchor=(.27, 0.1, 0, 0),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
     
-        ax.set_xlabel('Year (CE)')
-        ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
-        axS.set_ylabel('specific rate (Gt m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
+        axa[2, m].set_xlabel('Year')
+        axa[0, 0].set_ylabel('area (10$^{6}$ km$^{\mathregular{2}}$)')
+        axa[1, 0].set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
+        axa[2, 0].set_ylabel('rate (kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
             
         if time_bounds:
-            ax.set_xlim(time_bounds[0], time_bounds[1])
+            for o in range(0, 3):
+                for p in range(0, 3):
+                    axa[o, p].set_xlim(time_bounds[0], time_bounds[1])
 
-        if bounds:
-            ax.set_ylim(bounds[0], bounds[1])
+        # if bounds:
+        #     ax.set_ylim(bounds[0], bounds[1])
 
-        ymin, ymax = ax.get_ylim()
-        yminS, ymaxS = axS.get_ylim()
-        y_min = np.min([ymin, yminS])
-        y_max = np.max([ymax, ymaxS])
             
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+        # ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
 
         if rotate_xticks:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(30)
+            for o, p in range(0, 2), range(0, 2):
+                ticklabels = axa[o, p].get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(30)
         else:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(0)
+            for o, p in range(0, 2), range(0, 2):
+                ticklabels = axa[o, p].get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(0)
                     
-        if title is not None:
-            plt.title(title)
+        # if title is not None:
+        #     plt.title(title)
 
-        for out_format in out_formats:
-            out_file = outfile + '_rcp_' + rcp + '_partitioning.' + out_format
-            print "  - writing image %s ..." % out_file
-            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
-
-        fig = plt.figure()
-        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
-        ax = fig.add_subplot(111)
-
-        ax.hlines(0, time_bounds[0], time_bounds[1], linestyles='dotted', linewidth=0.2)
-
-        ax.plot(date, -tom_s_vals + tom_s_vals[0], ls='solid', label=flux_abbr_dict[tom_var])
-        ax.plot(date, snow_s_vals - snow_s_vals[0], ls='solid', label=flux_abbr_dict[snow_var])
-        ax.plot(date, -ru_s_vals + ru_s_vals[0], ls='solid', label=flux_abbr_dict[ru_var])
-        ax.plot(date, -d_s_vals + d_s_vals[0], ls='solid', label=flux_abbr_dict[d_var])
-        
-        if do_legend:
-            legend = ax.legend(loc="upper right",
-                               edgecolor='0',
-                               bbox_to_anchor=(0, 0, .9, 0.9),
-                               bbox_transform=plt.gcf().transFigure)
-            legend.get_frame().set_linewidth(0.0)
-    
-        ax.set_xlabel('Year (CE)')
-        ax.set_ylabel('specific rate (Gt m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
-            
-        if time_bounds:
-            ax.set_xlim(time_bounds[0], time_bounds[1])
-
-        if bounds:
-            ax.set_ylim(bounds[0], bounds[1])
-
-        ymin, ymax = ax.get_ylim()
-            
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-
-        if rotate_xticks:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(30)
-        else:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(0)
-                    
-        if title is not None:
-            plt.title(title)
-
-        for out_format in out_formats:
-            out_file = outfile + '_rcp_' + rcp + '_partitioning_anomalies.' + out_format
-            print "  - writing image %s ..." % out_file
-            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
-
-            
-        fig = plt.figure()
-        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
-        ax = fig.add_subplot(111)
-
-        ax.hlines(0, time_bounds[0], time_bounds[1], linestyles='dotted', linewidth=0.2)
-        
-        ax.fill_between(date, 0, snow_s_vals, label='SN')
-        ax.fill_between(date, 0, ru_s_vals, label='RU')
-        ax.fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, label='D')
-        ax.plot(date, tom_s_vals, color='k', label='MB')
-        
-        if do_legend:
-            legend = ax.legend(loc="upper right",
-                               edgecolor='0',
-                               bbox_to_anchor=(0, 0, .9, 0.9),
-                               bbox_transform=plt.gcf().transFigure)
-            legend.get_frame().set_linewidth(0.0)
-    
-        ax.set_xlabel('Year (CE)')
-        ax.set_ylabel('specific rate (Gt m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
-            
-        if time_bounds:
-            ax.set_xlim(time_bounds[0], time_bounds[1])
-
-        if bounds:
-            ax.set_ylim(bounds[0], bounds[1])
-
-        ymin, ymax = ax.get_ylim()
-        yminS, ymaxS = axS.get_ylim()
-        y_min = np.min([ymin, yminS])
-        y_max = np.max([ymax, ymaxS])
-            
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-
-        if rotate_xticks:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(30)
-        else:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(0)
-                    
-        if title is not None:
-            plt.title(title)
-
-        for out_format in out_formats:
-            out_file = outfile + '_rcp_' + rcp + '_partitioning_hist.' + out_format
-            print "  - writing image %s ..." % out_file
-            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+    for out_format in out_formats:
+        out_file = outfile + '_partitioning.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
             
 
 def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
@@ -877,7 +776,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('flux (Gt/yr)')
         
     if time_bounds:
@@ -991,7 +890,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (cm/yr)')
         
     if time_bounds:
@@ -1117,7 +1016,7 @@ def plot_rcp_traj_mass(plot_var=mass_plot_vars):
                     #                        bbox_transform=plt.gcf().transFigure)
                     #     legend.get_frame().set_linewidth(0.0)
 
-                    ax.set_xlabel('Year (CE)')
+                    ax.set_xlabel('Year')
                     ax.set_ylabel('$\Delta$(GMSL) (m)')
 
                     if time_bounds:
@@ -1229,7 +1128,7 @@ def plot_basin_mass():
                        bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.2)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
         
     if time_bounds:
@@ -1299,7 +1198,7 @@ def plot_basin_flux(plot_var='discharge'):
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.2)
     
-    ax.set_xlabel('Year (CE)')
+    ax.set_xlabel('Year')
     ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
@@ -1377,7 +1276,7 @@ def plot_per_basin_flux(plot_var=None):
                                bbox_transform=plt.gcf().transFigure)
             legend.get_frame().set_linewidth(0.2)
     
-        ax.set_xlabel('Year (CE)')
+        ax.set_xlabel('Year')
         ax.set_ylabel('mass flux (Gt yr$^{\mathregular{-1}}$)')
         
         if time_bounds:
