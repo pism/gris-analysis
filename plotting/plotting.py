@@ -78,7 +78,8 @@ parser.add_argument("--plot", dest="plot",
                              'rcp_d',
                              'rcp_flux',
                              'rcp_fluxes',
-                             'rcp_traj'],
+                             'rcp_traj',
+                             'stations'],
                     default='rcp_mass')
 parser.add_argument("--title", dest="title",
                     help='''Plot title.''', default=None)
@@ -241,7 +242,82 @@ lhs_params_dict = {'FICE': {'param_name': 'surface.pdd.factor_ice', 'vmin': 4, '
                    'RFR': {'param_name': 'surface.pdd.refreeze', 'vmin': 25, 'vmax': 75, 'scale_factor': 100, 'symb': '$\psi$'}
 }
 
+def add_inner_title(ax, title, loc, size=None, **kwargs):
+    '''
+    Adds an inner title to a given axis, with location loc.
 
+    from http://matplotlib.sourceforge.net/examples/axes_grid/demo_axes_grid2.html
+    '''
+    from matplotlib.offsetbox import AnchoredText
+    from matplotlib.patheffects import withStroke
+    if size is None:
+        size = dict(size=plt.rcParams['legend.fontsize'])
+    at = AnchoredText(title, loc=loc, prop=size,
+                      pad=0., borderpad=0.5,
+                      frameon=False, **kwargs)
+    ax.add_artist(at)
+    return at
+
+def plot_point_ts(plot_var='usurf'):
+
+    nc0 = NC(ifiles[0], 'r')
+    station_names = nc0.variables['station_name'][:]
+    nc0.close()
+    for k, station in enumerate(station_names):
+    
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+        
+        for m, rcp in enumerate(rcp_list):
+
+            rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
+            nc = NC(rcp_file, 'r')
+            t = nc.variables['time'][:]
+            date = np.arange(start_year + step,
+                             start_year + (len(t[:]) + 1) * step,
+                             step) 
+            var_vals = nc.variables[plot_var][k, :]
+            ax.plot(date, var_vals, color=rcp_col_dict[rcp], label=rcp_dict[rcp])
+            nc.close()
+
+        if do_legend:
+            legend = ax.legend(loc="lower left",
+                               edgecolor='0',
+                               bbox_to_anchor=(.12, 0.1, 0, 0),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.0)
+    
+        ax.set_xlabel('Year')
+        ax.set_ylabel('elevation change (m)')
+                
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_{}_'.format(station)  + plot_var + '.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+    
 def plot_ctrl_mass(plot_var=mass_plot_vars):
     
     fig = plt.figure()
@@ -567,7 +643,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 def plot_flux_partitioning():
 
     fig, axa = plt.subplots(3, 3, sharex='col', sharey='row', figsize=[6, 4])
-    fig.subplots_adjust(hspace=0.05)
+    fig.subplots_adjust(hspace=0.05, wspace=0.05)
     
     for k, rcp in enumerate(rcp_list):
         if rcp == '26':
@@ -621,15 +697,16 @@ def plot_flux_partitioning():
 
         axa[0, m].plot(date, area_vals / 1e12)
         axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
+        axa[0, m].set_title('{}'.format(rcp_dict[rcp]))
         
-        axa[1, m].fill_between(date, 0, snow_vals, color='#3182bd', label='SN')
+        axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN')
         axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU')
-        axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#31a354', label='D')
+        axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D')
         axa[1, m].plot(date, tom_vals, color='k', label='MB')
 
-        axa[2, m].fill_between(date, 0, snow_s_vals, color='#3182bd', label='SN')
+        axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN')
         axa[2, m].fill_between(date, 0, ru_s_vals, color='#fb6a4a', label='RU')
-        axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#31a354', label='D')
+        axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#74c476', label='D')
         axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
 
         legend = axa[2, 0].legend(loc="lower left",
@@ -653,7 +730,17 @@ def plot_flux_partitioning():
 
             
         # ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-
+        
+        add_inner_title(axa[0, 0], 'a', 'lower left')
+        add_inner_title(axa[0, 1], 'b', 'lower left')
+        add_inner_title(axa[0, 2], 'c', 'lower left')
+        add_inner_title(axa[1, 0], 'e', 'lower left')
+        add_inner_title(axa[1, 1], 'f', 'lower left')
+        add_inner_title(axa[1, 2], 'g', 'lower left')
+        add_inner_title(axa[2, 0], 'h', 'lower left')
+        add_inner_title(axa[2, 1], 'i', 'lower left')
+        add_inner_title(axa[2, 2], 'j', 'lower left')
+        
         if rotate_xticks:
             for o, p in range(0, 2), range(0, 2):
                 ticklabels = axa[o, p].get_xticklabels()
@@ -1331,3 +1418,5 @@ elif plot == 'per_basin_d':
     plot_per_basin_flux(plot_var='discharge_flux')
 elif plot == 'flux_partitioning':
     plot_flux_partitioning()
+elif plot == 'stations':
+    plot_point_ts()
