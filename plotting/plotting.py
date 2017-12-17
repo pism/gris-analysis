@@ -68,6 +68,7 @@ parser.add_argument("--plot", dest="plot",
                     help='''What to plot.''',
                     choices=['basin_mass',
                              'basin_d',
+                             'cmip5',
                              'ctrl_mass',
                              'flux_partitioning',
                              'per_basin_flux',
@@ -241,6 +242,84 @@ lhs_params_dict = {'FICE': {'param_name': 'surface.pdd.factor_ice', 'vmin': 4, '
                    'RFR': {'param_name': 'surface.pdd.refreeze', 'vmin': 25, 'vmax': 75, 'scale_factor': 100, 'symb': '$\psi$'}
 }
 
+def plot_cmip5(plot_var='delta_T'):
+
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+
+    time_bounds = [2008, 3000]
+
+    for k, rcp in enumerate(rcp_list[:]):
+
+        rcp_files = [f for f in ifiles if 'rcp{}'.format(rcp) in f]
+
+        ensstdm1_file = [f for f in rcp_files if 'ensstdm1' in f][0]
+        ensstdp1_file = [f for f in rcp_files if 'ensstdp1' in f][0]
+        giss_file = [f for f in rcp_files if 'GISS' in f][0]
+        
+        ensstdm1_cdf = cdo.readCdf(ensstdm1_file)
+        ensstdp1_cdf = cdo.readCdf(ensstdp1_file)
+        giss_cdf = cdo.readCdf(giss_file)
+        
+        t = ensstdp1_cdf.variables['time'][:]
+        cmip5_date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        t = giss_cdf.variables['time'][:]
+        giss_date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) * step,
+                         step) 
+
+        ensstdm1_vals = np.squeeze(ensstdm1_cdf.variables[plot_var][:])
+        ensstdp1_vals = np.squeeze(ensstdp1_cdf.variables[plot_var][:])
+        giss_vals = np.squeeze(giss_cdf.variables[plot_var][:])
+
+        ax.fill_between(cmip5_date,  ensstdm1_vals, ensstdp1_vals,
+                        alpha=0.25,
+                        linewidth=0.25,
+                        color=rcp_col_dict[rcp])
+        
+        ax.plot(giss_date, giss_vals, color=rcp_col_dict[rcp],
+                label=rcp_dict[rcp])
+    
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(.2, 0, .7, 0.89),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('T-anomaly (K)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_cmip5' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 def plot_ctrl_mass(plot_var=mass_plot_vars):
     
@@ -262,7 +341,7 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     if do_legend:
         legend = ax.legend(loc="upper right",
                            edgecolor='0',
-                           bbox_to_anchor=(0, 0, .35, 0.88),
+                           bbox_to_anchor=(0, 0, .8, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
     
@@ -338,7 +417,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
             # ensemble between 16th and 84th quantile
             ax.fill_between(date[:], enspctl16_vals, enspctl84_vals,
                             color=rcp_col_dict[rcp],
-                            alpha=0.5,
+                            alpha=0.4,
                             linewidth=0)
 
             ax.plot(date[:], ensmedian_vals,
@@ -467,7 +546,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
             # ensemble between 16th and 84th quantile
             ax.fill_between(date[:], enspctl16_vals, enspctl84_vals,
                             color=rcp_col_dict[rcp],
-                            alpha=0.5,
+                            alpha=0.4,
                             linewidth=0)
 
             ax.plot(date[:], ensmedian_vals,
@@ -861,7 +940,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
             # ensemble between 16th and 84th quantile
             ax.fill_between(date[:], enspctl16_vals, enspctl84_vals,
                             color=rcp_col_dict[rcp],
-                            alpha=0.5,
+                            alpha=0.4,
                             linewidth=0)
 
             ax.plot(date[:], ensmedian_vals,
@@ -1331,3 +1410,5 @@ elif plot == 'per_basin_d':
     plot_per_basin_flux(plot_var='discharge_flux')
 elif plot == 'flux_partitioning':
     plot_flux_partitioning()
+elif plot == 'cmip5':
+    plot_cmip5()
