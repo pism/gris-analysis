@@ -1498,10 +1498,7 @@ elif plot == 'per_basin_d':
     plot_per_basin_flux(plot_var='discharge_flux')
 elif plot == 'flux_partitioning':
     plot_flux_partitioning()
-<<<<<<< HEAD
 elif plot == 'cmip5':
     plot_cmip5()
-=======
 elif plot == 'stations':
     plot_point_ts()
->>>>>>> 771dcf79faf043544c3a3db6b5fab7e1d59e94bc
