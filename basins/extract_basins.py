@@ -55,6 +55,7 @@ def extract_basins():
                               snippet=False,
                               select_ugid=select_ugid,
                               output_format=output_format,
+                              output_format_options=output_format_options,
                               prefix=prefix,
                               dir_output=odir)
     ret = ops.execute()
@@ -114,6 +115,7 @@ savename=URI[0:len(URI)-3]
 
 ## set the output format to convert to
 output_format = 'nc'
+output_format_options = {'data_model': 'NETCDF4', 'variable_kwargs': {'zlib': True, 'complevel': 3}}
 
 ## we can either subset the data by a geometry from a shapefile, or convert to
 ## geojson for the entire spatial domain. there are other options here (i.e. a

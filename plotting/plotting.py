@@ -80,7 +80,7 @@ parser.add_argument("--plot", dest="plot",
                              'rcp_flux',
                              'rcp_fluxes',
                              'rcp_traj',
-                             'stations'],
+                             'station_usurf'],
                     default='rcp_mass')
 parser.add_argument("--title", dest="title",
                     help='''Plot title.''', default=None)
@@ -1500,5 +1500,5 @@ elif plot == 'flux_partitioning':
     plot_flux_partitioning()
 elif plot == 'cmip5':
     plot_cmip5()
-elif plot == 'stations':
+elif plot == 'station_usurf':
     plot_point_ts()
