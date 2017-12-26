@@ -28,20 +28,27 @@ def calc_deglaciation_time(infile, thickness_threshold):
     time = nc.variables['time']
     time_units = time.units
     time_calendar = time.calendar
-    thk = nc.variables['thk'][:]
     x = nc.variables['x'][:]
     y = nc.variables['y'][:]
-    deglac_time = nc.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+    thk = nc.variables['thk'][:]
+    if mvar not in nc.variables:
+        deglac_time = nc.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+    else:
+        deglac_time = nc.variables[mvar]
     deglac_time.long_name = 'year of deglaciation'
     nx = len(x)
     ny = len(y)
+    nxy = nx * ny
+    pt = 1
     for n in  range(ny):
         for m in range(nx):
-             try:
-                 idx = np.where(thk[:,n,m] < thickness_threshold)[0][0]
-                 deglac_time[n,m] = time[idx] / secpera
-             except:
-                 pass
+            print('Processing point {} of {}'.format(pt, nxy))
+            try:
+                idx = np.where(thk[:,n,m] < thickness_threshold)[0][0]
+                deglac_time[n,m] = time[idx] / secpera
+                pt += 1
+            except:
+                pass
     nc.close()
 
 
@@ -80,15 +87,15 @@ secpera = 24 * 3600 * 365  # for 365_day calendar only
 gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
 
 # Process experiments
-dir_nc = 'processed_spatial_nc'
-dir_gtiff = 'processed_spatial_gtiff'
+dir_nc = 'deglaciation_time'
+dir_gtiff = 'deglaction_time'
 mvar = 'deglac_year'
 
 for dir_processed in (dir_gtiff, dir_nc):
     if not os.path.isdir(os.path.join(idir, dir_processed)):
         os.mkdir(os.path.join(idir, dir_processed))
 
-exp_files = glob(os.path.join(idir, 'spatial', '*.nc'))
+exp_files = glob(os.path.join(idir, 'spatial', '*900m*CTRL*.nc'))
 for exp_file in exp_files:
     logger.info('Processing file {}'.format(exp_file))
     exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]

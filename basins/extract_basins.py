@@ -5,6 +5,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import ocgis
 import os
+from datetime import datetime
 
 import logging
 import logging.handlers
@@ -49,7 +50,9 @@ def extract_basins():
         ## this argument must always come in as a list
         select_ugid = [select_geom[0]['properties']['UGID']]
     ## parameterize the operations to be performed on the target dataset
+    time_range = [datetime(2008, 1, 1), datetime(3007, 1, 1)]
     ops = ocgis.OcgOperations(dataset=rd,
+                              time_range=time_range,
                               geom=SHAPEFILE_PATH,
                               aggregate=False,
                               snippet=False,
