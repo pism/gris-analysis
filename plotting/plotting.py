@@ -10,6 +10,7 @@ from netCDF4 import Dataset as NC
 
 import matplotlib as mpl
 import matplotlib.cm as cmx
+import matplotlib.colors as colors
 
 from cdo import Cdo
 cdo = Cdo()
@@ -19,6 +20,8 @@ import numpy as np
 import pandas as pa
 import pylab as plt
 from osgeo import ogr
+
+from unidecode import unidecode
 
 try:
     from pypismtools import unit_converter, smooth
@@ -73,9 +76,12 @@ parser.add_argument("--plot", dest="plot",
                              'cmip5',
                              'ctrl_mass',
                              'flux_partitioning',
+                             'grid_pc',
                              'grid_res',
                              'per_basin_flux',
                              'per_basin_d',
+                             'profile_speed',
+                             'profile_topo',
                              'rcp_mass',
                              'rcp_ens_mass',
                              'rcp_accum',
@@ -179,11 +185,14 @@ rcp_dict = {'26': 'RCP 2.6',
             '85': 'RCP 8.5',
             'CTRL': 'CTRL'}
 
-res_col_dict = {'900': '#238b45',
-                '1800': '#74c476',
+res_col_dict = {'450': '#006d2c',
+                '600': '#31a354',
+                '900': '#74c476',
+                '1800': '#bae4b3',
                 '3600': '#fcae91',
                 '4500': '#fb6a4a',
-                '9000': '#cb181d'}
+                '9000': '#de2d26',
+                '18000': '#a50f15'}
 
 flux_to_mass_vars_dict = {'tendency_of_ice_mass_glacierized': 'ice_mass',
              'tendency_of_ice_mass_due_to_flow': 'flow_cumulative',
@@ -318,6 +327,7 @@ def plot_cmip5(plot_var='delta_T'):
                            bbox_to_anchor=(.2, 0, .7, 0.89),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
     
     ax.set_xlabel('Year')
     ax.set_ylabel('T-anomaly (K)')
@@ -350,6 +360,92 @@ def plot_cmip5(plot_var='delta_T'):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
+def plot_profile_ts(plot_var='velsurf_mag'):
+
+    mcm = cm = plt.get_cmap('jet')
+
+    nc = NC(ifiles[0], 'r')
+    profile_names = nc.variables['profile_name'][:]
+    for k, profile in enumerate(profile_names):
+
+        print(u'Processing {} profile'.format(profile))
+        
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        profile_iunits = nc.variables['profile'].units
+        profile_ounits = 'km'
+        profile_vals = nc.variables['profile'][k, :]
+        profile_vals = unit_converter(profile_vals, profile_iunits, profile_ounits)
+
+        t_var = nc.variables['time'][:]
+        date = np.arange(start_year,
+                             start_year + (len(t_var[:]) + 1),
+                             step)
+        ma = np.where(date == time_bounds[0])[0][0]
+        me = np.where(date == time_bounds[1])[0][0]
+        plot_times = np.arange(ma, me+1, step)
+        nt = len(plot_times)
+        cNorm = colors.Normalize(vmin=time_bounds[0], vmax=time_bounds[1])
+        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=mcm)
+        for t in plot_times:
+            colorVal = scalarMap.to_rgba(date[t])
+            if plot_var not in ['topo']:
+                var_vals = nc.variables[plot_var][k, t, :]
+                mask = (var_vals < 1)
+                var_vals = np.ma.array(var_vals, mask = mask)
+                ax.plot(profile_vals, var_vals, color=colorVal)
+                ax.set_ylabel('speed (m/yr)')
+            else:
+                # mask_vals = nc.variables['mask'][k, t, :]
+                topg_vals = nc.variables['topg'][k, t, :]
+                thk_vals = nc.variables['thk'][k, t, :]
+                usurf_vals = nc.variables['usurf'][k, t, :]
+                mask = (thk_vals == 0)
+                thk_vals = np.ma.array(thk_vals, mask=mask)
+                try:
+                    idx = np.where(thk_vals > 0)[0][0]
+                    ax.plot([profile_vals[idx], profile_vals[idx]], [usurf_vals[idx], usurf_vals[idx] - thk_vals[idx]], color=colorVal)
+                    ax.plot(profile_vals[idx::], usurf_vals[idx::], color=colorVal)
+                    ax.plot(profile_vals[idx::], usurf_vals[idx::] - thk_vals[idx::], color=colorVal)
+                except:
+                    pass
+                ax.plot(profile_vals, topg_vals, color='k')
+                ax.set_ylabel('altitude (masl)')
+
+        ax.axhline(profile_vals[0], linestyle='dashed', color='k')
+        ax.set_xlabel('distance ({})'.format(profile_ounits))
+
+        # ax.set_xlim(0)
+        
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_{}_'.format(unidecode(profile).replace(' ', '_'))  + plot_var + '.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+    nc.close()
+
+
 def plot_point_ts(plot_var='usurf'):
 
     nc0 = NC(ifiles[0], 'r')
@@ -367,10 +463,20 @@ def plot_point_ts(plot_var='usurf'):
             nc = NC(rcp_file, 'r')
             t = nc.variables['time'][:]
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
             var_vals = nc.variables[plot_var][k, :]
             ax.plot(date, var_vals, color=rcp_col_dict[rcp], label=rcp_dict[rcp])
+            rel_change = - (var_vals[:] - var_vals[0]) / var_vals[0] * 100
+            for pc in [2]:
+                try:
+                    idx = np.where(rel_change >= pc)[0][0]
+                    ax.axvline(date[idx],
+                               linewidth=0.2,
+                               linestyle='dashed',
+                               color=rcp_col_dict[rcp])
+                except:
+                    pass
             nc.close()
 
         if do_legend:
@@ -379,7 +485,11 @@ def plot_point_ts(plot_var='usurf'):
                                bbox_to_anchor=(.12, 0.1, 0, 0),
                                bbox_transform=plt.gcf().transFigure)
             legend.get_frame().set_linewidth(0.0)
-    
+            legend.get_frame().set_alpha(0.0)
+
+
+            
+        
         ax.set_xlabel('Year')
         ax.set_ylabel('elevation change (m)')
                 
@@ -416,16 +526,17 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    plt.hlines(7.18, time_bounds[0], time_bounds[1],
-                   linestyle='dashed',
-                   linewidth=0.2)
+    ax.axhline(7.18,
+               color='k',
+               linestyle='dashed',
+               linewidth=0.2)
 
     for k, rcp in enumerate(rcp_list[::-1]):
         rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
         cdf = cdo.readCdf(rcp_file)
         t = cdf.variables['time'][:]
         date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
+                         start_year + (len(t[:]) + 1) ,
                          step) 
         var_vals = cdf.variables[plot_var][:] - cdf.variables[plot_var][0]
         iunits = cdf.variables[plot_var].units
@@ -436,12 +547,13 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
                  label=rcp_dict[rcp])
     
     if do_legend:
-        legend = ax.legend(loc="upper left",
+        legend = ax.legend(loc="center right",
                            edgecolor='0',
-                           bbox_to_anchor=(0.12, .875, 0, 0.),
+                           bbox_to_anchor=(0.91, .55),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
-    
+        legend.get_frame().set_alpha(0.0)
+
     ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
         
@@ -496,7 +608,7 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
             vals = unit_converter(vals, iunits, flux_ounits) 
 
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
             ax.plot(date[:], vals,
@@ -529,9 +641,9 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
                 tick.set_rotation(0)
                     
         if do_legend:
-            legend = ax.legend(loc="lower right",
+            legend = ax.legend(loc="center right",
                                edgecolor='0',
-                               bbox_to_anchor=(0.92, 0.075, 0, 0),
+                               bbox_to_anchor=(1.1, 0.5),
                                bbox_transform=plt.gcf().transFigure)
             legend.get_frame().set_linewidth(0.0)
             legend.get_frame().set_alpha(0.0)
@@ -548,6 +660,88 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
 
         for out_format in out_formats:
             out_file = outfile + '_rcp_{}_grid'.format(rcp) + '_'  + plot_var + '.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+        
+def plot_grid_pc(plot_var='limnsw'):
+
+    for k, rcp in enumerate(rcp_list[::-1]):
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)
+
+        print('Reading RCP {} files'.format(rcp))
+        rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        for m_file in rcp_files:
+            dr = re.search('gris_g(.+?)m', m_file).group(1)
+            cdf = cdo.runmean('11', input=m_file, returnCdf=True, options=pthreads)
+            
+            t = cdf.variables['time'][:]
+
+            vals = cdf.variables[plot_var][:]
+
+            date = np.arange(start_year + step,
+                             start_year + (len(t[:]) + 1) ,
+                             step) 
+
+            ax.plot(date[:], vals,
+                    color=res_col_dict[dr],
+                    linewidth=lw,
+                    label=dr)
+
+            for pc in [1, 2, 5, 10]:
+                try:
+                    idx = np.where(vals>= pc)[0][0]
+                    m_year = date[idx]
+                except:
+                    m_year = np.nan
+                print('{}m: {}% mass lost in Year {}'.format(dr, pc, m_year))            
+
+        
+        ax.set_xlabel('Year')
+        ax.set_ylabel('mass loss (%)')
+            
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if do_legend:
+            legend = ax.legend(loc="lower left",
+                               edgecolor='0',
+                               bbox_to_anchor=(0.12, 0.25, 0, 0),
+                               bbox_transform=plt.gcf().transFigure)
+            legend.get_frame().set_linewidth(0.0)
+            legend.get_frame().set_alpha(0.0)
+            
+            # handles, labels = ax.get_legend_handles_labels()
+            # labels = [int(f) for f in labels]
+            # # sort both labels and handles by labels
+            # labels, handles = zip(*sorted(zip(labels, handles), key=int))
+            # ax.legend(handles, labels)
+
+
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_rcp_{}_grid_percent'.format(rcp) + '_'  + plot_var + '.' + out_format
             print "  - writing image %s ..." % out_file
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
         
@@ -587,7 +781,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
         ensmedian_vals = -unit_converter(ensmedian_vals, iunits, mass_ounits) * gt2mSLE
 
         date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
+                         start_year + (len(t[:]) + 1) ,
                          step) 
 
 
@@ -618,7 +812,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
             cdf_ctrl = cdo.readCdf(rcp_ctrl_file)
             ctrl_t = cdf_ctrl.variables['time'][:]
             cdf_date = np.arange(start_year + step,
-                             start_year + (len(ctrl_t[:]) + 1) * step,
+                             start_year + (len(ctrl_t[:]) + 1) ,
                              step) 
 
             ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
@@ -650,7 +844,8 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
-    
+        legend.get_frame().set_alpha(0.0)
+
     ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
         
@@ -716,7 +911,7 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
             ensmedian_vals = -unit_converter(ensmedian_vals, iunits, mass_ounits) * gt2mSLE
 
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
 
@@ -747,7 +942,7 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                 cdf_ctrl = cdo.readCdf(rcp_ctrl_file)
                 ctrl_t = cdf_ctrl.variables['time'][:]
                 cdf_date = np.arange(start_year + step,
-                                 start_year + (len(ctrl_t[:]) + 1) * step,
+                                 start_year + (len(ctrl_t[:]) + 1) ,
                                  step) 
                 
                 ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
@@ -775,7 +970,8 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
-    
+        legend.get_frame().set_alpha(0.0)
+                
     ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
         
@@ -841,7 +1037,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
         ensmedian_vals = -unit_converter(ensmedian_vals, iunits, flux_ounits) * gt2cmSLE
 
         date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
+                         start_year + (len(t[:]) + 1) ,
                          step) 
 
 
@@ -872,7 +1068,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
             cdf_ctrl = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
             ctrl_t = cdf_ctrl.variables['time'][:]
             ctrl_date = np.arange(start_year + step,
-                                 start_year + (len(ctrl_t[:]) + 1) * step, step) 
+                                 start_year + (len(ctrl_t[:]) + 1) , step) 
 
             ctrl_vals = cdf_ctrl.variables[plot_var][:]
             iunits = cdf_ctrl[plot_var].units
@@ -913,6 +1109,8 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+                    
     
     ax.set_xlabel('Year')
     ax.set_ylabel('rate of GMSL rise (cm yr$^{\mathregular{-1}}$)')
@@ -983,7 +1181,7 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
             ensmedian_vals = -unit_converter(ensmedian_vals, iunits, flux_ounits) * gt2cmSLE
 
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
 
@@ -1014,7 +1212,7 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
                 cdf_ctrl = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
                 ctrl_t = cdf_ctrl.variables['time'][:]
                 ctrl_date = np.arange(start_year + step,
-                                     start_year + (len(ctrl_t[:]) + 1) * step, step) 
+                                     start_year + (len(ctrl_t[:]) + 1) , step) 
                 
                 ctrl_vals = cdf_ctrl.variables[plot_var][:]
                 iunits = cdf_ctrl[plot_var].units
@@ -1055,6 +1253,8 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
     
     ax.set_xlabel('Year')
     ax.set_ylabel('rate of GMSL rise (cm yr$^{\mathregular{-1}}$)')
@@ -1104,7 +1304,7 @@ def plot_flux_partitioning():
         cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
         t = cdf.variables['time'][:]
         date = np.arange(start_year + step,
-                              start_year + (len(t[:]) + 1) * step, step) 
+                              start_year + (len(t[:]) + 1) , step) 
 
         area_var = 'ice_area_glacierized'
         area_vals = cdf.variables[area_var][:]
@@ -1161,6 +1361,8 @@ def plot_flux_partitioning():
                            bbox_to_anchor=(.27, 0.11, 0, 0),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
     
         axa[2, m].set_xlabel('Year')
         axa[0, 0].set_ylabel('area (10$^{6}$ km$^{\mathregular{2}}$)')
@@ -1225,7 +1427,7 @@ def plot_basin_flux_partitioning():
             cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
             t = cdf.variables['time'][:]
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step, step) 
+                             start_year + (len(t[:]) + 1) , step) 
 
 
             tom_var = 'tendency_of_ice_mass'
@@ -1319,7 +1521,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
             ensmedian_vals = unit_converter(ensmedian_vals, iunits, flux_ounits)
 
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
 
@@ -1350,7 +1552,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
                 cdf_ctrl = cdo.readCdf(rcp_ctrl_file)
                 ctrl_t = cdf_ctrl.variables['time'][:]
                 cdf_date = np.arange(start_year + step,
-                                     start_year + (len(ctrl_t[:]) + 1) * step, step) 
+                                     start_year + (len(ctrl_t[:]) + 1) , step) 
                 
                 ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
                 iunits = cdf_ctrl[plot_var].units
@@ -1378,6 +1580,8 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
     
     ax.set_xlabel('Year')
     ax.set_ylabel('flux (Gt/yr)')
@@ -1453,7 +1657,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
             ensmedian_vals = iunits_cf.convert(ensmedian_vals, o_units_cf) * gt2mSLE
             
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
 
@@ -1492,6 +1696,8 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
                            bbox_to_anchor=(0, 0, .35, 0.88),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
     
     ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (cm/yr)')
@@ -1558,7 +1764,7 @@ def plot_rcp_traj_mass(plot_var=mass_plot_vars):
             mass_ensmedian_vals = -unit_converter(mass_ensmedian_vals, iunits, mass_ounits) * gt2mSLE
 
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
             for lhs_param in lhs_params_dict:
@@ -1666,7 +1872,7 @@ def plot_basin_mass():
         t = nc.variables["time"][:]
 
         date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
+                         start_year + (len(t[:]) + 1) ,
                          step) 
 
         idx = np.where(np.array(date) == time_bounds[-1])[0][0]
@@ -1730,6 +1936,8 @@ def plot_basin_mass():
                        bbox_to_anchor=(0, 0, 1.15, 1),
                        bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.2)
+    # legend.get_frame().set_alpha(0.0)
+
     
     ax.set_xlabel('Year')
     ax.set_ylabel('$\Delta$(GMSL) (m)')
@@ -1785,7 +1993,7 @@ def plot_basin_flux(plot_var='discharge'):
         t = cdf_run.variables["time"][:]
 
         date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
+                         start_year + (len(t[:]) + 1) ,
                          step) 
 
 
@@ -1849,7 +2057,7 @@ def plot_per_basin_flux(plot_var=None):
             cdf_run = cdo.runmean('11', input=rcp_file[0], returnCdf=True, options=pthreads)
             t = cdf_run.variables["time"][:]
             date = np.arange(start_year + step,
-                             start_year + (len(t[:]) + 1) * step,
+                             start_year + (len(t[:]) + 1) ,
                              step) 
 
             if plot_var is None:
@@ -1940,3 +2148,9 @@ elif plot == 'station_usurf':
     plot_point_ts()
 elif plot == 'grid_res':
     plot_grid_res()
+elif plot == 'grid_pc':
+    plot_grid_pc()
+elif plot == 'profile_speed':
+    plot_profile_ts(plot_var='velsurf_mag')
+elif plot == 'profile_topo':
+    plot_profile_ts(plot_var='topo')
