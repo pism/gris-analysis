@@ -80,6 +80,7 @@ parser.add_argument("--plot", dest="plot",
                              'grid_res',
                              'per_basin_flux',
                              'per_basin_d',
+                             'profile_combined',
                              'profile_speed',
                              'profile_topo',
                              'rcp_mass',
@@ -185,11 +186,10 @@ rcp_dict = {'26': 'RCP 2.6',
             '85': 'RCP 8.5',
             'CTRL': 'CTRL'}
 
-res_col_dict = {'450': '#006d2c',
-                '600': '#31a354',
-                '900': '#74c476',
-                '1800': '#bae4b3',
-                '3600': '#fcae91',
+res_col_dict = {'600': '#006d2c',
+                '900': '#31a354',
+                '1800': '#74c476',
+                '3600': '#bae4b3',
                 '4500': '#fb6a4a',
                 '9000': '#de2d26',
                 '18000': '#a50f15'}
@@ -315,7 +315,7 @@ def plot_cmip5(plot_var='delta_T'):
 
         ax.fill_between(cmip5_date,  ensstdm1_vals, ensstdp1_vals,
                         alpha=0.25,
-                        linewidth=0.25,
+                        linewidth=0.40,
                         color=rcp_col_dict[rcp])
         
         ax.plot(giss_date, giss_vals, color=rcp_col_dict[rcp],
@@ -396,7 +396,7 @@ def plot_profile_ts(plot_var='velsurf_mag'):
                 mask = (var_vals < 1)
                 var_vals = np.ma.array(var_vals, mask = mask)
                 ax.plot(profile_vals, var_vals, color=colorVal)
-                ax.set_ylabel('speed (m/yr)')
+                ax.set_ylabel('speed (m yr$^{\mathregular{-1}}$)')
             else:
                 # mask_vals = nc.variables['mask'][k, t, :]
                 topg_vals = nc.variables['topg'][k, t, :]
@@ -445,6 +445,95 @@ def plot_profile_ts(plot_var='velsurf_mag'):
 
     nc.close()
 
+def plot_profile_ts_combined():
+
+    mcm = cm = plt.get_cmap('jet')
+
+    nc = NC(ifiles[0], 'r')
+    profile_names = nc.variables['profile_name'][:]
+    for k, profile in enumerate(profile_names):
+
+        print(u'Processing {} profile'.format(profile))
+        
+        fig, ax = plt.subplots(2, 1, sharex='col', figsize=[3, 2])
+        fig.subplots_adjust(hspace=0.1, wspace=0.05)
+        
+        profile_iunits = nc.variables['profile'].units
+        profile_ounits = 'km'
+        profile_vals = nc.variables['profile'][k, :]
+        profile_vals = unit_converter(profile_vals, profile_iunits, profile_ounits)
+
+        t_var = nc.variables['time'][:]
+        date = np.arange(start_year,
+                             start_year + (len(t_var[:]) + 1),
+                             step)
+        ma = np.where(date == time_bounds[0])[0][0]
+        me = np.where(date == time_bounds[1])[0][0]
+        plot_times = np.arange(ma, me+1, step)
+        nt = len(plot_times)
+        cNorm = colors.Normalize(vmin=time_bounds[0], vmax=time_bounds[1])
+        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=mcm)
+        speed_vals_0 = np.nanmean(nc.variables['velsurf_mag'][k, 0:20, :], axis=0)
+        for t in plot_times:
+            colorVal = scalarMap.to_rgba(date[t])
+            # speed_vals = nc.variables['velsurf_mag'][k, t, :] - speed_vals_0
+            speed_vals = nc.variables['velsurf_mag'][k, t, :]
+            mask = (speed_vals < 1)
+            speed_vals = np.ma.array(speed_vals, mask = mask)
+            ax[0].plot(profile_vals, speed_vals, color=colorVal)
+            topg_vals = nc.variables['topg'][k, t, :]
+            thk_vals = nc.variables['thk'][k, t, :]
+            mask_vals = nc.variables['mask'][k, t, :]
+            usurf_vals = nc.variables['usurf'][k, t, :]
+            thk_mask = (thk_vals <= 20)
+            thk_vals = np.ma.array(thk_vals, mask=thk_mask)
+            try:
+                idx = np.where(thk_vals > 25)
+                # ax[1].plot([profile_vals[idx], profile_vals[idx]], [usurf_vals[idx], usurf_vals[idx] - thk_vals[idx]], color=colorVal)
+                ax[1].plot(profile_vals[idx], usurf_vals[idx], color=colorVal)
+                
+                bottom_vals = usurf_vals[:] - thk_vals[:]
+                ax[1].plot(profile_vals[:], bottom_vals[:], color=colorVal)
+            except:
+                pass
+            ax[1].plot(profile_vals, topg_vals, color='k')
+
+        xmin, xmax = ax[1].get_xlim()
+        ymin, ymax = ax[1].get_ylim()
+        
+        ax[0].set_ylabel('speed (m yr$^{\mathregular{-1}}$)')
+        ax[1].fill_between([xmin, xmax], [ymin, ymin], color='#6baed6', linewidth=0)
+        ax[1].fill_between(profile_vals, topg_vals * 0 + ymin, topg_vals, color='#fdbe85', linewidth=0)
+        ax[1].set_ylabel('altitude (masl)')
+        ax[1].axhline(profile_vals[0], linestyle='dashed', color='k')
+        ax[1].set_xlabel('distance ({})'.format(profile_ounits))
+
+        ax[1].set_xlim(np.nanmin(profile_vals), np.nanmax(profile_vals))
+        ax[1].set_ylim(np.nanmin(topg_vals))
+        ax[1].yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+        if bounds:
+            ax[0].set_ylim(bounds[0], bounds[1])
+            
+
+        if rotate_xticks:
+            ticklabels = ax[1].get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+        else:
+            ticklabels = ax[1].get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+                    
+        if title is not None:
+            plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + '_{}'.format(unidecode(profile).replace(' ', '_')) + '.' + out_format
+            print "  - writing image %s ..." % out_file
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+    nc.close()
 
 def plot_point_ts(plot_var='usurf'):
 
@@ -859,6 +948,12 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
 
     ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
 
+    # print ymin, ymax
+    # axr = ax.twinx()
+    # mn, mx = axr.get_ylim()
+    # axr.set_ylim(100, 0)
+    # axr.set_ylabel('% of initial volume')
+    
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
         for tick in ticklabels:
@@ -1289,7 +1384,7 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
 
 def plot_flux_partitioning():
 
-    fig, axa = plt.subplots(3, 3, sharex='col', sharey='row', figsize=[6, 4])
+    fig, axa = plt.subplots(4, 3, sharex='col', sharey='row', figsize=[6, 4])
     fig.subplots_adjust(hspace=0.05, wspace=0.05)
     
     for k, rcp in enumerate(rcp_list):
@@ -1302,9 +1397,13 @@ def plot_flux_partitioning():
         rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
         
         cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
+        cdf_cum = cdo.timcumsum(input=rcp_ctrl_file, returnCdf=True, options=pthreads)
         t = cdf.variables['time'][:]
         date = np.arange(start_year + step,
                               start_year + (len(t[:]) + 1) , step) 
+        t_cum = cdf_cum.variables['time'][:]
+        date_cum = np.arange(start_year + step,
+                              start_year + (len(t_cum[:]) + 1) , step) 
 
         area_var = 'ice_area_glacierized'
         area_vals = cdf.variables[area_var][:]
@@ -1312,97 +1411,123 @@ def plot_flux_partitioning():
 
         tom_var = 'tendency_of_ice_mass'
         tom_vals = cdf.variables[tom_var][:]
+        tom_cum_vals = cdf_cum.variables[tom_var][:]
         tom_s_vals = tom_vals / area_vals
         tom_iunits = cdf[tom_var].units
         tom_vals = unit_converter(tom_vals, tom_iunits, flux_ounits)
         tom_s_iunits = cf_units.Unit(tom_iunits) / cf_units.Unit(area_iunits)
         tom_s_vals = tom_s_iunits.convert(tom_s_vals, specific_flux_ounits) 
+        tom_cum_iunits = cdf[tom_var].units * cf_units.Unit('yr')
+        tom_cum_vals = unit_converter(tom_cum_vals, tom_cum_iunits, mass_ounits) * gt2mSLE
         
         snow_var = 'surface_accumulation_rate'
         snow_vals = cdf.variables[snow_var][:]
+        snow_cum_vals = cdf_cum.variables[snow_var][:]
         snow_s_vals = snow_vals / area_vals
         snow_iunits = cdf[snow_var].units
         snow_vals = unit_converter(snow_vals, snow_iunits, flux_ounits)
         snow_s_iunits = cf_units.Unit(snow_iunits) / cf_units.Unit(area_iunits)
         snow_s_vals = snow_s_iunits.convert(snow_s_vals, specific_flux_ounits) 
+        snow_cum_iunits = cdf[snow_var].units * cf_units.Unit('yr')
+        snow_cum_vals = unit_converter(snow_cum_vals, snow_cum_iunits, mass_ounits) * gt2mSLE
 
         ru_var = 'surface_runoff_rate'
         ru_vals = cdf.variables[ru_var][:]
+        ru_cum_vals = cdf_cum.variables[ru_var][:]
         ru_s_vals = ru_vals / area_vals
         ru_iunits = cdf[ru_var].units
         ru_vals = -unit_converter(ru_vals, ru_iunits, flux_ounits)
         ru_s_iunits = cf_units.Unit(ru_iunits) / cf_units.Unit(area_iunits)
         ru_s_vals = -ru_s_iunits.convert(ru_s_vals, specific_flux_ounits) 
+        ru_cum_iunits = cdf[ru_var].units * cf_units.Unit('yr')
+        ru_cum_vals = unit_converter(ru_cum_vals, ru_cum_iunits, mass_ounits) * gt2mSLE
 
         d_var = 'tendency_of_ice_mass_due_to_discharge'
         d_vals = cdf.variables[d_var][:]
+        d_cum_vals = cdf_cum.variables[d_var][:]
         d_s_vals = d_vals / area_vals
         d_iunits = cdf[d_var].units
         d_vals = unit_converter(d_vals, d_iunits, flux_ounits)
         d_s_iunits = cf_units.Unit(d_iunits) / cf_units.Unit(area_iunits)
         d_s_vals = d_s_iunits.convert(d_s_vals, specific_flux_ounits)
+        d_cum_iunits = cdf[d_var].units * cf_units.Unit('yr')
+        d_cum_vals = unit_converter(d_cum_vals, d_cum_iunits, mass_ounits) * gt2mSLE
 
         axa[0, m].plot(date, area_vals / 1e12)
         axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
         axa[0, m].set_title('{}'.format(rcp_dict[rcp]))
         
-        axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN')
-        axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU')
-        axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D')
+        axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
+        axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU', linewidth=0)
+        axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
         axa[1, m].plot(date, tom_vals, color='k', label='MB')
+        axa[1, m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
+        axa[1, m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
+        axa[1, m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
 
-        axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN')
-        axa[2, m].fill_between(date, 0, ru_s_vals, color='#fb6a4a', label='RU')
-        axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#74c476', label='D')
+        axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN', linewidth=0)
+        axa[2, m].fill_between(date, 0, ru_s_vals, color='#fb6a4a', label='RU', linewidth=0)
+        axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#74c476', label='D', linewidth=0)
         axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
+        axa[2, m].plot(date, snow_s_vals, color='#2171b5', linewidth=0.3)
+        axa[2, m].plot(date, ru_s_vals, color='#cb181d', linewidth=0.3)
+        axa[2, m].plot(date, ru_s_vals + d_s_vals, color='#238b45', linewidth=0.3)
 
-        legend = axa[2, 0].legend(loc="lower left",
-                           edgecolor='0',
-                           bbox_to_anchor=(.27, 0.11, 0, 0),
-                           bbox_transform=plt.gcf().transFigure)
-        legend.get_frame().set_linewidth(0.0)
-        legend.get_frame().set_alpha(0.0)
-
+        axa[3, m].plot(date_cum, -tom_cum_vals, color='k', label='MB', linewidth=0.5)
+        axa[3, m].plot(date_cum, snow_cum_vals, color='#2171b5', label='SN', linewidth=0.5)
+        axa[3, m].plot(date_cum, ru_cum_vals, color='#cb181d', label='RU', linewidth=0.5)
+        axa[3, m].plot(date_cum, -d_cum_vals, color='#238b45', label='D', linewidth=0.5)
     
-        axa[2, m].set_xlabel('Year')
+        axa[3, m].set_xlabel('Year')
         axa[0, 0].set_ylabel('area (10$^{6}$ km$^{\mathregular{2}}$)')
         axa[1, 0].set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
         axa[2, 0].set_ylabel('rate (kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
-            
-        if time_bounds:
-            for o in range(0, 3):
-                for p in range(0, 3):
-                    axa[o, p].set_xlim(time_bounds[0], time_bounds[1])
+        axa[3, 0].set_ylabel('$\Delta$(GMSL) (m)')
 
-        # if bounds:
-        #     ax.set_ylim(bounds[0], bounds[1])
+    legend = axa[3, 0].legend(loc="lower left",
+                              edgecolor='0',
+                              bbox_to_anchor=(.16, 0.15, 0, 0),
+                              bbox_transform=plt.gcf().transFigure)
+    legend.get_frame().set_linewidth(0.0)
+    legend.get_frame().set_alpha(0.0)
 
-            
-        # ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-        
-        add_inner_title(axa[0, 0], 'a', 'lower left')
-        add_inner_title(axa[0, 1], 'b', 'lower left')
-        add_inner_title(axa[0, 2], 'c', 'lower left')
-        add_inner_title(axa[1, 0], 'e', 'lower left')
-        add_inner_title(axa[1, 1], 'f', 'lower left')
-        add_inner_title(axa[1, 2], 'g', 'lower left')
-        add_inner_title(axa[2, 0], 'h', 'lower left')
-        add_inner_title(axa[2, 1], 'i', 'lower left')
-        add_inner_title(axa[2, 2], 'j', 'lower left')
-        
-        if rotate_xticks:
-            for o, p in range(0, 2), range(0, 2):
-                ticklabels = axa[o, p].get_xticklabels()
-                for tick in ticklabels:
-                    tick.set_rotation(30)
-        else:
-            for o, p in range(0, 2), range(0, 2):
-                ticklabels = axa[o, p].get_xticklabels()
-                for tick in ticklabels:
-                    tick.set_rotation(0)
-                    
-        # if title is not None:
-        #     plt.title(title)
+    if time_bounds:
+        for o in range(0, 3):
+            for p in range(0, 3):
+                axa[o, p].set_xlim(time_bounds[0], time_bounds[1])
+
+    # if bounds:
+    #     ax.set_ylim(bounds[0], bounds[1])
+
+
+    # ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+    add_inner_title(axa[0, 0], 'a', 'lower left')
+    add_inner_title(axa[0, 1], 'b', 'lower left')
+    add_inner_title(axa[0, 2], 'c', 'lower left')
+    add_inner_title(axa[1, 0], 'e', 'lower left')
+    add_inner_title(axa[1, 1], 'f', 'lower left')
+    add_inner_title(axa[1, 2], 'g', 'lower left')
+    add_inner_title(axa[2, 0], 'h', 'lower left')
+    add_inner_title(axa[2, 1], 'i', 'lower left')
+    add_inner_title(axa[2, 2], 'j', 'lower left')
+    add_inner_title(axa[3, 0], 'k', 'upper left')
+    add_inner_title(axa[3, 1], 'l', 'upper left')
+    add_inner_title(axa[3, 2], 'm', 'upper left')
+
+    if rotate_xticks:
+        for o, p in range(0, 2), range(0, 2):
+            ticklabels = axa[o, p].get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        for o, p in range(0, 2), range(0, 2):
+            ticklabels = axa[o, p].get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+
+    # if title is not None:
+    #     plt.title(title)
 
     
     for out_format in out_formats:
@@ -1429,7 +1554,6 @@ def plot_basin_flux_partitioning():
             date = np.arange(start_year + step,
                              start_year + (len(t[:]) + 1) , step) 
 
-
             tom_var = 'tendency_of_ice_mass'
             tom_vals = np.squeeze(cdf.variables[tom_var][:])
             tom_iunits = cdf[tom_var].units
@@ -1450,15 +1574,25 @@ def plot_basin_flux_partitioning():
             d_iunits = cdf[d_var].units
             d_vals = unit_converter(d_vals, d_iunits, flux_ounits)
 
-            ax.fill_between(date, 0, snow_vals, color='#6baed6', label='SN')
-            ax.fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU')
-            ax.fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D')
+            ax.fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
+            ax.fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU', linewidth=0)
+            ax.fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
             ax.plot(date, tom_vals, color='k', label='MB')
+            ax.plot(date, snow_vals, color='#2171b5', linewidth=0.3)
+            ax.plot(date, ru_vals, color='#cb181d', linewidth=0.3)
+            ax.plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
+            ax.axhline(0, color='k', linestyle='dotted')
             
             ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
         
             ax.set_xlabel('Year')
-            ax.set_ylabel('rate (Gt/yr)')
+            ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
+
+            if time_bounds:
+                ax.set_xlim(time_bounds[0], time_bounds[1])
+
+            if bounds:
+                ax.set_ylim(bounds[0], bounds[1])
         
             if rotate_xticks:
                 ticklabels = ax.get_xticklabels()
@@ -1584,7 +1718,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
 
     
     ax.set_xlabel('Year')
-    ax.set_ylabel('flux (Gt/yr)')
+    ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1700,7 +1834,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
 
     
     ax.set_xlabel('Year')
-    ax.set_ylabel('$\Delta$(GMSL) (cm/yr)')
+    ax.set_ylabel('$\Delta$(GMSL) (cm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -2066,7 +2200,7 @@ def plot_per_basin_flux(plot_var=None):
                 label_var = 'fluxes'
             else:
                 m_vars = plot_var
-                label_var = ''
+                label_var = plot_var[-1]
                 
             for m_var in m_vars:
 
@@ -2150,6 +2284,8 @@ elif plot == 'grid_res':
     plot_grid_res()
 elif plot == 'grid_pc':
     plot_grid_pc()
+elif plot == 'profile_combined':
+    plot_profile_ts_combined()
 elif plot == 'profile_speed':
     plot_profile_ts(plot_var='velsurf_mag')
 elif plot == 'profile_topo':
