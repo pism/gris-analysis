@@ -445,6 +445,7 @@ def plot_profile_ts(plot_var='velsurf_mag'):
 
     nc.close()
 
+
 def plot_profile_ts_combined():
 
     mcm = cm = plt.get_cmap('jet')
@@ -455,8 +456,8 @@ def plot_profile_ts_combined():
 
         print(u'Processing {} profile'.format(profile))
         
-        fig, ax = plt.subplots(2, 1, sharex='col', figsize=[3, 2])
-        fig.subplots_adjust(hspace=0.1, wspace=0.05)
+        fig, ax = plt.subplots(3, 1, sharex='col', figsize=[3, 2])
+        fig.subplots_adjust(hspace=0.15, wspace=0.05)
         
         profile_iunits = nc.variables['profile'].units
         profile_ounits = 'km'
@@ -476,44 +477,52 @@ def plot_profile_ts_combined():
         speed_vals_0 = np.nanmean(nc.variables['velsurf_mag'][k, 0:20, :], axis=0)
         for t in plot_times:
             colorVal = scalarMap.to_rgba(date[t])
-            # speed_vals = nc.variables['velsurf_mag'][k, t, :] - speed_vals_0
+            speed_vals = nc.variables['velsurf_mag'][k, t, :] - speed_vals_0
             speed_vals = nc.variables['velsurf_mag'][k, t, :]
+            # speed_basal_vals = nc.variables['velbase_mag'][k, t, :]
             mask = (speed_vals < 1)
             speed_vals = np.ma.array(speed_vals, mask = mask)
-            ax[0].plot(profile_vals, speed_vals, color=colorVal)
+            # speed_basal_vals = np.ma.array(speed_basal_vals, mask = mask)
+            # slip_ratio = speed_vals / speed_basal_vals
             topg_vals = nc.variables['topg'][k, t, :]
             thk_vals = nc.variables['thk'][k, t, :]
-            mask_vals = nc.variables['mask'][k, t, :]
             usurf_vals = nc.variables['usurf'][k, t, :]
             thk_mask = (thk_vals <= 20)
             thk_vals = np.ma.array(thk_vals, mask=thk_mask)
+            usurf_mask = (usurf_vals < 100)
+            usurf_mask = np.logical_or((usurf_vals < topg_vals), (thk_vals < 20))
+            usurf_vals = np.ma.array(usurf_vals, mask=usurf_mask)
+            ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color=colorVal)
+            ax[1].plot(profile_vals, speed_vals, color=colorVal)
             try:
-                idx = np.where(thk_vals > 25)
-                # ax[1].plot([profile_vals[idx], profile_vals[idx]], [usurf_vals[idx], usurf_vals[idx] - thk_vals[idx]], color=colorVal)
-                ax[1].plot(profile_vals[idx], usurf_vals[idx], color=colorVal)
-                
+                #idx = (np.where(topg_vals <= 0) and np.where(usurf_vals > 0))
+                idx = np.where(usurf_vals > 10)
+                ax[2].plot(profile_vals[idx],  usurf_vals[idx], color=colorVal)
                 bottom_vals = usurf_vals[:] - thk_vals[:]
-                ax[1].plot(profile_vals[:], bottom_vals[:], color=colorVal)
+                idx = np.where(topg_vals < 10)
+                ax[2].plot(profile_vals[idx], bottom_vals[idx], color=colorVal)
             except:
                 pass
-            ax[1].plot(profile_vals, topg_vals, color='k')
+            ax[2].plot(profile_vals, topg_vals, color='k')
 
         xmin, xmax = ax[1].get_xlim()
         ymin, ymax = ax[1].get_ylim()
         
-        ax[0].set_ylabel('speed (m yr$^{\mathregular{-1}}$)')
-        ax[1].fill_between([xmin, xmax], [ymin, ymin], color='#6baed6', linewidth=0)
-        ax[1].fill_between(profile_vals, topg_vals * 0 + ymin, topg_vals, color='#fdbe85', linewidth=0)
-        ax[1].set_ylabel('altitude (masl)')
-        ax[1].axhline(profile_vals[0], linestyle='dashed', color='k')
-        ax[1].set_xlabel('distance ({})'.format(profile_ounits))
+        ax[0].set_ylabel('Flux\n (km$^{\mathregular{2}}$ yr$^{\mathregular{-1}}$)', multialignment='center')
+        ax[1].set_ylabel('Speed\n (m yr$^{\mathregular{-1}}$)', multialignment='center')
+        ax[2].fill_between([xmin, xmax], [ymin, ymin], color='#6baed6', linewidth=0)
+        tz = ax[2].fill_between(profile_vals, topg_vals * 0 + ymin, topg_vals, color='#fdbe85', linewidth=0)
+        #tz.set_zorder(1)
+        ax[2].set_ylabel('Altitude\n (masl)', multialignment='center')
+        #ax[1].axhline(profile_vals[0], linestyle='dashed', color='k')
+        ax[2].set_xlabel('distance ({})'.format(profile_ounits))
 
-        ax[1].set_xlim(np.nanmin(profile_vals), np.nanmax(profile_vals))
-        ax[1].set_ylim(np.nanmin(topg_vals))
-        ax[1].yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+        ax[2].set_xlim(np.nanmin(profile_vals), np.nanmax(profile_vals))
+        ax[2].set_ylim(np.nanmin(topg_vals))
+        ax[2].yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
 
         if bounds:
-            ax[0].set_ylim(bounds[0], bounds[1])
+            ax[1].set_ylim(bounds[0], bounds[1])
             
 
         if rotate_xticks:
@@ -1394,9 +1403,12 @@ def plot_flux_partitioning():
             m = 1
         else:
             m = 2
-        rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
+
+        rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f and 'CTRL' in f][0]
+        rcp_ntrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
         
         cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
+        cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
         cdf_cum = cdo.timcumsum(input=rcp_ctrl_file, returnCdf=True, options=pthreads)
         t = cdf.variables['time'][:]
         date = np.arange(start_year + step,
@@ -1433,12 +1445,17 @@ def plot_flux_partitioning():
 
         ru_var = 'surface_runoff_rate'
         ru_vals = cdf.variables[ru_var][:]
+        ru_ntrl_vals = cdf_ntrl.variables[ru_var][:]
         ru_cum_vals = cdf_cum.variables[ru_var][:]
         ru_s_vals = ru_vals / area_vals
+        ru_ntrl_s_vals = ru_ntrl_vals / area_vals
         ru_iunits = cdf[ru_var].units
         ru_vals = -unit_converter(ru_vals, ru_iunits, flux_ounits)
+        ru_ntrl_iunits = cdf_ntrl[ru_var].units
+        ru_ntrl_vals = -unit_converter(ru_ntrl_vals, ru_iunits, flux_ounits)
         ru_s_iunits = cf_units.Unit(ru_iunits) / cf_units.Unit(area_iunits)
         ru_s_vals = -ru_s_iunits.convert(ru_s_vals, specific_flux_ounits) 
+        ru_ntrl_s_vals = -ru_s_iunits.convert(ru_ntrl_s_vals, specific_flux_ounits) 
         ru_cum_iunits = cdf[ru_var].units * cf_units.Unit('yr')
         ru_cum_vals = unit_converter(ru_cum_vals, ru_cum_iunits, mass_ounits) * gt2mSLE
 
@@ -1457,25 +1474,31 @@ def plot_flux_partitioning():
         axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
         axa[0, m].set_title('{}'.format(rcp_dict[rcp]))
         
-        axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
-        axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU', linewidth=0)
-        axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
-        axa[1, m].plot(date, tom_vals, color='k', label='MB')
+        lsn = axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
+        lruw = axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RW', linewidth=0)
+        lrul = axa[1, m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RL', linewidth=0)
+        ld = axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
+        lmb, = axa[1, m].plot(date, tom_vals, color='k', label='MB')
+        axa[1, m].axhline(0, color='k', linestyle='dotted')
         axa[1, m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
+        axa[1, m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
         axa[1, m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
         axa[1, m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
 
+        axa[2, m].axhline(0, color='k', linestyle='dotted')
         axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN', linewidth=0)
         axa[2, m].fill_between(date, 0, ru_s_vals, color='#fb6a4a', label='RU', linewidth=0)
         axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#74c476', label='D', linewidth=0)
+        axa[2, m].fill_between(date, 0, ru_ntrl_s_vals, color='#fdae6b', label='RUL', linewidth=0)
         axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
         axa[2, m].plot(date, snow_s_vals, color='#2171b5', linewidth=0.3)
         axa[2, m].plot(date, ru_s_vals, color='#cb181d', linewidth=0.3)
         axa[2, m].plot(date, ru_s_vals + d_s_vals, color='#238b45', linewidth=0.3)
 
+        axa[3, m].axhline(0, color='k', linestyle='dotted')
         axa[3, m].plot(date_cum, -tom_cum_vals, color='k', label='MB', linewidth=0.5)
-        axa[3, m].plot(date_cum, snow_cum_vals, color='#2171b5', label='SN', linewidth=0.5)
-        axa[3, m].plot(date_cum, ru_cum_vals, color='#cb181d', label='RU', linewidth=0.5)
+        axa[3, m].plot(date_cum, -snow_cum_vals, color='#2171b5', label='SN', linewidth=0.5)
+        axa[3, m].plot(date_cum, ru_cum_vals, color='#cb181d', label='RU=RW+RL', linewidth=0.5)
         axa[3, m].plot(date_cum, -d_cum_vals, color='#238b45', label='D', linewidth=0.5)
     
         axa[3, m].set_xlabel('Year')
@@ -1484,9 +1507,25 @@ def plot_flux_partitioning():
         axa[2, 0].set_ylabel('rate (kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
         axa[3, 0].set_ylabel('$\Delta$(GMSL) (m)')
 
-    legend = axa[3, 0].legend(loc="lower left",
+    legend = axa[2, 0].legend(handles=[lsn, lruw, lrul, ld, lmb],
+                              loc="lower left",
+                              ncol=1,
+                              labelspacing=0.1,
+                              handlelength=1.5,
+                              columnspacing=1,
                               edgecolor='0',
-                              bbox_to_anchor=(.16, 0.15, 0, 0),
+                              bbox_to_anchor=(.30, 0.29, 0, 0),
+                              bbox_transform=plt.gcf().transFigure)
+    legend.get_frame().set_linewidth(0.0)
+    legend.get_frame().set_alpha(0.0)
+
+    legend = axa[3, 0].legend(loc="lower left",
+                              ncol=1,
+                              labelspacing=0.1,
+                              handlelength=1.5,
+                              columnspacing=1,
+                              edgecolor='0',
+                              bbox_to_anchor=(.15, 0.18, 0, 0),
                               bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
@@ -1548,8 +1587,12 @@ def plot_basin_flux_partitioning():
 
             basin_files = [f for f in ifiles if 'b_{}'.format(basin) in f]
     
-            rcp_ctrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f]
+            rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f and 'CTRL' in f][0]
+            # rcp_ntrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
+        
             cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
+            # cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
+
             t = cdf.variables['time'][:]
             date = np.arange(start_year + step,
                              start_year + (len(t[:]) + 1) , step) 
