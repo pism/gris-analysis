@@ -52,7 +52,7 @@ def extract_basins():
     ## parameterize the operations to be performed on the target dataset
     time_range = [datetime(2008, 1, 1), datetime(3007, 1, 1)]
     ops = ocgis.OcgOperations(dataset=rd,
-                              time_range=time_range,
+                              #time_range=time_range,
                               geom=SHAPEFILE_PATH,
                               aggregate=False,
                               snippet=False,
