@@ -624,7 +624,7 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    ax.axhline(7.18,
+    ax.axhline(7.21,
                color='k',
                linestyle='dashed',
                linewidth=0.2)
@@ -647,7 +647,7 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     if do_legend:
         legend = ax.legend(loc="center right",
                            edgecolor='0',
-                           bbox_to_anchor=(0.91, .55),
+                           bbox_to_anchor=(0.91, .63),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)
@@ -1130,15 +1130,15 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 
         enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
         iunits = cdf_enspctl16[plot_var].units
-        enspctl16_vals = -unit_converter(enspctl16_vals, iunits, flux_ounits) * gt2cmSLE
+        enspctl16_vals = -unit_converter(enspctl16_vals, iunits, flux_ounits) * gt2mmSLE
 
         enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
         iunits = cdf_enspctl84[plot_var].units
-        enspctl84_vals = -unit_converter(enspctl84_vals, iunits, flux_ounits) * gt2cmSLE
+        enspctl84_vals = -unit_converter(enspctl84_vals, iunits, flux_ounits) * gt2mmSLE
 
         ensmedian_vals = cdf_ensmedian.variables[plot_var][:]
         iunits = cdf_ensmedian[plot_var].units
-        ensmedian_vals = -unit_converter(ensmedian_vals, iunits, flux_ounits) * gt2cmSLE
+        ensmedian_vals = -unit_converter(ensmedian_vals, iunits, flux_ounits) * gt2mmSLE
 
         date = np.arange(start_year + step,
                          start_year + (len(t[:]) + 1) ,
@@ -1176,7 +1176,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 
             ctrl_vals = cdf_ctrl.variables[plot_var][:]
             iunits = cdf_ctrl[plot_var].units
-            ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2cmSLE
+            ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
             ax.plot(ctrl_date[:], ctrl_vals,
                     color=rcp_col_dict[rcp],
                     linestyle='dashed',
@@ -1188,23 +1188,23 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
             m_median = ensmedian_vals[idx]
             m_pctl16 = enspctl16_vals[idx]
             m_pctl84 = enspctl84_vals[idx]
-            print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} cm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+            print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
 
         idx = np.argmax(ensmedian_vals)
         m_year = date[idx]
         m_val = ensmedian_vals[idx]
-        print('Max loss rate 50th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))            
+        print('Max loss rate 50th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))            
         idx = np.argmax(enspctl16_vals)
         m_val = enspctl16_vals[idx]
-        print('Max loss rate 16th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+        print('Max loss rate 16th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
         idx = np.argmax(enspctl84_vals)
         m_year = date[idx]
         m_val = enspctl84_vals[idx]
-        print('Max loss rate 84th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+        print('Max loss rate 84th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
         idx = np.argmax(enspctl84_vals)
         m_year = ctrl_date[idx]
         m_val = ctrl_vals[idx]
-        print('Max loss rate ctrl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+        print('Max loss rate ctrl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
 
 
     if do_legend:
@@ -1217,7 +1217,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                     
     
     ax.set_xlabel('Year')
-    ax.set_ylabel('rate of GMSL rise (cm yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('rate of GMSL rise (mm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1274,15 +1274,15 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
 
             enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
             iunits = cdf_enspctl16[plot_var].units
-            enspctl16_vals = -unit_converter(enspctl16_vals, iunits, flux_ounits) * gt2cmSLE
+            enspctl16_vals = -unit_converter(enspctl16_vals, iunits, flux_ounits) * gt2mmSLE
 
             enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
             iunits = cdf_enspctl84[plot_var].units
-            enspctl84_vals = -unit_converter(enspctl84_vals, iunits, flux_ounits) * gt2cmSLE
+            enspctl84_vals = -unit_converter(enspctl84_vals, iunits, flux_ounits) * gt2mmSLE
             
             ensmedian_vals = cdf_ensmedian.variables[plot_var][:]
             iunits = cdf_ensmedian[plot_var].units
-            ensmedian_vals = -unit_converter(ensmedian_vals, iunits, flux_ounits) * gt2cmSLE
+            ensmedian_vals = -unit_converter(ensmedian_vals, iunits, flux_ounits) * gt2mmSLE
 
             date = np.arange(start_year + step,
                              start_year + (len(t[:]) + 1) ,
@@ -1320,7 +1320,7 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
                 
                 ctrl_vals = cdf_ctrl.variables[plot_var][:]
                 iunits = cdf_ctrl[plot_var].units
-                ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2cmSLE
+                ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
                 ax.plot(ctrl_date[:], ctrl_vals,
                         color=rcp_col_dict[rcp],
                         linestyle='dashed',
@@ -1332,23 +1332,23 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
                 m_median = ensmedian_vals[idx]
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
-                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} cm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
 
             idx = np.argmax(ensmedian_vals)
             m_year = date[idx]
             m_val = ensmedian_vals[idx]
-            print('Max loss rate 50th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))            
+            print('Max loss rate 50th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))            
             idx = np.argmax(enspctl16_vals)
             m_val = enspctl16_vals[idx]
-            print('Max loss rate 16th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+            print('Max loss rate 16th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
             idx = np.argmax(enspctl84_vals)
             m_year = date[idx]
             m_val = enspctl84_vals[idx]
-            print('Max loss rate 84th pctl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+            print('Max loss rate 84th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
             idx = np.argmax(enspctl84_vals)
             m_year = ctrl_date[idx]
             m_val = ctrl_vals[idx]
-            print('Max loss rate ctrl in Year {}: {:1.3f} cm SLE year-1'.format(m_year, m_val))
+            print('Max loss rate ctrl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
 
 
     if do_legend:
@@ -1470,30 +1470,44 @@ def plot_flux_partitioning():
         d_cum_iunits = cdf[d_var].units * cf_units.Unit('yr')
         d_cum_vals = unit_converter(d_cum_vals, d_cum_iunits, mass_ounits) * gt2mSLE
 
+        b_var = 'tendency_of_ice_mass_due_to_basal_mass_flux'
+        b_vals = cdf.variables[b_var][:]
+        b_cum_vals = cdf_cum.variables[b_var][:]
+        b_s_vals = b_vals / area_vals
+        b_iunits = cdf[b_var].units
+        b_vals = unit_converter(b_vals, b_iunits, flux_ounits)
+        b_s_iunits = cf_units.Unit(b_iunits) / cf_units.Unit(area_iunits)
+        b_s_vals = b_s_iunits.convert(b_s_vals, specific_flux_ounits)
+
         la, = axa[0, m].plot(date, area_vals / 1e12, label='area')
         axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
         axa[0, m].set_title('{}'.format(rcp_dict[rcp]))
         
         lsn = axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
-        lruw = axa[1, m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RW', linewidth=0)
-        lrul = axa[1, m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RL', linewidth=0)
-        ld = axa[1, m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
-        lmb, = axa[1, m].plot(date, tom_vals, color='k', label='MB')
+        lb = axa[1, m].fill_between(date, 0, b_vals, color='#9e9ac8', label='B', linewidth=0)
+        lruw = axa[1, m].fill_between(date, b_vals, b_vals + ru_vals, color='#fb6a4a', label='RW', linewidth=0)
+        lrul = axa[1, m].fill_between(date, b_vals, b_vals + ru_ntrl_vals, color='#fdae6b', label='RL', linewidth=0)
+        ld = axa[1, m].fill_between(date, b_vals + ru_vals, b_vals + ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
         axa[1, m].axhline(0, color='k', linestyle='dotted')
         axa[1, m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
-        axa[1, m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
-        axa[1, m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
-        axa[1, m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
+        axa[1, m].plot(date, b_vals, color='#54278f', linewidth=0.3)
+        axa[1, m].plot(date, b_vals + ru_ntrl_vals, color='#e6550d', linewidth=0.3)
+        axa[1, m].plot(date, b_vals + ru_vals, color='#cb181d', linewidth=0.3)
+        axa[1, m].plot(date, b_vals + ru_vals + d_vals, color='#238b45', linewidth=0.3)
+        lmb, = axa[1, m].plot(date, tom_vals, color='k', label='MB')
 
+        lsn = axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN', linewidth=0)
+        lb = axa[2, m].fill_between(date, 0, b_s_vals, color='#9e9ac8', label='B', linewidth=0)
+        lruw = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_s_vals, color='#fb6a4a', label='RW', linewidth=0)
+        lrul = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_ntrl_s_vals, color='#fdae6b', label='RL', linewidth=0)
+        ld = axa[2, m].fill_between(date, b_s_vals + ru_s_vals, b_s_vals + ru_s_vals + d_s_vals, color='#74c476', label='D', linewidth=0)
         axa[2, m].axhline(0, color='k', linestyle='dotted')
-        axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN', linewidth=0)
-        axa[2, m].fill_between(date, 0, ru_s_vals, color='#fb6a4a', label='RU', linewidth=0)
-        axa[2, m].fill_between(date, ru_s_vals, ru_s_vals + d_s_vals, color='#74c476', label='D', linewidth=0)
-        axa[2, m].fill_between(date, 0, ru_ntrl_s_vals, color='#fdae6b', label='RUL', linewidth=0)
-        axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
         axa[2, m].plot(date, snow_s_vals, color='#2171b5', linewidth=0.3)
-        axa[2, m].plot(date, ru_s_vals, color='#cb181d', linewidth=0.3)
-        axa[2, m].plot(date, ru_s_vals + d_s_vals, color='#238b45', linewidth=0.3)
+        axa[2, m].plot(date, b_s_vals, color='#54278f', linewidth=0.3)
+        axa[2, m].plot(date, b_s_vals + ru_ntrl_s_vals, color='#e6550d', linewidth=0.3)
+        axa[2, m].plot(date, b_s_vals + ru_s_vals, color='#cb181d', linewidth=0.3)
+        axa[2, m].plot(date, b_s_vals + ru_s_vals + d_s_vals, color='#238b45', linewidth=0.3)
+        lmb, = axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
 
         axa[3, m].axhline(100, color='k', linestyle='dotted')
         axa[3, m].plot(date, -ru_vals / snow_vals * 100, color='#cb181d', label='RU=RW+RL', linewidth=0.5)
@@ -1518,7 +1532,7 @@ def plot_flux_partitioning():
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
 
-    legend = axa[2, 0].legend(handles=[lsn, lruw, lrul, ld, lmb],
+    legend = axa[2, 0].legend(handles=[lsn, lruw, lrul, ld, lb, lmb],
                               loc="lower left",
                               ncol=2,
                               labelspacing=0.1,
@@ -1899,7 +1913,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
                 m_median = ensmedian_vals[idx]
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
-                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} cm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
 
 
     if do_legend:
