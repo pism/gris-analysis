@@ -1482,28 +1482,31 @@ def plot_flux_partitioning():
         la, = axa[0, m].plot(date, area_vals / 1e12, label='area')
         axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
         axa[0, m].set_title('{}'.format(rcp_dict[rcp]))
+
+        # Don't plot basal mass balance
+        b_vals = b_s_vals = 0
         
         lsn = axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
-        lb = axa[1, m].fill_between(date, 0, b_vals, color='#9e9ac8', label='B', linewidth=0)
+        # lb = axa[1, m].fill_between(date, 0, b_vals, color='#9e9ac8', label='B', linewidth=0)
         lruw = axa[1, m].fill_between(date, b_vals, b_vals + ru_vals, color='#fb6a4a', label='RW', linewidth=0)
         lrul = axa[1, m].fill_between(date, b_vals, b_vals + ru_ntrl_vals, color='#fdae6b', label='RL', linewidth=0)
         ld = axa[1, m].fill_between(date, b_vals + ru_vals, b_vals + ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
         axa[1, m].axhline(0, color='k', linestyle='dotted')
         axa[1, m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
-        axa[1, m].plot(date, b_vals, color='#54278f', linewidth=0.3)
+        # axa[1, m].plot(date, b_vals, color='#54278f', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_ntrl_vals, color='#e6550d', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_vals, color='#cb181d', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_vals + d_vals, color='#238b45', linewidth=0.3)
         lmb, = axa[1, m].plot(date, tom_vals, color='k', label='MB')
 
         lsn = axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN', linewidth=0)
-        lb = axa[2, m].fill_between(date, 0, b_s_vals, color='#9e9ac8', label='B', linewidth=0)
+        # lb = axa[2, m].fill_between(date, 0, b_s_vals, color='#9e9ac8', label='B', linewidth=0)
         lruw = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_s_vals, color='#fb6a4a', label='RW', linewidth=0)
         lrul = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_ntrl_s_vals, color='#fdae6b', label='RL', linewidth=0)
         ld = axa[2, m].fill_between(date, b_s_vals + ru_s_vals, b_s_vals + ru_s_vals + d_s_vals, color='#74c476', label='D', linewidth=0)
         axa[2, m].axhline(0, color='k', linestyle='dotted')
         axa[2, m].plot(date, snow_s_vals, color='#2171b5', linewidth=0.3)
-        axa[2, m].plot(date, b_s_vals, color='#54278f', linewidth=0.3)
+        # axa[2, m].plot(date, b_s_vals, color='#54278f', linewidth=0.3)
         axa[2, m].plot(date, b_s_vals + ru_ntrl_s_vals, color='#e6550d', linewidth=0.3)
         axa[2, m].plot(date, b_s_vals + ru_s_vals, color='#cb181d', linewidth=0.3)
         axa[2, m].plot(date, b_s_vals + ru_s_vals + d_s_vals, color='#238b45', linewidth=0.3)
@@ -1532,7 +1535,7 @@ def plot_flux_partitioning():
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
 
-    legend = axa[2, 0].legend(handles=[lsn, lruw, lrul, ld, lb, lmb],
+    legend = axa[2, 0].legend(handles=[lsn, lruw, lrul, ld, lmb],
                               loc="lower left",
                               ncol=2,
                               labelspacing=0.1,
@@ -1653,11 +1656,11 @@ def plot_basin_flux_partitioning():
             
             lsn = axa[k,m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
             lruw = axa[k,m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU', linewidth=0)
-            lrul = axa[k,m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RL', linewidth=0)
+            # lrul = axa[k,m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RW', linewidth=0)
             ld = axa[k,m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
             axa[k,m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
             axa[k,m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
-            axa[k,m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
+            #axa[k,m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
             axa[k,m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
             lmb, = axa[k,m].plot(date, tom_vals, color='k', label='MB')
             axa[k,m].axhline(0, color='k', linestyle='dotted')
@@ -1684,9 +1687,9 @@ def plot_basin_flux_partitioning():
                 for tick in ticklabels:
                     tick.set_rotation(0)
                     
-    legend = axa[5, 0].legend(handles=[lsn, lruw, lrul, ld, lmb],
+    legend = axa[5, 0].legend(handles=[lsn, lruw, ld, lmb],
                               loc="lower left",
-                              ncol=3,
+                              ncol=2,
                               labelspacing=0.1,
                               handlelength=1.5,
                               columnspacing=1,

@@ -19,47 +19,67 @@ from argparse import ArgumentParser
 from netCDF4 import Dataset as NC
 from netcdftime import utime
 
-def calc_deglaciation_time(infile, thickness_threshold):
+def calc_deglaciation_time(infile, outfile, thickness_threshold):
     '''
     Calculate year of deglaciation (e.g. when ice thickness
     drops below threshold 'thickness_threshold')
     '''
-    nc = NC(infile, 'a')
-    time = nc.variables['time']
+    nc_in = NC(infile, 'r')
+    nc_out = NC(outfile, 'w')
+    for dname, the_dim in nc_in.dimensions.iteritems():
+        nc_out.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
+
+    # Copy variables
+    for v_name in ['x', 'y', 'time']:
+        varin = nc_in.variables[v_name]
+        outVar = nc_out.createVariable(v_name, varin.datatype, varin.dimensions)
+    
+        # Copy variable attributes
+        outVar.setncatts({k: varin.getncattr(k) for k in varin.ncattrs()})
+    
+        outVar[:] = varin[:]
+        
+    time = nc_out.variables['time']
     time_units = time.units
     time_calendar = time.calendar
-    x = nc.variables['x'][:]
-    y = nc.variables['y'][:]
-    thk = nc.variables['thk'][:]
-    if mvar not in nc.variables:
-        deglac_time = nc.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+
+    x = nc_out.variables['x'][:]
+    y = nc_out.variables['y'][:]
+
+    # thk = nc_in.variables['thk'][:]
+    if mvar not in nc_out.variables:
+        deglac_time = nc_out.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
     else:
-        deglac_time = nc.variables[mvar]
+        deglac_time = nc_out.variables[mvar]
     deglac_time.long_name = 'year of deglaciation'
+    print 'bye'
     nx = len(x)
     ny = len(y)
     nxy = nx * ny
     pt = 1
     for n in  range(ny):
-        for m in range(nx):
+        for m in range(nx):                
             print('Processing point {} of {}'.format(pt, nxy))
+            # Only get first 1000 years
+            thk = nc_in.variables['thk'][0:1000, n, m]
             try:
-                idx = np.where(thk[:,n,m] < thickness_threshold)[0][0]
+                idx = np.where(thk < thickness_threshold)[0][0]
                 deglac_time[n,m] = time[idx] / secpera
                 pt += 1
             except:
                 pass
-    nc.close()
+    nc_in.close()
+    nc_out.close()
 
 
 # set up the option parser
 parser = ArgumentParser()
 parser.description = "Postprocessing files."
-parser.add_argument("INDIR", nargs=1,
-                    help="main directory", default=None)
+parser.add_argument("FILE", nargs=1,
+                    help="File to process", default=None)
 
 options = parser.parse_args()
-idir = options.INDIR[0]
+exp_file= options.FILE[0]
 
 # create logger
 logger = logging.getLogger('postprocess')
@@ -91,19 +111,22 @@ dir_nc = 'deglaciation_time'
 dir_gtiff = 'deglaction_time'
 mvar = 'deglac_year'
 
+print exp_file
+idir =  os.path.split(exp_file)[0].split('/')[0]
+
 for dir_processed in (dir_gtiff, dir_nc):
     if not os.path.isdir(os.path.join(idir, dir_processed)):
         os.mkdir(os.path.join(idir, dir_processed))
 
-exp_files = glob(os.path.join(idir, 'spatial', '*900m*CTRL*.nc'))
-for exp_file in exp_files:
-    logger.info('Processing file {}'.format(exp_file))
-    exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
-    exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
-    nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
-    calc_deglaciation_time(exp_nc_wd, thickness_threshold)
-    m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
-    m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
-    logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))
-    gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
+logger.info('Processing file {}'.format(exp_file))
+exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
+exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
+#nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
+
+    
+calc_deglaciation_time(exp_file, exp_nc_wd, thickness_threshold)
+m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
+m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
+logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))
+gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
 

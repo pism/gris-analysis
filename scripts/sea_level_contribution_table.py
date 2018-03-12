@@ -136,6 +136,9 @@ def mass_rate_table(prefix, window_width=20, years=[2100, 2200, 2500, 3000]):
         {"label"    : "total",
          "variable" : "tendency_of_ice_mass",
          "sign"     : 1.0},
+        {"label"    : "snowfall",
+         "variable" : "surface_accumulation_rate",
+         "sign"     : 1.0},    # positive means mass loss
         {"label"    : "runoff",
          "variable" : "surface_runoff_rate",
          "sign"     : -1.0},    # positive means mass loss
