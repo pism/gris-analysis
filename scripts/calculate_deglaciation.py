@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 from netCDF4 import Dataset as NC
 from netcdftime import utime
 
-def calc_deglaciation_time(infile, outfile, thickness_threshold):
+def calc_deglaciation_time(infile, outfile, output_variable_name, thickness_threshold):
     '''
     Calculate year of deglaciation (e.g. when ice thickness
     drops below threshold 'thickness_threshold')
@@ -47,10 +47,10 @@ def calc_deglaciation_time(infile, outfile, thickness_threshold):
     y = nc_out.variables['y'][:]
 
     # thk = nc_in.variables['thk'][:]
-    if mvar not in nc_out.variables:
-        deglac_time = nc_out.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+    if output_variable_name not in nc_out.variables:
+        deglac_time = nc_out.createVariable(output_variable_name, 'f', dimensions=('y', 'x'), fill_value=0)
     else:
-        deglac_time = nc_out.variables[mvar]
+        deglac_time = nc_out.variables[output_variable_name]
     deglac_time.long_name = 'year of deglaciation'
 
     nx = len(x)
@@ -72,62 +72,61 @@ def calc_deglaciation_time(infile, outfile, thickness_threshold):
     nc_in.close()
     nc_out.close()
 
+if __name__ == "__main__":
+    # set up the option parser
+    parser = ArgumentParser()
+    parser.description = "Postprocessing files."
+    parser.add_argument("FILE", nargs=1,
+                        help="File to process", default=None)
 
-# set up the option parser
-parser = ArgumentParser()
-parser.description = "Postprocessing files."
-parser.add_argument("FILE", nargs=1,
-                    help="File to process", default=None)
+    options = parser.parse_args()
+    exp_file= options.FILE[0]
 
-options = parser.parse_args()
-exp_file= options.FILE[0]
+    # create logger
+    logger = logging.getLogger('postprocess')
+    logger.setLevel(logging.DEBUG)
 
-# create logger
-logger = logging.getLogger('postprocess')
-logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.handlers.RotatingFileHandler('prepare_velocity_observations.log')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
 
-# create file handler which logs even debug messages
-fh = logging.handlers.RotatingFileHandler('prepare_velocity_observations.log')
-fh.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
+    # add formatter to ch and fh
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
 
-# add formatter to ch and fh
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
 
-# add ch to logger
-logger.addHandler(ch)
-logger.addHandler(fh)
+    thickness_threshold = 10
+    secpera = 24 * 3600 * 365  # for 365_day calendar only
+    gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
 
-thickness_threshold = 10
-secpera = 24 * 3600 * 365  # for 365_day calendar only
-gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
+    # Process experiments
+    dir_nc = 'deglaciation_time'
+    dir_gtiff = 'deglaction_time'
+    output_variable_name = 'deglac_year'
 
-# Process experiments
-dir_nc = 'deglaciation_time'
-dir_gtiff = 'deglaction_time'
-mvar = 'deglac_year'
+    print exp_file
+    idir =  os.path.split(exp_file)[0].split('/')[0]
 
-print exp_file
-idir =  os.path.split(exp_file)[0].split('/')[0]
+    for dir_processed in (dir_gtiff, dir_nc):
+        if not os.path.isdir(os.path.join(idir, dir_processed)):
+            os.mkdir(os.path.join(idir, dir_processed))
 
-for dir_processed in (dir_gtiff, dir_nc):
-    if not os.path.isdir(os.path.join(idir, dir_processed)):
-        os.mkdir(os.path.join(idir, dir_processed))
+    logger.info('Processing file {}'.format(exp_file))
+    exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
+    exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
+    #nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
 
-logger.info('Processing file {}'.format(exp_file))
-exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
-exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
-#nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
 
-    
-calc_deglaciation_time(exp_file, exp_nc_wd, thickness_threshold)
-m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
-m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
-logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))
-gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
-
+    calc_deglaciation_time(exp_file, exp_nc_wd, output_variable_name, thickness_threshold)
+    m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, output_variable_name)
+    m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, output_variable_name + '_' + exp_basename + '.tif')
+    logger.info('Converting variable {} to GTiff and save as {}'.format(output_variable_name, m_exp_gtiff_wd))
+    gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
