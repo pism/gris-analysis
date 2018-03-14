@@ -95,7 +95,7 @@ def process_block(time, H, H_threshold, t_min, output):
         for c in range(n_cols):
             if output[r, c] < t_min: # assume that the computed value is always greater than t_min
                 try:
-                    idx = np.where(H[r, c, :] < H_threshold)[0][0]
+                    idx = np.where(H[:, r, c] < H_threshold)[0][0]
                     output[r, c] = time[idx] / secpera
                 except:
                     pass
@@ -144,13 +144,13 @@ def calc_deglaciation_time_2(infile, outfile, output_variable_name, thickness_th
     N = block_size(thk.shape, memory_limit)
     while k + N < t_length + 1:
         print("Processing records from {} to {}...".format(k, k + N - 1))
-        H = np.array(np.transpose(thk[k:k + N], (1, 2, 0)), copy=True)
+        H = thk[k:k + N]
         process_block(time[k:k + N], H, thickness_threshold, t_min, result)
         k += N
 
     if k < t_length:
         print("Processing records from {} to {}...".format(k, t_length - 1))
-        H = np.array(np.transpose(thk[k:], (1, 2, 0)), copy=True)
+        H = thk[k:]
         process_block(time[k:], H, thickness_threshold, t_min, result)
 
     deglac_time[:] = result
