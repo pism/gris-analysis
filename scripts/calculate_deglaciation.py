@@ -137,23 +137,23 @@ def calc_deglaciation_time_2(infile, outfile, output_variable_name, thickness_th
     thk = nc_in.variables["thk"]
 
     # set to a value below the first time record
-    tmp = np.zeros_like(deglac_time) + t_min
-    tmp[thk[0] >= thickness_threshold] = t_min - 1.0
-
-    deglac_time[:] = tmp
+    result = np.zeros_like(deglac_time) + t_min
+    result[thk[0] >= thickness_threshold] = t_min - 1.0
 
     k = 0
     N = block_size(thk.shape, memory_limit)
     while k + N < t_length + 1:
         print("Processing records from {} to {}...".format(k, k + N - 1))
         H = np.array(np.transpose(thk[k:k + N], (1, 2, 0)), copy=True)
-        process_block(time[k:k + N], H, thickness_threshold, t_min, deglac_time)
+        process_block(time[k:k + N], H, thickness_threshold, t_min, result)
         k += N
 
     if k < t_length:
         print("Processing records from {} to {}...".format(k, t_length - 1))
         H = np.array(np.transpose(thk[k:], (1, 2, 0)), copy=True)
-        process_block(time[k:], H, thickness_threshold, t_min, deglac_time)
+        process_block(time[k:], H, thickness_threshold, t_min, result)
+
+    deglac_time[:] = result
 
     nc_in.close()
     nc_out.close()
