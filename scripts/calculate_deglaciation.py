@@ -158,19 +158,7 @@ def calc_deglaciation_time_2(infile, outfile, output_variable_name, thickness_th
     nc_in.close()
     nc_out.close()
 
-if __name__ == "__main__":
-    # set up the option parser
-    parser = ArgumentParser()
-    parser.description = "Postprocessing files."
-    parser.add_argument("FILE", nargs=1,
-                        help="File to process", default=None)
-    parser.add_argument("-m", help="Memory limit, in Mb", default=1024, type=int)
-
-    options = parser.parse_args()
-    exp_file= options.FILE[0]
-
-    memory_limit = options.m * 2**20
-
+def create_logger():
     # create logger
     logger = logging.getLogger('postprocess')
     logger.setLevel(logging.DEBUG)
@@ -192,15 +180,30 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.addHandler(fh)
 
-    thickness_threshold = 10
-    secpera = 24 * 3600 * 365  # for 365_day calendar only
+    return logger
+
+if __name__ == "__main__":
+
+    logger = create_logger()
+
+    parser = ArgumentParser()
+    parser.description = "Postprocessing files."
+    parser.add_argument("FILE", nargs=1,
+                        help="File to process", default=None)
+    parser.add_argument("-m", help="Memory limit, in Mb", default=1024, type=int)
+    options = parser.parse_args()
+
+    exp_file     = options.FILE[0]
+    memory_limit = options.m * 2**20
+
+    thickness_threshold = 10    # meters
+    secpera = 24 * 3600 * 365   # for the 365_day calendar only
 
     # Process experiments
     dir_nc = 'deglaciation_time_nc'
     dir_gtiff = 'deglaciation_time_tif'
     output_variable_name = 'deglac_year'
 
-    print exp_file
     idir =  os.path.split(exp_file)[0].split('/')[0]
 
     for dir_processed in (dir_gtiff, dir_nc):
@@ -213,9 +216,11 @@ if __name__ == "__main__":
 
     calc_deglaciation_time_2(exp_file, exp_nc_wd, output_variable_name, thickness_threshold,
                              memory_limit)
+
     m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, output_variable_name)
     m_exp_gtiff_wd = os.path.join(idir, dir_gtiff,
                                   output_variable_name + '_' + exp_basename + '.tif')
+
     logger.info('Converting variable {} to GTiff and save as {}'.format(output_variable_name,
                                                                         m_exp_gtiff_wd))
 
