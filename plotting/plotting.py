@@ -75,6 +75,7 @@ parser.add_argument("--plot", dest="plot",
                              'basin_flux_partitioning',
                              'cmip5',
                              'ctrl_mass',
+                             'percent_mass',
                              'flux_partitioning',
                              'grid_pc',
                              'grid_res',
@@ -140,7 +141,7 @@ shadow_color = '0.25'
 numpoints = 1
 
 fontsize = 6
-lw = 0.4
+lw = 0.65 
 aspect_ratio = 0.35
 markersize = 2
 fig_width = 3.1  # inch
@@ -180,6 +181,10 @@ rcp_col_dict = {'CTRL': 'k',
                 '85': '#d94701',
                 '45': '#fd8d3c',
                 '26': '#fdbe85'}
+rcp_col_dict = {'CTRL': 'k',
+                '85': '#7f2704',
+                '45': '#f16913',
+                '26': '#fdd0a2'}
 
 rcp_dict = {'26': 'RCP 2.6',
             '45': 'RCP 4.5',
@@ -314,12 +319,12 @@ def plot_cmip5(plot_var='delta_T'):
         giss_vals = np.squeeze(giss_cdf.variables[plot_var][:])
 
         ax.fill_between(cmip5_date,  ensstdm1_vals, ensstdp1_vals,
-                        alpha=0.25,
-                        linewidth=0.40,
+                        alpha=0.40,
+                        linewidth=0.50,
                         color=rcp_col_dict[rcp])
         
         ax.plot(giss_date, giss_vals, color=rcp_col_dict[rcp],
-                label=rcp_dict[rcp])
+                label=rcp_dict[rcp], linewidth=lw)
     
     if do_legend:
         legend = ax.legend(loc="upper right",
@@ -510,7 +515,8 @@ def plot_profile_ts_combined():
         
         ax[0].set_ylabel('Flux\n (km$^{\mathregular{2}}$ yr$^{\mathregular{-1}}$)', multialignment='center')
         ax[1].set_ylabel('Speed\n (m yr$^{\mathregular{-1}}$)', multialignment='center')
-        ax[2].fill_between([xmin, xmax], [ymin, ymin], color='#6baed6', linewidth=0)
+        ax[2].fill_between([xmin, xmax], [ymin, ymin], color='#c6dbef', linewidth=0)
+
         tz = ax[2].fill_between(profile_vals, topg_vals * 0 + ymin, topg_vals, color='#fdbe85', linewidth=0)
         #tz.set_zorder(1)
         ax[2].set_ylabel('Altitude\n (masl)', multialignment='center')
@@ -524,6 +530,10 @@ def plot_profile_ts_combined():
         if bounds:
             ax[1].set_ylim(bounds[0], bounds[1])
             
+
+        ax[0].set_xlim(0, 65)
+        ax[1].set_xlim(0, 65)
+        ax[2].set_xlim(0, 65)
 
         if rotate_xticks:
             ticklabels = ax[1].get_xticklabels()
@@ -642,7 +652,8 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
 
         plt.plot(date, var_vals,
                  color=rcp_col_dict[rcp],
-                 label=rcp_dict[rcp])
+                 linewidth=lw,
+                 label=rcp_dict[rcp],)
     
     if do_legend:
         legend = ax.legend(loc="center right",
@@ -683,6 +694,78 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
     
+def plot_percent_mass(plot_var=mass_plot_vars):
+    
+    fig = plt.figure( figsize=[4, 3])
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+
+    for percent in [1, 2, 5, 10]:
+        ax.axvline(percent, color='k', linestyle='dotted')
+    for k, rcp in enumerate(rcp_list[::-1]):
+        rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
+        cdf = cdo.readCdf(rcp_file)
+        t = cdf.variables['time'][:]
+        date = np.arange(start_year + step,
+                         start_year + (len(t[:]) + 1) ,
+                         step) 
+        var_vals = cdf.variables[plot_var][:]
+        try:
+            idx = np.where(var_vals>= pc)[0][0]
+            m_year = date[idx]
+        except:
+            m_year = np.nan
+            print('{}m: {}% mass lost in Year {}'.format(percent, m_year))            
+
+        
+        ax.semilogx(var_vals, date,
+                 color=rcp_col_dict[rcp],
+                 linewidth=lw,
+                 label=rcp_dict[rcp],)
+    
+    if do_legend:
+        legend = ax.legend(loc="center right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0.32, .76),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
+    ax.set_xlabel('Mass loss (%)')
+    ax.set_ylabel('Year')
+
+    ax.set_xticks([1, 2, 5, 10, 100])
+    
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.xaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    for out_format in out_formats:
+        out_file = outfile + '_percent' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
+
 def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
     
 
@@ -799,7 +882,7 @@ def plot_grid_pc(plot_var='limnsw'):
 
         
         ax.set_xlabel('Year')
-        ax.set_ylabel('mass loss (%)')
+        ax.set_ylabel('Mass loss (%)')
             
         if time_bounds:
             ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -889,20 +972,16 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
                         alpha=0.4,
                         linewidth=0)
 
-        # ax.plot(date[:], ensmedian_vals,
-        #                 color=rcp_col_dict[rcp],
-        #                 linewidth=lw,
-        #                 label=rcp_dict[rcp])
 
         ax.plot(date[:], enspctl16_vals,
                 color=rcp_col_dict[rcp],
                 linestyle='solid',
-                linewidth=0.25)
+                linewidth=0.4)
 
         ax.plot(date[:], enspctl84_vals,
                 color=rcp_col_dict[rcp],
                 linestyle='solid',
-                linewidth=0.25)
+                linewidth=0.4)
 
         if ctrl_file is not None:
             rcp_ctrl_file = [f for f in ctrl_file if 'rcp_{}'.format(rcp) in f][0]
@@ -1033,12 +1112,12 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
             ax.plot(date[:], enspctl16_vals,
                     color=rcp_col_dict[rcp],
                     linestyle='solid',
-                    linewidth=0.25)
+                    linewidth=0.4)
 
             ax.plot(date[:], enspctl84_vals,
                     color=rcp_col_dict[rcp],
                     linestyle='solid',
-                    linewidth=0.25)
+                    linewidth=0.4)
 
             if ctrl_file is not None:
                 rcp_ctrl_file = [f for f in ctrl_file if 'rcp_{}'.format(rcp) in f][0]
@@ -1151,20 +1230,16 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                         alpha=0.4,
                         linewidth=0)
 
-        # ax.plot(date[:], ensmedian_vals,
-        #         color=rcp_col_dict[rcp],
-        #         linewidth=lw,
-        #         label=rcp_dict[rcp])
 
         ax.plot(date[:], enspctl16_vals,
                 color=rcp_col_dict[rcp],
                 linestyle='solid',
-                linewidth=0.25)
+                linewidth=0.4)
 
         ax.plot(date[:], enspctl84_vals,
                 color=rcp_col_dict[rcp],
                 linestyle='solid',
-                linewidth=0.25)
+                linewidth=0.4)
 
         if ctrl_file is not None:
             rcp_ctrl_file = [f for f in ctrl_file if 'rcp_{}'.format(rcp) in f][0]
@@ -1217,7 +1292,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                     
     
     ax.set_xlabel('Year')
-    ax.set_ylabel('rate of GMSL rise (mm yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('Rate of GMSL rise (mm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1303,12 +1378,12 @@ def plot_rcp_ens_flux(plot_var=flux_plot_vars):
             ax.plot(date[:], enspctl16_vals,
                     color=rcp_col_dict[rcp],
                     linestyle='solid',
-                    linewidth=0.25)
+                    linewidth=0.4)
 
             ax.plot(date[:], enspctl84_vals,
                     color=rcp_col_dict[rcp],
                     linestyle='solid',
-                    linewidth=0.25)
+                    linewidth=0.4)
 
             if ctrl_file is not None:
                 rcp_ctrl_file = [f for f in ctrl_file if 'rcp_{}'.format(rcp) in f][0]
@@ -1486,36 +1561,38 @@ def plot_flux_partitioning():
         # Don't plot basal mass balance
         b_vals = b_s_vals = 0
         
-        lsn = axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
+        lsn = axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='accumulation', linewidth=0)
         # lb = axa[1, m].fill_between(date, 0, b_vals, color='#9e9ac8', label='B', linewidth=0)
-        lruw = axa[1, m].fill_between(date, b_vals, b_vals + ru_vals, color='#fb6a4a', label='RW', linewidth=0)
-        lrul = axa[1, m].fill_between(date, b_vals, b_vals + ru_ntrl_vals, color='#fdae6b', label='RL', linewidth=0)
-        ld = axa[1, m].fill_between(date, b_vals + ru_vals, b_vals + ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
+        lruw = axa[1, m].fill_between(date, b_vals, b_vals + ru_vals, color='#fb6a4a', label='runoff (elevation)', linewidth=0)
+        lrul = axa[1, m].fill_between(date, b_vals, b_vals + ru_ntrl_vals, color='#fdae6b', label='runoff (climate)', linewidth=0)
+        ld = axa[1, m].fill_between(date, b_vals + ru_vals, b_vals + ru_vals + d_vals, color='#74c476', label='discharge', linewidth=0)
+
         axa[1, m].axhline(0, color='k', linestyle='dotted')
         axa[1, m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
         # axa[1, m].plot(date, b_vals, color='#54278f', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_ntrl_vals, color='#e6550d', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_vals, color='#cb181d', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_vals + d_vals, color='#238b45', linewidth=0.3)
-        lmb, = axa[1, m].plot(date, tom_vals, color='k', label='MB')
+        lmb, = axa[1, m].plot(date, tom_vals, color='k', label='mass balance', linewidth=0.6)
 
-        lsn = axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='SN', linewidth=0)
+        lsn = axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='accumulation', linewidth=0)
         # lb = axa[2, m].fill_between(date, 0, b_s_vals, color='#9e9ac8', label='B', linewidth=0)
-        lruw = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_s_vals, color='#fb6a4a', label='RW', linewidth=0)
-        lrul = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_ntrl_s_vals, color='#fdae6b', label='RL', linewidth=0)
-        ld = axa[2, m].fill_between(date, b_s_vals + ru_s_vals, b_s_vals + ru_s_vals + d_s_vals, color='#74c476', label='D', linewidth=0)
+        lruw = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_s_vals, color='#fb6a4a', label='runoff (elevation)', linewidth=0)
+        lrul = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_ntrl_s_vals, color='#fdae6b', label='runoff (climate)', linewidth=0)
+        ld = axa[2, m].fill_between(date, b_s_vals + ru_s_vals, b_s_vals + ru_s_vals + d_s_vals, color='#74c476', label='discharge', linewidth=0)
+
         axa[2, m].axhline(0, color='k', linestyle='dotted')
         axa[2, m].plot(date, snow_s_vals, color='#2171b5', linewidth=0.3)
         # axa[2, m].plot(date, b_s_vals, color='#54278f', linewidth=0.3)
         axa[2, m].plot(date, b_s_vals + ru_ntrl_s_vals, color='#e6550d', linewidth=0.3)
         axa[2, m].plot(date, b_s_vals + ru_s_vals, color='#cb181d', linewidth=0.3)
         axa[2, m].plot(date, b_s_vals + ru_s_vals + d_s_vals, color='#238b45', linewidth=0.3)
-        lmb, = axa[2, m].plot(date, tom_s_vals, color='k', label='MB')
+        lmb, = axa[2, m].plot(date, tom_s_vals, color='k', label='mass balance', linewidth=0.6)
 
         axa[3, m].axhline(100, color='k', linestyle='dotted')
-        axa[3, m].plot(date, -ru_vals / snow_vals * 100, color='#cb181d', label='RU=RW+RL', linewidth=0.5)
-        axa[3, m].plot(date, -d_vals / snow_vals * 100, color='#238b45', label='D', linewidth=0.5)
-        axa[3, m].plot(date, -tom_vals / snow_vals * 100, color='#000000', label='MB', linewidth=0.5)
+        axa[3, m].plot(date, -ru_vals / snow_vals * 100, color='#cb181d', label='runoff (total)', linewidth=0.4)
+        axa[3, m].plot(date, -d_vals / snow_vals * 100, color='#238b45', label='discharge', linewidth=0.4)
+        axa[3, m].plot(date, -tom_vals / snow_vals * 100, color='#000000', label='mass balance', linewidth=0.6)
 
         axa[3, m].set_xlabel('Year')
         axa[0, 0].set_ylabel('Area\n(10$^{6}$ km$^{\mathregular{2}}$)')
@@ -1526,23 +1603,23 @@ def plot_flux_partitioning():
     legend = axa[0, 0].legend(handles=[la],
                               loc="lower left",
                               ncol=1,
-                              labelspacing=0.1,
+                              labelspacing=0.01,
                               handlelength=1.5,
                               columnspacing=1,
                               edgecolor='0',
-                              bbox_to_anchor=(.23, 0.72, 0, 0),
+                              bbox_to_anchor=(.205, 0.72, 0, 0),
                               bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
 
-    legend = axa[2, 0].legend(handles=[lsn, lruw, lrul, ld, lmb],
+    legend = axa[2, 0].legend(handles=[lsn, lrul, lruw, ld, lmb],
                               loc="lower left",
-                              ncol=2,
-                              labelspacing=0.1,
+                              ncol=1,
+                              labelspacing=0.08,
                               handlelength=1.5,
                               columnspacing=1,
                               edgecolor='0',
-                              bbox_to_anchor=(.23, 0.50, 0, 0),
+                              bbox_to_anchor=(.205, 0.48, 0, 0),
                               bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
@@ -1553,7 +1630,7 @@ def plot_flux_partitioning():
                               handlelength=1.5,
                               columnspacing=1,
                               edgecolor='0',
-                              bbox_to_anchor=(.23, 0.18, 0, 0),
+                              bbox_to_anchor=(.205, 0.18, 0, 0),
                               bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
@@ -1562,10 +1639,6 @@ def plot_flux_partitioning():
         for o in range(0, 3):
             for p in range(0, 3):
                 axa[o, p].set_xlim(time_bounds[0], time_bounds[1])
-
-    # if bounds:
-    #     ax.set_ylim(bounds[0], bounds[1])
-
 
     # ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
 
@@ -1621,11 +1694,11 @@ def plot_basin_flux_partitioning():
             basin_files = [f for f in ifiles if 'b_{}'.format(basin) in f]
     
             rcp_ctrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'CTRL' in f][0]
-            rcp_ntrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
+            # rcp_ntrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
             print('Reading {}'.format( rcp_ctrl_file))
-            print('Reading {}'.format( rcp_ntrl_file))
+            # print('Reading {}'.format( rcp_ntrl_file))
             cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
-            cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
+            # cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
 
             t = cdf.variables['time'][:]
             date = np.arange(start_year + step,
@@ -1643,26 +1716,26 @@ def plot_basin_flux_partitioning():
 
             ru_var = 'surface_runoff_rate'
             ru_vals = np.squeeze(cdf.variables[ru_var][:])
-            ru_ntrl_vals = np.squeeze(cdf_ntrl.variables[ru_var][:])
+            # ru_ntrl_vals = np.squeeze(cdf_ntrl.variables[ru_var][:])
             ru_iunits = cdf[ru_var].units
             ru_vals = -unit_converter(ru_vals, ru_iunits, flux_ounits)
-            ru_ntrl_iunits = cdf_ntrl[ru_var].units
-            ru_ntrl_vals = -unit_converter(ru_ntrl_vals, ru_iunits, flux_ounits)
+            # ru_ntrl_iunits = cdf_ntrl[ru_var].units
+            # ru_ntrl_vals = -unit_converter(ru_ntrl_vals, ru_iunits, flux_ounits)
 
             d_var = 'tendency_of_ice_mass_due_to_discharge'
             d_vals = np.squeeze(cdf.variables[d_var][:])
             d_iunits = cdf[d_var].units
             d_vals = unit_converter(d_vals, d_iunits, flux_ounits)
             
-            lsn = axa[k,m].fill_between(date, 0, snow_vals, color='#6baed6', label='SN', linewidth=0)
-            lruw = axa[k,m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='RU', linewidth=0)
+            lsn = axa[k,m].fill_between(date, 0, snow_vals, color='#6baed6', label='accumulation', linewidth=0)
+            lruw = axa[k,m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='runoff', linewidth=0)
             # lrul = axa[k,m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RW', linewidth=0)
-            ld = axa[k,m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='D', linewidth=0)
+            ld = axa[k,m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='discharge', linewidth=0)
             axa[k,m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
             axa[k,m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
             #axa[k,m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
             axa[k,m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
-            lmb, = axa[k,m].plot(date, tom_vals, color='k', label='MB')
+            lmb, = axa[k,m].plot(date, tom_vals, color='k', label='mass balance', linewidth=0.6)
             axa[k,m].axhline(0, color='k', linestyle='dotted')
             
             axa[k,m].yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
@@ -1687,14 +1760,14 @@ def plot_basin_flux_partitioning():
                 for tick in ticklabels:
                     tick.set_rotation(0)
                     
-    legend = axa[5, 0].legend(handles=[lsn, lruw, ld, lmb],
-                              loc="lower left",
-                              ncol=2,
+    legend = axa[0, 2].legend(handles=[lsn, lruw, ld, lmb],
+                              loc="upper right",
+                              ncol=1,
                               labelspacing=0.1,
                               handlelength=1.5,
                               columnspacing=1,
                               edgecolor='0',
-                              bbox_to_anchor=(.15, 0.10, 0, 0),
+                              bbox_to_anchor=(.45, 0.075, 0, 0),
                               bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
@@ -1813,7 +1886,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
 
     
     ax.set_xlabel('Year')
-    ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('Rate (Gt yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -2018,7 +2091,7 @@ def plot_rcp_traj_mass(plot_var=mass_plot_vars):
                     iunits = cdf_rcp_mass_file.units
                     mass_vals = -unit_converter(mass_vals, iunits, mass_ounits) * gt2mSLE
                     ax.plot(date[:], mass_vals,
-                            alpha=0.3,
+                            alpha=0.4,
                             linewidth=0.2,
                             color=colorVal)
                     nc.close()
@@ -2317,7 +2390,7 @@ def plot_per_basin_flux(plot_var=None):
             legend.get_frame().set_linewidth(0.2)
     
         ax.set_xlabel('Year')
-        ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
+        ax.set_ylabel('Rate (Gt yr$^{\mathregular{-1}}$)')
         
         if time_bounds:
             ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -2344,6 +2417,8 @@ def plot_per_basin_flux(plot_var=None):
                    
 if plot == 'ctrl_mass':
     plot_ctrl_mass(plot_var='limnsw')
+if plot == 'percent_mass':
+    plot_percent_mass(plot_var='limnsw')
 elif plot == 'rcp_mass':
     plot_rcp_mass(plot_var='limnsw')
 elif plot == 'rcp_ens_mass':

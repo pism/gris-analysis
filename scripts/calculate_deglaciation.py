@@ -52,16 +52,17 @@ def calc_deglaciation_time(infile, outfile, thickness_threshold):
     else:
         deglac_time = nc_out.variables[mvar]
     deglac_time.long_name = 'year of deglaciation'
-    print 'bye'
+
     nx = len(x)
     ny = len(y)
     nxy = nx * ny
     pt = 1
+    # Only get first 1000 years
+    thk = nc_in.variables['thk'][0:1000, :]
+        
     for n in  range(ny):
         for m in range(nx):                
             print('Processing point {} of {}'.format(pt, nxy))
-            # Only get first 1000 years
-            thk = nc_in.variables['thk'][0:1000, n, m]
             try:
                 idx = np.where(thk < thickness_threshold)[0][0]
                 deglac_time[n,m] = time[idx] / secpera
