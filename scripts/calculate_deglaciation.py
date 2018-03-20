@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-# Copyright (C) 2017 Andy Aschwanden
+# Copyright (C) 2017, 2018 Andy Aschwanden
 
 import os
-
 import gdal
 import numpy as np
 import logging
@@ -11,59 +10,6 @@ from argparse import ArgumentParser
 
 from netCDF4 import Dataset as NC
 from netcdftime import utime
-
-def calc_deglaciation_time(infile, outfile, output_variable_name, thickness_threshold):
-    '''
-    Calculate year of deglaciation (e.g. when ice thickness
-    drops below threshold 'thickness_threshold')
-    '''
-    nc_in = NC(infile, 'r')
-    nc_out = NC(outfile, 'w')
-    for dname, the_dim in nc_in.dimensions.iteritems():
-        nc_out.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
-
-    # Copy variables
-    for v_name in ['x', 'y', 'time']:
-        varin = nc_in.variables[v_name]
-        outVar = nc_out.createVariable(v_name, varin.datatype, varin.dimensions)
-    
-        # Copy variable attributes
-        outVar.setncatts({k: varin.getncattr(k) for k in varin.ncattrs()})
-    
-        outVar[:] = varin[:]
-        
-    time = nc_out.variables['time']
-    time_units = time.units
-    time_calendar = time.calendar
-
-    x = nc_out.variables['x'][:]
-    y = nc_out.variables['y'][:]
-
-    # thk = nc_in.variables['thk'][:]
-    if output_variable_name not in nc_out.variables:
-        deglac_time = nc_out.createVariable(output_variable_name, 'f', dimensions=('y', 'x'), fill_value=0)
-    else:
-        deglac_time = nc_out.variables[output_variable_name]
-    deglac_time.long_name = 'year of deglaciation'
-
-    nx = len(x)
-    ny = len(y)
-    nxy = nx * ny
-    pt = 1
-    # Only get first 1000 years
-    thk = nc_in.variables['thk'][0:1000, :]
-        
-    for n in  range(ny):
-        for m in range(nx):                
-            print('Processing point {} of {}'.format(pt, nxy))
-            try:
-                idx = np.where(thk < thickness_threshold)[0][0]
-                deglac_time[n,m] = time[idx] / secpera
-                pt += 1
-            except:
-                pass
-    nc_in.close()
-    nc_out.close()
 
 def copy_dimensions(input_file, output_file):
     """Copy dimensions (time, x, y) and corresponding coordinate variables
@@ -74,7 +20,7 @@ def copy_dimensions(input_file, output_file):
     for dname, the_dim in input_file.dimensions.iteritems():
         output_file.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
 
-    # Copy variables
+    # Copy coordinate variables
     for v_name in ['x', 'y', 'time']:
         var_in = input_file.variables[v_name]
         var_out = output_file.createVariable(v_name, var_in.datatype, var_in.dimensions)
@@ -87,7 +33,9 @@ def copy_dimensions(input_file, output_file):
 def process_block(time, H, H_threshold, t_min, output):
     """Process a block containing several time records of ice thickness,
     modifying output in place. Assumes that if an element of output is
-    positive, then this location is already processed. In other words,
+    greated than or equal to t_min, then this location is already
+    processed.
+
     """
     n_rows, n_cols = output.shape
 
@@ -112,11 +60,11 @@ def block_size(shape, limit):
 
     return int(np.floor(shape[0] / n_blocks))
 
-def calc_deglaciation_time_2(infile, outfile, output_variable_name, thickness_threshold,
-                             memory_limit):
-    '''
-    Calculate year of deglaciation (e.g. when ice thickness
-    drops below threshold 'thickness_threshold')
+def calc_deglaciation_time(infile, outfile, output_variable_name, thickness_threshold,
+                           memory_limit):
+    '''Calculate year of deglaciation (e.g. when ice thickness drops
+    below threshold 'thickness_threshold')
+
     '''
     nc_in = NC(infile, 'r')
     nc_out = NC(outfile, 'w')
@@ -193,8 +141,8 @@ if __name__ == "__main__":
     parser.add_argument("-m", help="Memory limit, in Mb", default=1024, type=int)
     options = parser.parse_args()
 
-    exp_file     = options.FILE[0]
-    memory_limit = options.m * 2**20
+    input_file   = options.FILE[0]
+    memory_limit = options.m * 2**20 # convert to bytes
 
     thickness_threshold = 10    # meters
     secpera = 24 * 3600 * 365   # for the 365_day calendar only
@@ -204,18 +152,18 @@ if __name__ == "__main__":
     dir_gtiff = 'deglaciation_time_tif'
     output_variable_name = 'deglac_year'
 
-    idir =  os.path.split(exp_file)[0].split('/')[0]
+    idir =  os.path.split(input_file)[0].split('/')[0]
 
     for dir_processed in (dir_gtiff, dir_nc):
         if not os.path.isdir(os.path.join(idir, dir_processed)):
             os.mkdir(os.path.join(idir, dir_processed))
 
-    logger.info('Processing file {}'.format(exp_file))
-    exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
+    logger.info('Processing file {}'.format(input_file))
+    exp_basename =  os.path.split(input_file)[-1].split('.nc')[0]
     exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
 
-    calc_deglaciation_time_2(exp_file, exp_nc_wd, output_variable_name, thickness_threshold,
-                             memory_limit)
+    calc_deglaciation_time(input_file, exp_nc_wd, output_variable_name, thickness_threshold,
+                           memory_limit)
 
     m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, output_variable_name)
     m_exp_gtiff_wd = os.path.join(idir, dir_gtiff,
