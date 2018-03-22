@@ -420,7 +420,7 @@ def plot_profile_ts(plot_var='velsurf_mag'):
                 ax.set_ylabel('altitude (masl)')
 
         ax.axhline(profile_vals[0], linestyle='dashed', color='k')
-        ax.set_xlabel('distance ({})'.format(profile_ounits))
+        ax.set_xlabel('Distance ({})'.format(profile_ounits))
 
         # ax.set_xlim(0)
         
@@ -700,8 +700,8 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    for percent in [1, 2, 5, 10]:
-        ax.axvline(percent, color='k', linestyle='dotted')
+    for pc in [1, 2, 5, 10, 25, 50, 75]:
+        ax.axvline(pc, color='k', linestyle='dotted')
     for k, rcp in enumerate(rcp_list[::-1]):
         rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
         cdf = cdo.readCdf(rcp_file)
@@ -710,12 +710,13 @@ def plot_percent_mass(plot_var=mass_plot_vars):
                          start_year + (len(t[:]) + 1) ,
                          step) 
         var_vals = cdf.variables[plot_var][:]
-        try:
-            idx = np.where(var_vals>= pc)[0][0]
-            m_year = date[idx]
-        except:
-            m_year = np.nan
-            print('{}m: {}% mass lost in Year {}'.format(percent, m_year))            
+        for pc in [1, 2, 5, 10, 25, 50, 75]:
+            try:
+                idx = np.where(var_vals>= pc)[0][0]
+                m_year = date[idx]
+            except:
+                m_year = np.nan
+            print('RCP {}, {}% mass lost in Year {}'.format(rcp, pc, m_year))            
 
         
         ax.semilogx(var_vals, date,
@@ -734,7 +735,7 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     ax.set_xlabel('Mass loss (%)')
     ax.set_ylabel('Year')
 
-    ax.set_xticks([1, 2, 5, 10, 100])
+    ax.set_xticks([1, 2, 5, 10, 25, 50, 100])
     
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1645,15 +1646,15 @@ def plot_flux_partitioning():
     add_inner_title(axa[0, 0], 'a', 'lower left')
     add_inner_title(axa[0, 1], 'b', 'lower left')
     add_inner_title(axa[0, 2], 'c', 'lower left')
-    add_inner_title(axa[1, 0], 'e', 'lower left')
-    add_inner_title(axa[1, 1], 'f', 'lower left')
-    add_inner_title(axa[1, 2], 'g', 'lower left')
-    add_inner_title(axa[2, 0], 'h', 'lower left')
-    add_inner_title(axa[2, 1], 'i', 'lower left')
-    add_inner_title(axa[2, 2], 'j', 'lower left')
-    add_inner_title(axa[3, 0], 'k', 'upper left')
-    add_inner_title(axa[3, 1], 'l', 'upper left')
-    add_inner_title(axa[3, 2], 'm', 'upper left')
+    add_inner_title(axa[1, 0], 'd', 'lower left')
+    add_inner_title(axa[1, 1], 'e', 'lower left')
+    add_inner_title(axa[1, 2], 'f', 'lower left')
+    add_inner_title(axa[2, 0], 'g', 'lower left')
+    add_inner_title(axa[2, 1], 'h', 'lower left')
+    add_inner_title(axa[2, 2], 'i', 'lower left')
+    add_inner_title(axa[3, 0], 'j', 'upper left')
+    add_inner_title(axa[3, 1], 'k', 'upper left')
+    add_inner_title(axa[3, 2], 'l', 'upper left')
 
     if rotate_xticks:
         for o, p in range(0, 2), range(0, 2):

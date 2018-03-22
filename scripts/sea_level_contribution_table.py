@@ -99,7 +99,7 @@ def sea_level_contribution_table(prefix, ensstat_prefix):
          "run"        : "NTRL"},
         {"label"      : "NISO" ,
          "resolution" : 900,
-         "run"        : "NTRL"},
+         "run"        : "NISO"},
         {"label"      : "G1800",
          "resolution" : 1800,
          "run"        : "CTRL"},
