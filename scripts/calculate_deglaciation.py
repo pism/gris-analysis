@@ -1,17 +1,9 @@
 #!/usr/bin/env python
-# Copyright (C) 2017 Andy Aschwanden
+# Copyright (C) 2017, 2018 Andy Aschwanden
 
 import os
-try:
-    import subprocess32 as sub
-except:
-    import subprocess as sub
-from glob import glob
 import gdal
 import numpy as np
-from nco import Nco
-nco = Nco()
-from nco import custom as c
 import logging
 import logging.handlers
 from argparse import ArgumentParser
@@ -19,115 +11,166 @@ from argparse import ArgumentParser
 from netCDF4 import Dataset as NC
 from netcdftime import utime
 
-def calc_deglaciation_time(infile, outfile, thickness_threshold):
-    '''
-    Calculate year of deglaciation (e.g. when ice thickness
-    drops below threshold 'thickness_threshold')
+def copy_dimensions(input_file, output_file):
+    """Copy dimensions (time, x, y) and corresponding coordinate variables
+    from input_file to output_file.
+
+    """
+    # Create dimensions
+    for dname, the_dim in input_file.dimensions.iteritems():
+        output_file.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
+
+    # Copy coordinate variables
+    for v_name in ['x', 'y', 'time']:
+        var_in = input_file.variables[v_name]
+        var_out = output_file.createVariable(v_name, var_in.datatype, var_in.dimensions)
+
+        # Copy variable attributes
+        var_out.setncatts({k: var_in.getncattr(k) for k in var_in.ncattrs()})
+
+        var_out[:] = var_in[:]
+
+def process_block(time, H, H_threshold, t_min, output):
+    """Process a block containing several time records of ice thickness,
+    modifying output in place. Assumes that if an element of output is
+    greated than or equal to t_min, then this location is already
+    processed.
+
+    """
+    n_rows, n_cols = output.shape
+
+    for r in  range(n_rows):
+        for c in range(n_cols):
+            if output[r, c] < t_min: # assume that the computed value is always greater than t_min
+                try:
+                    idx = np.where(H[:, r, c] < H_threshold)[0][0]
+                    output[r, c] = time[idx] / secpera
+                except:
+                    pass
+
+def block_size(shape, limit):
+    """Return the block size to use when processing a variable with the
+    number of elements given by shape, assuming that we have limit
+    bytes of RAM available.
+
+    """
+    variable_size = np.prod(shape) * 8 # assuming 8 bytes per element (i.e. double)
+
+    n_blocks = variable_size / float(limit)
+
+    return int(np.floor(shape[0] / n_blocks))
+
+def calc_deglaciation_time(infile, outfile, output_variable_name, thickness_threshold,
+                           memory_limit):
+    '''Calculate year of deglaciation (e.g. when ice thickness drops
+    below threshold 'thickness_threshold')
+
     '''
     nc_in = NC(infile, 'r')
     nc_out = NC(outfile, 'w')
-    for dname, the_dim in nc_in.dimensions.iteritems():
-        nc_out.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
 
-    # Copy variables
-    for v_name in ['x', 'y', 'time']:
-        varin = nc_in.variables[v_name]
-        outVar = nc_out.createVariable(v_name, varin.datatype, varin.dimensions)
-    
-        # Copy variable attributes
-        outVar.setncatts({k: varin.getncattr(k) for k in varin.ncattrs()})
-    
-        outVar[:] = varin[:]
-        
-    time = nc_out.variables['time']
-    time_units = time.units
-    time_calendar = time.calendar
+    copy_dimensions(nc_in, nc_out)
 
-    x = nc_out.variables['x'][:]
-    y = nc_out.variables['y'][:]
+    time = nc_out.variables['time'][:]
+    t_length = len(time)
+    t_min = time[0]
 
-    # thk = nc_in.variables['thk'][:]
-    if mvar not in nc_out.variables:
-        deglac_time = nc_out.createVariable(mvar, 'f', dimensions=('y', 'x'), fill_value=0)
+    if output_variable_name not in nc_out.variables:
+        deglac_time = nc_out.createVariable(output_variable_name, 'f',
+                                            dimensions=('y', 'x'), fill_value=0)
     else:
-        deglac_time = nc_out.variables[mvar]
+        deglac_time = nc_out.variables[output_variable_name]
     deglac_time.long_name = 'year of deglaciation'
 
-    nx = len(x)
-    ny = len(y)
-    nxy = nx * ny
-    pt = 1
-    # Only get first 1000 years
-    thk = nc_in.variables['thk'][0:1000, :]
-        
-    for n in  range(ny):
-        for m in range(nx):                
-            print('Processing point {} of {}'.format(pt, nxy))
-            try:
-                idx = np.where(thk < thickness_threshold)[0][0]
-                deglac_time[n,m] = time[idx] / secpera
-                pt += 1
-            except:
-                pass
+    thk = nc_in.variables["thk"]
+
+    # set to a value below the first time record
+    result = np.zeros_like(deglac_time) + t_min
+    result[thk[0] >= thickness_threshold] = t_min - 1.0
+
+    k = 0
+    N = block_size(thk.shape, memory_limit)
+    while k + N < t_length + 1:
+        print("Processing records from {} to {}...".format(k, k + N - 1))
+        H = thk[k:k + N]
+        process_block(time[k:k + N], H, thickness_threshold, t_min, result)
+        k += N
+
+    if k < t_length:
+        print("Processing records from {} to {}...".format(k, t_length - 1))
+        H = thk[k:]
+        process_block(time[k:], H, thickness_threshold, t_min, result)
+
+    deglac_time[:] = result
+
     nc_in.close()
     nc_out.close()
 
+def create_logger():
+    # create logger
+    logger = logging.getLogger('postprocess')
+    logger.setLevel(logging.DEBUG)
 
-# set up the option parser
-parser = ArgumentParser()
-parser.description = "Postprocessing files."
-parser.add_argument("FILE", nargs=1,
-                    help="File to process", default=None)
+    # create file handler which logs even debug messages
+    fh = logging.handlers.RotatingFileHandler('prepare_velocity_observations.log')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
 
-options = parser.parse_args()
-exp_file= options.FILE[0]
+    # add formatter to ch and fh
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
 
-# create logger
-logger = logging.getLogger('postprocess')
-logger.setLevel(logging.DEBUG)
+    # add ch to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
 
-# create file handler which logs even debug messages
-fh = logging.handlers.RotatingFileHandler('prepare_velocity_observations.log')
-fh.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s')
+    return logger
 
-# add formatter to ch and fh
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
+if __name__ == "__main__":
 
-# add ch to logger
-logger.addHandler(ch)
-logger.addHandler(fh)
+    logger = create_logger()
 
-thickness_threshold = 10
-secpera = 24 * 3600 * 365  # for 365_day calendar only
-gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
+    parser = ArgumentParser()
+    parser.description = "Postprocessing files."
+    parser.add_argument("FILE", nargs=1,
+                        help="File to process", default=None)
+    parser.add_argument("-m", help="Memory limit, in Mb", default=1024, type=int)
+    options = parser.parse_args()
 
-# Process experiments
-dir_nc = 'deglaciation_time'
-dir_gtiff = 'deglaction_time'
-mvar = 'deglac_year'
+    input_file   = options.FILE[0]
+    memory_limit = options.m * 2**20 # convert to bytes
 
-print exp_file
-idir =  os.path.split(exp_file)[0].split('/')[0]
+    thickness_threshold = 10    # meters
+    secpera = 24 * 3600 * 365   # for the 365_day calendar only
 
-for dir_processed in (dir_gtiff, dir_nc):
-    if not os.path.isdir(os.path.join(idir, dir_processed)):
-        os.mkdir(os.path.join(idir, dir_processed))
+    # Process experiments
+    dir_nc = 'deglaciation_time_nc'
+    dir_gtiff = 'deglaciation_time_tif'
+    output_variable_name = 'deglac_year'
 
-logger.info('Processing file {}'.format(exp_file))
-exp_basename =  os.path.split(exp_file)[-1].split('.nc')[0]
-exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
-#nco.ncks(input=exp_file, output=exp_nc_wd, overwrite=True, variable=['thk'])
+    idir =  os.path.split(input_file)[0].split('/')[0]
 
-    
-calc_deglaciation_time(exp_file, exp_nc_wd, thickness_threshold)
-m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, mvar)
-m_exp_gtiff_wd = os.path.join(idir, dir_gtiff, mvar + '_' + exp_basename + '.tif')
-logger.info('Converting variable {} to GTiff and save as {}'.format(mvar, m_exp_gtiff_wd))
-gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
+    for dir_processed in (dir_gtiff, dir_nc):
+        if not os.path.isdir(os.path.join(idir, dir_processed)):
+            os.mkdir(os.path.join(idir, dir_processed))
 
+    logger.info('Processing file {}'.format(input_file))
+    exp_basename =  os.path.split(input_file)[-1].split('.nc')[0]
+    exp_nc_wd = os.path.join(idir, dir_nc, exp_basename + '.nc')
+
+    calc_deglaciation_time(input_file, exp_nc_wd, output_variable_name, thickness_threshold,
+                           memory_limit)
+
+    m_exp_nc_wd = 'NETCDF:{}:{}'.format(exp_nc_wd, output_variable_name)
+    m_exp_gtiff_wd = os.path.join(idir, dir_gtiff,
+                                  output_variable_name + '_' + exp_basename + '.tif')
+
+    logger.info('Converting variable {} to GTiff and save as {}'.format(output_variable_name,
+                                                                        m_exp_gtiff_wd))
+
+    gdal_gtiff_options = gdal.TranslateOptions(format='GTiff', outputSRS='EPSG:3413')
+    gdal.Translate(m_exp_gtiff_wd, m_exp_nc_wd, options=gdal_gtiff_options)
