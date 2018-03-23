@@ -497,17 +497,14 @@ def plot_profile_ts_combined():
             thk_mask = (thk_vals <= 20)
             thk_vals = np.ma.array(thk_vals, mask=thk_mask)
             usurf_mask = (usurf_vals < 100)
-            usurf_mask = np.logical_or((usurf_vals < topg_vals), (thk_vals < 20))
+            usurf_mask = np.logical_or((usurf_vals < topg_vals), thk_mask)
             usurf_vals = np.ma.array(usurf_vals, mask=usurf_mask)
             ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color=colorVal)
             ax[1].plot(profile_vals, speed_vals, color=colorVal)
             try:
-                #idx = (np.where(topg_vals <= 0) and np.where(usurf_vals > 0))
-                idx = np.where(usurf_vals > 10)
-                ax[2].plot(profile_vals[idx],  usurf_vals[idx], color=colorVal)
-                bottom_vals = usurf_vals[:] - thk_vals[:]
-                idx = np.where(topg_vals < 10)
-                ax[2].plot(profile_vals[idx], bottom_vals[idx], color=colorVal)
+                ax[2].plot(profile_vals, usurf_vals, color=colorVal)
+                bottom_vals = np.maximum(usurf_vals - thk_vals, topg_vals)
+                ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color=colorVal)
             except:
                 pass
             ax[2].plot(profile_vals, topg_vals, color='k')
