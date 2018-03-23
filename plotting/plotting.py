@@ -471,15 +471,17 @@ def plot_profile_ts_combined():
 
         t_var = nc.variables['time'][:]
         date = np.arange(start_year,
-                             start_year + (len(t_var[:]) + 1),
-                             step)
+                         start_year + (len(t_var[:]) + 1),
+                         step)
         ma = np.where(date == time_bounds[0])[0][0]
         me = np.where(date == time_bounds[1])[0][0]
+
         plot_times = np.arange(ma, me+1, step)
         nt = len(plot_times)
         cNorm = colors.Normalize(vmin=time_bounds[0], vmax=time_bounds[1])
         scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=mcm)
         speed_vals_0 = np.nanmean(nc.variables['velsurf_mag'][k, 0:20, :], axis=0)
+
         for t in plot_times:
             colorVal = scalarMap.to_rgba(date[t])
             speed_vals = nc.variables['velsurf_mag'][k, t, :] - speed_vals_0
