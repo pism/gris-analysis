@@ -1776,7 +1776,7 @@ def plot_basin_flux_partitioning():
             if k == 5:
                 axa[k,m].set_xlabel('Year')
             if m == 0:
-                axa[k,m].set_ylabel('rate\n (Gt yr$^{\mathregular{-1}}$)')
+                axa[k,m].set_ylabel('Rate\n (Gt yr$^{\mathregular{-1}}$)')
 
             if time_bounds:
                 axa[k,m].set_xlim(time_bounds[0], time_bounds[1])
@@ -1816,7 +1816,7 @@ def plot_basin_cumulative_partitioning():
     fig, axa = plt.subplots(6, 3, sharex='col', sharey='row', figsize=[6, 4])
     fig.subplots_adjust(hspace=0.06, wspace=0.04)
     
-    for p, rcp in enumerate(rcp_list):
+    for m, rcp in enumerate(rcp_list):
         if rcp == '26':
             m = 0
             m_years = [2316, 2918]
@@ -1838,8 +1838,9 @@ def plot_basin_cumulative_partitioning():
             cdf = cdo.timcumsum(input=rcp_ctrl_file, returnCdf=True, options=pthreads)
             # cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
 
+            time_units = 'year'
+
             t = cdf.variables['time'][:]
-            time_units = cdf.variables['time'].units
             date = np.arange(start_year + step,
                              start_year + (len(t[:]) + 1) , step) 
 
@@ -1881,8 +1882,10 @@ def plot_basin_cumulative_partitioning():
             axa[k,m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
             lmb, = axa[k,m].plot(date, tom_vals, color='k', label='mass balance', linewidth=0.6)
             axa[k,m].axhline(0, color='k', linestyle='dotted')
-            
-            axa[k,m].yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+            #print snow_iunits, mass_ounits
+            #print snow_vals
+            #axa[k,m].yaxis.set_major_formatter(FormatStrFormatter('%51.0f'))
 
             if k == 5:
                 axa[k,m].set_xlabel('Year')
@@ -1904,8 +1907,8 @@ def plot_basin_cumulative_partitioning():
                 for tick in ticklabels:
                     tick.set_rotation(0)
 
-            lm1 = axa[k,p].axvline(m_years[0], color='#9e9ac8', linestyle='solid', linewidth=0.5)
-            lm2 =axa[k,p].axvline(m_years[1], color='#54278f', linestyle='solid', linewidth=0.5)
+            lm1 = axa[k,m].axvline(m_years[0], color='#9e9ac8', linestyle='solid', linewidth=0.5, label='5%')
+            lm2 = axa[k,m].axvline(m_years[1], color='#54278f', linestyle='solid', linewidth=0.5, label='10%')
             
     legend = axa[0, 2].legend(handles=[lsn, lruw, ld, lmb],
                               loc="upper right",
@@ -1914,10 +1917,22 @@ def plot_basin_cumulative_partitioning():
                               handlelength=1.5,
                               columnspacing=1,
                               edgecolor='0',
-                              bbox_to_anchor=(.45, 0.075, 0, 0),
+                              bbox_to_anchor=(.45, 0.055, 0, 0),
                               bbox_transform=plt.gcf().transFigure)
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
+    
+    legend2 = axa[2, 2].legend(handles=[lm1, lm2],
+                              loc="upper right",
+                              ncol=1,
+                              labelspacing=0.1,
+                              handlelength=1.5,
+                              columnspacing=1,
+                              edgecolor='0',
+                              bbox_to_anchor=(.65, 0.055, 0, 0),
+                              bbox_transform=plt.gcf().transFigure)
+    legend2.get_frame().set_linewidth(0.0)
+    legend2.get_frame().set_alpha(0.0)
     
     for out_format in out_formats:
         out_file = outfile + '_basin_partitioning_cumulative.' + out_format
