@@ -17,9 +17,7 @@ cdo = Cdo()
 
 import cf_units
 import numpy as np
-import pandas as pa
 import pylab as plt
-from osgeo import ogr
 
 from unidecode import unidecode
 
@@ -73,6 +71,7 @@ parser.add_argument("--plot", dest="plot",
                     choices=['basin_mass',
                              'basin_d',
                              'basin_flux_partitioning',
+                             'basin_cumulative_partitioning',
                              'cmip5',
                              'ctrl_mass',
                              'percent_mass',
@@ -695,11 +694,11 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     
 def plot_percent_mass(plot_var=mass_plot_vars):
     
-    fig = plt.figure( figsize=[4, 3])
+    fig = plt.figure( figsize=[3, 2.6])
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    for pc in [1, 2, 5, 10, 25, 50, 75]:
+    for pc in [20, 40, 60]:
         ax.axvline(pc, color='k', linestyle='dotted')
     for k, rcp in enumerate(rcp_list[::-1]):
         rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
@@ -709,15 +708,20 @@ def plot_percent_mass(plot_var=mass_plot_vars):
                          start_year + (len(t[:]) + 1) ,
                          step) 
         var_vals = cdf.variables[plot_var][:]
-        for pc in [1, 2, 5, 10, 25, 50, 75]:
+        for pc in [5, 10, 20, 40, 60]:
             try:
                 idx = np.where(var_vals>= pc)[0][0]
                 m_year = date[idx]
             except:
                 m_year = np.nan
-            print('RCP {}, {}% mass lost in Year {}'.format(rcp, pc, m_year))            
+            print('RCP {}, {}% mass lost in Year {}'.format(rcp, pc, m_year))
 
-        
+        try:
+            m_year = 4992
+            print('RCP {}, {}% mass lost in Year {}'.format(rcp, var_vals[m_year], m_year))
+        except:
+            pass
+
         ax.semilogx(var_vals, date,
                  color=rcp_col_dict[rcp],
                  linewidth=lw,
@@ -726,7 +730,7 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     if do_legend:
         legend = ax.legend(loc="center right",
                            edgecolor='0',
-                           bbox_to_anchor=(0.32, .76),
+                           bbox_to_anchor=(0.37, .76),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)
@@ -734,7 +738,7 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     ax.set_xlabel('Mass loss (%)')
     ax.set_ylabel('Year')
 
-    ax.set_xticks([1, 2, 5, 10, 25, 50, 100])
+    ax.set_xticks([2, 5, 10, 20, 40, 60, 100])
     
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -742,11 +746,20 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     if bounds:
         ax.set_ylim(bounds[0], bounds[1])
 
+    xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
 
     ax.xaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
     ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
 
+    ax_sle = ax.twiny()
+    ax_sle.set_xlim(0.0723, 7.23)
+    ax_sle.set_xlabel('$\Delta$(GMSL) (m)')
+    ax_sle.set_xscale('log')
+    ax_sle.xaxis.set_major_formatter(FormatStrFormatter('%1.1f'))
+    ax_sle.set_xticks([0.1, 0.5, 1, 2, 7])
+
+    rotate_xticks = False
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
         for tick in ticklabels:
@@ -768,7 +781,6 @@ def plot_percent_mass(plot_var=mass_plot_vars):
 
 def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
     
-
     for k, rcp in enumerate(rcp_list[::-1]):
 
         fig = plt.figure()
@@ -777,6 +789,25 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
 
         print('Reading RCP {} files'.format(rcp))
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        for m_file in rcp_files:
+            dr = re.search('gris_g(.+?)m', m_file).group(1)
+            cdf = cdo.readCdf(m_file)
+            
+            t = cdf.variables['time'][:]
+
+            vals = cdf.variables[plot_var][:]
+            iunits = cdf[plot_var].units
+            vals = unit_converter(vals, iunits, flux_ounits) 
+
+            date = np.arange(start_year + step,
+                             start_year + (len(t[:]) + 1) ,
+                             step) 
+
+            ax.plot(date[:], vals,
+                    color=res_col_dict[dr],
+                    alpha=0.5,
+                    linewidth=0.3)
 
         for m_file in rcp_files:
             dr = re.search('gris_g(.+?)m', m_file).group(1)
@@ -796,11 +827,9 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
                     color=res_col_dict[dr],
                     linewidth=lw,
                     label=dr)
-
-
         
         ax.set_xlabel('Year')
-        ax.set_ylabel('rate (Gt yr$^{\mathregular{-1}}$)')
+        ax.set_ylabel('Rate (Gt yr$^{\mathregular{-1}}$)')
             
         if time_bounds:
             ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1562,25 +1591,22 @@ def plot_flux_partitioning():
         b_vals = b_s_vals = 0
         
         lsn = axa[1, m].fill_between(date, 0, snow_vals, color='#6baed6', label='accumulation', linewidth=0)
-        # lb = axa[1, m].fill_between(date, 0, b_vals, color='#9e9ac8', label='B', linewidth=0)
         lruw = axa[1, m].fill_between(date, b_vals, b_vals + ru_vals, color='#fb6a4a', label='runoff (elevation)', linewidth=0)
         lrul = axa[1, m].fill_between(date, b_vals, b_vals + ru_ntrl_vals, color='#fdae6b', label='runoff (climate)', linewidth=0)
         ld = axa[1, m].fill_between(date, b_vals + ru_vals, b_vals + ru_vals + d_vals, color='#74c476', label='discharge', linewidth=0)
 
         axa[1, m].axhline(0, color='k', linestyle='dotted')
         axa[1, m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
-        # axa[1, m].plot(date, b_vals, color='#54278f', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_ntrl_vals, color='#e6550d', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_vals, color='#cb181d', linewidth=0.3)
         axa[1, m].plot(date, b_vals + ru_vals + d_vals, color='#238b45', linewidth=0.3)
         lmb, = axa[1, m].plot(date, tom_vals, color='k', label='mass balance', linewidth=0.6)
 
         lsn = axa[2, m].fill_between(date, 0, snow_s_vals, color='#6baed6', label='accumulation', linewidth=0)
-        # lb = axa[2, m].fill_between(date, 0, b_s_vals, color='#9e9ac8', label='B', linewidth=0)
         lruw = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_s_vals, color='#fb6a4a', label='runoff (elevation)', linewidth=0)
         lrul = axa[2, m].fill_between(date, b_s_vals, b_s_vals + ru_ntrl_s_vals, color='#fdae6b', label='runoff (climate)', linewidth=0)
         ld = axa[2, m].fill_between(date, b_s_vals + ru_s_vals, b_s_vals + ru_s_vals + d_s_vals, color='#74c476', label='discharge', linewidth=0)
-
+        
         axa[2, m].axhline(0, color='k', linestyle='dotted')
         axa[2, m].plot(date, snow_s_vals, color='#2171b5', linewidth=0.3)
         # axa[2, m].plot(date, b_s_vals, color='#54278f', linewidth=0.3)
@@ -1595,11 +1621,18 @@ def plot_flux_partitioning():
         axa[3, m].plot(date, -tom_vals / snow_vals * 100, color='#000000', label='mass balance', linewidth=0.6)
 
         axa[3, m].set_xlabel('Year')
-        axa[0, 0].set_ylabel('Area\n(10$^{6}$ km$^{\mathregular{2}}$)')
-        axa[1, 0].set_ylabel('Rate\n(Gt yr$^{\mathregular{-1}}$)')
-        axa[2, 0].set_ylabel('Rate\n(kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
-        axa[3, 0].set_ylabel('Ratio\n(%)')
-
+        
+    axa[0, 0].set_ylabel('Area\n(10$^{6}$ km$^{\mathregular{2}}$)')
+    axa[1, 0].set_ylabel('Rate\n(Gt yr$^{\mathregular{-1}}$)')
+    axa[2, 0].set_ylabel('Rate\n(kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)')
+    axa[3, 0].set_ylabel('Ratio\n(%)')
+    axm =  axa[2, 2].twinx()
+    ymi, yma = axa[2, 2].get_ylim()
+    print ymi, yma
+    axm.set_ylim(ymi / 910., yma / 910.)
+    axm.set_yticks([-6, -4, -2, 0, 2])
+    axm.set_ylabel('(m yr$^{\mathregular{-1}}$ ice equiv.)')
+    
     legend = axa[0, 0].legend(handles=[la],
                               loc="lower left",
                               ncol=1,
@@ -1778,6 +1811,120 @@ def plot_basin_flux_partitioning():
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
+def plot_basin_cumulative_partitioning():
+
+    fig, axa = plt.subplots(6, 3, sharex='col', sharey='row', figsize=[6, 4])
+    fig.subplots_adjust(hspace=0.06, wspace=0.04)
+    
+    for p, rcp in enumerate(rcp_list):
+        if rcp == '26':
+            m = 0
+            m_years = [2316, 2918]
+        elif rcp == '45':
+            m = 1
+            m_years = [2189, 2556]
+        else:
+            m = 2
+            m_years = [2137, 2202]
+
+        for k, basin in enumerate(basin_list):
+
+            basin_files = [f for f in ifiles if 'b_{}'.format(basin) in f]
+    
+            rcp_ctrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'CTRL' in f][0]
+            # rcp_ntrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
+            print('Reading {}'.format( rcp_ctrl_file))
+            # print('Reading {}'.format( rcp_ntrl_file))
+            cdf = cdo.timcumsum(input=rcp_ctrl_file, returnCdf=True, options=pthreads)
+            # cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
+
+            t = cdf.variables['time'][:]
+            time_units = cdf.variables['time'].units
+            date = np.arange(start_year + step,
+                             start_year + (len(t[:]) + 1) , step) 
+
+            tom_var = 'tendency_of_ice_mass'
+            tom_vals = np.squeeze(cdf.variables[tom_var][:])
+            tom_iunits = cdf[tom_var].units
+            iunits_cf = cf_units.Unit(tom_iunits) * cf_units.Unit(time_units)
+            ounits_cf = cf_units.Unit(mass_ounits)
+            tom_vals = iunits_cf.convert(tom_vals, ounits_cf)
+
+            snow_var = 'surface_accumulation_rate'
+            snow_vals = np.squeeze(cdf.variables[snow_var][:])
+            snow_iunits = cdf[snow_var].units
+            iunits_cf = cf_units.Unit(snow_iunits) * cf_units.Unit(time_units)
+            snow_vals = iunits_cf.convert(snow_vals, ounits_cf)
+
+            ru_var = 'surface_runoff_rate'
+            ru_vals = -np.squeeze(cdf.variables[ru_var][:])
+            # ru_ntrl_vals = np.squeeze(cdf_ntrl.variables[ru_var][:])
+            ru_iunits = cdf[ru_var].units
+            iunits_cf = cf_units.Unit(ru_iunits) * cf_units.Unit(time_units)
+            ru_vals = iunits_cf.convert(ru_vals, ounits_cf)
+            # ru_ntrl_iunits = cdf_ntrl[ru_var].units
+            # ru_ntrl_vals = -unit_converter(ru_ntrl_vals, ru_iunits, mass_ounits)
+
+            d_var = 'tendency_of_ice_mass_due_to_discharge'
+            d_vals = np.squeeze(cdf.variables[d_var][:])
+            d_iunits = cdf[d_var].units
+            iunits_cf = cf_units.Unit(d_iunits) * cf_units.Unit(time_units)
+            d_vals = iunits_cf.convert(d_vals, ounits_cf)
+            
+            lsn = axa[k,m].fill_between(date, 0, snow_vals, color='#6baed6', label='accumulation', linewidth=0)
+            lruw = axa[k,m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='runoff', linewidth=0)
+            # lrul = axa[k,m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RW', linewidth=0)
+            ld = axa[k,m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='discharge', linewidth=0)
+            axa[k,m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
+            axa[k,m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
+            #axa[k,m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
+            axa[k,m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
+            lmb, = axa[k,m].plot(date, tom_vals, color='k', label='mass balance', linewidth=0.6)
+            axa[k,m].axhline(0, color='k', linestyle='dotted')
+            
+            axa[k,m].yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+
+            if k == 5:
+                axa[k,m].set_xlabel('Year')
+            if m == 0:
+                axa[k,m].set_ylabel('Mass (Gt)')
+
+            if time_bounds:
+                axa[k,m].set_xlim(time_bounds[0], time_bounds[1])
+
+            if bounds:
+                axa[k,m].set_ylim(bounds[0], bounds[1])
+        
+            if rotate_xticks:
+                ticklabels = axa[k,m].get_xticklabels()
+                for tick in ticklabels:
+                        tick.set_rotation(30)
+            else:
+                ticklabels = axa[k,m].get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(0)
+
+            lm1 = axa[k,p].axvline(m_years[0], color='#9e9ac8', linestyle='solid', linewidth=0.5)
+            lm2 =axa[k,p].axvline(m_years[1], color='#54278f', linestyle='solid', linewidth=0.5)
+            
+    legend = axa[0, 2].legend(handles=[lsn, lruw, ld, lmb],
+                              loc="upper right",
+                              ncol=1,
+                              labelspacing=0.1,
+                              handlelength=1.5,
+                              columnspacing=1,
+                              edgecolor='0',
+                              bbox_to_anchor=(.45, 0.075, 0, 0),
+                              bbox_transform=plt.gcf().transFigure)
+    legend.get_frame().set_linewidth(0.0)
+    legend.get_frame().set_alpha(0.0)
+    
+    for out_format in out_formats:
+        out_file = outfile + '_basin_partitioning_cumulative.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+
 def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
     
     fig = plt.figure()
@@ -2446,6 +2593,8 @@ elif plot == 'flux_partitioning':
     plot_flux_partitioning()
 elif plot == 'basin_flux_partitioning':
     plot_basin_flux_partitioning()
+elif plot == 'basin_cumulative_partitioning':
+    plot_basin_cumulative_partitioning()
 elif plot == 'cmip5':
     plot_cmip5()
 elif plot == 'station_usurf':
