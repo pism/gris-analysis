@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2017 Andy Aschwanden
+# Copyright (C) 2018 Constantine Khroulev and Andy Aschwanden
 
 from argparse import ArgumentParser
 from netCDF4 import Dataset as NC

@@ -177,13 +177,14 @@ basin_col_dict = {'SW': '#542788',
                   'GR': '#000000'}
 
 rcp_col_dict = {'CTRL': 'k',
-                '85': '#d94701',
-                '45': '#fd8d3c',
-                '26': '#fdbe85'}
-rcp_col_dict = {'CTRL': 'k',
                 '85': '#7f2704',
                 '45': '#f16913',
-                '26': '#fdd0a2'}
+                '26': '#fdae6b'}
+
+rcp_col_dict = {'CTRL': 'k',
+                '85': '#8c2d04',
+                '45': '#f16913',
+                '26': '#fdae6b'}
 
 rcp_dict = {'26': 'RCP 2.6',
             '45': 'RCP 4.5',
@@ -694,12 +695,12 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     
 def plot_percent_mass(plot_var=mass_plot_vars):
     
-    fig = plt.figure( figsize=[3, 2.6])
+    fig = plt.figure(figsize=[4, 1.5])
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    for pc in [20, 40, 60]:
-        ax.axvline(pc, color='k', linestyle='dotted')
+    for pc in [5, 10, 20, 40, 60]:
+        ax.axhline(pc, color='k', linestyle='dotted')
     for k, rcp in enumerate(rcp_list[::-1]):
         rcp_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f][0]
         cdf = cdo.readCdf(rcp_file)
@@ -722,7 +723,7 @@ def plot_percent_mass(plot_var=mass_plot_vars):
         except:
             pass
 
-        ax.semilogx(var_vals, date,
+        ax.semilogy(date, var_vals,
                  color=rcp_col_dict[rcp],
                  linewidth=lw,
                  label=rcp_dict[rcp],)
@@ -730,15 +731,15 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     if do_legend:
         legend = ax.legend(loc="center right",
                            edgecolor='0',
-                           bbox_to_anchor=(0.37, .76),
+                           bbox_to_anchor=(0.88, .26),
                            bbox_transform=plt.gcf().transFigure)
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)
 
-    ax.set_xlabel('Mass loss (%)')
-    ax.set_ylabel('Year')
+    ax.set_ylabel('Mass loss (%)')
+    ax.set_xlabel('Year')
 
-    ax.set_xticks([2, 5, 10, 20, 40, 60, 100])
+    ax.set_yticks([2, 5, 10, 20, 40, 60, 100])
     
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -752,12 +753,12 @@ def plot_percent_mass(plot_var=mass_plot_vars):
     ax.xaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
     ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
 
-    ax_sle = ax.twiny()
-    ax_sle.set_xlim(0.0723, 7.23)
-    ax_sle.set_xlabel('$\Delta$(GMSL) (m)')
-    ax_sle.set_xscale('log')
-    ax_sle.xaxis.set_major_formatter(FormatStrFormatter('%1.1f'))
-    ax_sle.set_xticks([0.1, 0.5, 1, 2, 7])
+    ax_sle = ax.twinx()
+    ax_sle.set_ylim(0.0723, 7.23)
+    ax_sle.set_ylabel('$\Delta$(GMSL) (m)')
+    ax_sle.set_yscale('log')
+    ax_sle.yaxis.set_major_formatter(FormatStrFormatter('%1.1f'))
+    ax_sle.set_yticks([0.1, 0.5, 1, 2, 7])
 
     rotate_xticks = False
     if rotate_xticks:
@@ -1583,7 +1584,7 @@ def plot_flux_partitioning():
         b_s_iunits = cf_units.Unit(b_iunits) / cf_units.Unit(area_iunits)
         b_s_vals = b_s_iunits.convert(b_s_vals, specific_flux_ounits)
 
-        la, = axa[0, m].plot(date, area_vals / 1e12, label='area')
+        la, = axa[0, m].plot(date, area_vals / 1e12, color='#084594', label='area')
         axa[0, m].set_aspect(200, anchor='S', adjustable='box-forced')
         axa[0, m].set_title('{}'.format(rcp_dict[rcp]))
 
@@ -1815,7 +1816,10 @@ def plot_basin_cumulative_partitioning():
 
     fig, axa = plt.subplots(6, 3, sharex='col', sharey='row', figsize=[6, 4])
     fig.subplots_adjust(hspace=0.06, wspace=0.04)
-    
+
+    fig_bar, axb = plt.subplots(1, 1)
+
+    scale_factor = 1
     for m, rcp in enumerate(rcp_list):
         if rcp == '26':
             m = 0
@@ -1849,20 +1853,20 @@ def plot_basin_cumulative_partitioning():
             tom_iunits = cdf[tom_var].units
             iunits_cf = cf_units.Unit(tom_iunits) * cf_units.Unit(time_units)
             ounits_cf = cf_units.Unit(mass_ounits)
-            tom_vals = iunits_cf.convert(tom_vals, ounits_cf)
+            tom_vals = iunits_cf.convert(tom_vals, ounits_cf) / scale_factor
 
             snow_var = 'surface_accumulation_rate'
             snow_vals = np.squeeze(cdf.variables[snow_var][:])
             snow_iunits = cdf[snow_var].units
             iunits_cf = cf_units.Unit(snow_iunits) * cf_units.Unit(time_units)
-            snow_vals = iunits_cf.convert(snow_vals, ounits_cf)
+            snow_vals = iunits_cf.convert(snow_vals, ounits_cf) / scale_factor
 
             ru_var = 'surface_runoff_rate'
             ru_vals = -np.squeeze(cdf.variables[ru_var][:])
             # ru_ntrl_vals = np.squeeze(cdf_ntrl.variables[ru_var][:])
             ru_iunits = cdf[ru_var].units
             iunits_cf = cf_units.Unit(ru_iunits) * cf_units.Unit(time_units)
-            ru_vals = iunits_cf.convert(ru_vals, ounits_cf)
+            ru_vals = iunits_cf.convert(ru_vals, ounits_cf) / scale_factor
             # ru_ntrl_iunits = cdf_ntrl[ru_var].units
             # ru_ntrl_vals = -unit_converter(ru_ntrl_vals, ru_iunits, mass_ounits)
 
@@ -1870,7 +1874,13 @@ def plot_basin_cumulative_partitioning():
             d_vals = np.squeeze(cdf.variables[d_var][:])
             d_iunits = cdf[d_var].units
             iunits_cf = cf_units.Unit(d_iunits) * cf_units.Unit(time_units)
-            d_vals = iunits_cf.convert(d_vals, ounits_cf)
+            d_vals = iunits_cf.convert(d_vals, ounits_cf) / scale_factor
+
+            width=0.3
+            print k, m
+            axb.bar(k+m*width-width, snow_vals[m_years[0]-start_year], width=width, color='#6baed6')
+            axb.bar(k+m*width-width, ru_vals[m_years[0]-start_year], width=width, color='#fb6a4a')
+            axb.bar(k+m*width-width, d_vals[m_years[0]-start_year], bottom=ru_vals[m_years[0]-start_year], width=width, color='#74c476')
             
             lsn = axa[k,m].fill_between(date, 0, snow_vals, color='#6baed6', label='accumulation', linewidth=0)
             lruw = axa[k,m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='runoff', linewidth=0)
@@ -1890,7 +1900,7 @@ def plot_basin_cumulative_partitioning():
             if k == 5:
                 axa[k,m].set_xlabel('Year')
             if m == 0:
-                axa[k,m].set_ylabel('Mass (Gt)')
+                axa[k,m].set_ylabel('Mass (Tt)')
 
             if time_bounds:
                 axa[k,m].set_xlim(time_bounds[0], time_bounds[1])
@@ -1909,7 +1919,10 @@ def plot_basin_cumulative_partitioning():
 
             lm1 = axa[k,m].axvline(m_years[0], color='#9e9ac8', linestyle='solid', linewidth=0.5, label='5%')
             lm2 = axa[k,m].axvline(m_years[1], color='#54278f', linestyle='solid', linewidth=0.5, label='10%')
-            
+
+    plt.xticks([0,1,2,3,4,5],basin_list)
+
+    
     legend = axa[0, 2].legend(handles=[lsn, lruw, ld, lmb],
                               loc="upper right",
                               ncol=1,
@@ -1938,6 +1951,9 @@ def plot_basin_cumulative_partitioning():
         out_file = outfile + '_basin_partitioning_cumulative.' + out_format
         print "  - writing image %s ..." % out_file
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+        out_file = outfile + '_basin_partitioning_bar.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig_bar.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
 def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
