@@ -1814,10 +1814,13 @@ def plot_basin_flux_partitioning():
         
 def plot_basin_cumulative_partitioning():
 
+    width = 0.2
+    dist = 0.2
+
     fig, axa = plt.subplots(6, 3, sharex='col', sharey='row', figsize=[6, 4])
     fig.subplots_adjust(hspace=0.06, wspace=0.04)
 
-    fig_bar, axb = plt.subplots(1, 1)
+    fig_bar, axb = plt.subplots(2, 1, sharex='col')
 
     scale_factor = 1
     for m, rcp in enumerate(rcp_list):
@@ -1876,81 +1879,21 @@ def plot_basin_cumulative_partitioning():
             iunits_cf = cf_units.Unit(d_iunits) * cf_units.Unit(time_units)
             d_vals = iunits_cf.convert(d_vals, ounits_cf) / scale_factor
 
-            width=0.3
-            print k, m
-            axb.bar(k+m*width-width, snow_vals[m_years[0]-start_year], width=width, color='#6baed6')
-            axb.bar(k+m*width-width, ru_vals[m_years[0]-start_year], width=width, color='#fb6a4a')
-            axb.bar(k+m*width-width, d_vals[m_years[0]-start_year], bottom=ru_vals[m_years[0]-start_year], width=width, color='#74c476')
+            axb[0].bar(k+m*dist-dist, snow_vals[m_years[0]-start_year], width=width, color='#6baed6')
+            axb[0].bar(k+m*dist-dist, ru_vals[m_years[0]-start_year], width=width, color='#fb6a4a')
+            axb[0].bar(k+m*dist-dist, d_vals[m_years[0]-start_year], bottom=ru_vals[m_years[0]-start_year], width=width, color='#74c476')
             
-            lsn = axa[k,m].fill_between(date, 0, snow_vals, color='#6baed6', label='accumulation', linewidth=0)
-            lruw = axa[k,m].fill_between(date, 0, ru_vals, color='#fb6a4a', label='runoff', linewidth=0)
-            # lrul = axa[k,m].fill_between(date, 0, ru_ntrl_vals, color='#fdae6b', label='RW', linewidth=0)
-            ld = axa[k,m].fill_between(date, ru_vals, ru_vals + d_vals, color='#74c476', label='discharge', linewidth=0)
-            axa[k,m].plot(date, snow_vals, color='#2171b5', linewidth=0.3)
-            axa[k,m].plot(date, ru_vals, color='#cb181d', linewidth=0.3)
-            #axa[k,m].plot(date, ru_ntrl_vals, color='#e6550d', linewidth=0.3)
-            axa[k,m].plot(date, ru_vals + d_vals, color='#238b45', linewidth=0.3)
-            lmb, = axa[k,m].plot(date, tom_vals, color='k', label='mass balance', linewidth=0.6)
-            axa[k,m].axhline(0, color='k', linestyle='dotted')
+            axb[1].bar(k+m*dist-dist, snow_vals[m_years[1]-start_year], width=width, color='#6baed6')
+            axb[1].bar(k+m*dist-dist, ru_vals[m_years[1]-start_year], width=width, color='#fb6a4a')
+            axb[1].bar(k+m*dist-dist, d_vals[m_years[1]-start_year], bottom=ru_vals[m_years[1]-start_year], width=width, color='#74c476')
+            
 
-            #print snow_iunits, mass_ounits
-            #print snow_vals
-            #axa[k,m].yaxis.set_major_formatter(FormatStrFormatter('%51.0f'))
-
-            if k == 5:
-                axa[k,m].set_xlabel('Year')
-            if m == 0:
-                axa[k,m].set_ylabel('Mass (Tt)')
-
-            if time_bounds:
-                axa[k,m].set_xlim(time_bounds[0], time_bounds[1])
-
-            if bounds:
-                axa[k,m].set_ylim(bounds[0], bounds[1])
-        
-            if rotate_xticks:
-                ticklabels = axa[k,m].get_xticklabels()
-                for tick in ticklabels:
-                        tick.set_rotation(30)
-            else:
-                ticklabels = axa[k,m].get_xticklabels()
-                for tick in ticklabels:
-                    tick.set_rotation(0)
-
-            lm1 = axa[k,m].axvline(m_years[0], color='#9e9ac8', linestyle='solid', linewidth=0.5, label='5%')
-            lm2 = axa[k,m].axvline(m_years[1], color='#54278f', linestyle='solid', linewidth=0.5, label='10%')
-
+    axb[0].axhline(0, color='k', linewidth=0.3, linestyle='dashed')
+    axb[1].axhline(0, color='k', linewidth=0.3, linestyle='dashed')
     plt.xticks([0,1,2,3,4,5],basin_list)
 
-    
-    legend = axa[0, 2].legend(handles=[lsn, lruw, ld, lmb],
-                              loc="upper right",
-                              ncol=1,
-                              labelspacing=0.1,
-                              handlelength=1.5,
-                              columnspacing=1,
-                              edgecolor='0',
-                              bbox_to_anchor=(.45, 0.055, 0, 0),
-                              bbox_transform=plt.gcf().transFigure)
-    legend.get_frame().set_linewidth(0.0)
-    legend.get_frame().set_alpha(0.0)
-    
-    legend2 = axa[2, 2].legend(handles=[lm1, lm2],
-                              loc="upper right",
-                              ncol=1,
-                              labelspacing=0.1,
-                              handlelength=1.5,
-                              columnspacing=1,
-                              edgecolor='0',
-                              bbox_to_anchor=(.65, 0.055, 0, 0),
-                              bbox_transform=plt.gcf().transFigure)
-    legend2.get_frame().set_linewidth(0.0)
-    legend2.get_frame().set_alpha(0.0)
-    
+     
     for out_format in out_formats:
-        out_file = outfile + '_basin_partitioning_cumulative.' + out_format
-        print "  - writing image %s ..." % out_file
-        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
         out_file = outfile + '_basin_partitioning_bar.' + out_format
         print "  - writing image %s ..." % out_file
         fig_bar.savefig(out_file, bbox_inches='tight', dpi=out_res)
