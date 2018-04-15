@@ -26,6 +26,19 @@ try:
 except:
     from pypismtools.pypismtools import unit_converter, smooth
 
+
+def set_size(w,h, ax=None):
+    """ w, h: width, height in inches """
+    
+    if not ax: ax=plt.gca()
+    l = ax.figure.subplotpars.left
+    r = ax.figure.subplotpars.right
+    t = ax.figure.subplotpars.top
+    b = ax.figure.subplotpars.bottom
+    figw = float(w)/(r-l)
+    figh = float(h)/(t-b)
+    ax.figure.set_size_inches(figw, figh)
+    
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW']
 rcp_list = ['26', '45', '85']
 
@@ -359,6 +372,8 @@ def plot_cmip5(plot_var='delta_T'):
     if title is not None:
             plt.title(title)
 
+    set_size(2.44, 0.86)
+        
     for out_format in out_formats:
         out_file = outfile + '_cmip5' + '_'  + plot_var + '.' + out_format
         print "  - writing image %s ..." % out_file
@@ -1027,7 +1042,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
             ctrl_vals = -unit_converter(ctrl_vals, iunits, mass_ounits) * gt2mSLE
             ax.plot(cdf_date[:], ctrl_vals,
                     color=rcp_col_dict[rcp],
-                    linestyle='dashed',
+                    linestyle='solid',
                     linewidth=lw)
 
 
@@ -1064,13 +1079,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
 
     ymin, ymax = ax.get_ylim()
 
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
-
-    # print ymin, ymax
-    # axr = ax.twinx()
-    # mn, mx = axr.get_ylim()
-    # axr.set_ylim(100, 0)
-    # axr.set_ylabel('% of initial volume')
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
     
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -1083,6 +1092,8 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
                     
     if title is not None:
             plt.title(title)
+
+    set_size(2.44, 0.86)
 
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
@@ -1163,7 +1174,7 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                 ctrl_vals = -unit_converter(ctrl_vals, iunits, mass_ounits) * gt2mSLE
                 ax.plot(cdf_date[:], ctrl_vals,
                         color=rcp_col_dict[rcp],
-                        linestyle='dashed',
+                        linestyle='solid',
                         linewidth=lw)
                 
 
@@ -1210,6 +1221,9 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
     if title is not None:
             plt.title(title)
 
+
+    set_size(4.44, 0.86)
+    
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
         print "  - writing image %s ..." % out_file
@@ -1217,11 +1231,10 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
 
 
 def plot_rcp_flux(plot_var=flux_plot_vars):
-    
+
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
-
     
     for k, rcp in enumerate(rcp_list[::-1]):
 
@@ -1284,7 +1297,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
             ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
             ax.plot(ctrl_date[:], ctrl_vals,
                     color=rcp_col_dict[rcp],
-                    linestyle='dashed',
+                    linestyle='solid',
                     linewidth=lw)
 
 
@@ -1322,7 +1335,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
                     
     
     ax.set_xlabel('Year')
-    ax.set_ylabel('Rate of GMSL rise (mm yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('Rate of GMSL rise\n(mm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -1332,7 +1345,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 
     ymin, ymax = ax.get_ylim()
 
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
 
     if rotate_xticks:
         ticklabels = ax.get_xticklabels()
@@ -1346,6 +1359,99 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
     if title is not None:
             plt.title(title)
 
+    set_size(2.44, 0.86)
+
+    for out_format in out_formats:
+        out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
+        print "  - writing image %s ..." % out_file
+        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+def plot_rcp_d(plot_var=flux_plot_vars):
+
+    fig = plt.figure()
+    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+    ax = fig.add_subplot(111)
+
+    
+    for k, rcp in enumerate(rcp_list[::-1]):
+
+        print('Reading RCP {} files'.format(rcp))
+        rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        cdf_ctrl = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
+        ctrl_t = cdf_ctrl.variables['time'][:]
+        ctrl_date = np.arange(start_year + step,
+                             start_year + (len(ctrl_t[:]) + 1) , step) 
+
+        ctrl_vals = cdf_ctrl.variables[plot_var][:]
+        iunits = cdf_ctrl[plot_var].units
+        ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
+        ax.plot(ctrl_date[:], ctrl_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='solid',
+                linewidth=lw)
+
+    for k, rcp in enumerate(rcp_list[::-1]):
+
+        print('Reading RCP {} files'.format(rcp))
+        rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
+
+        cdf_ctrl = cdo.readCdf(rcp_ctrl_file[0])
+        ctrl_t = cdf_ctrl.variables['time'][:]
+        ctrl_date = np.arange(start_year + step,
+                             start_year + (len(ctrl_t[:]) + 1) , step) 
+
+        ctrl_vals = cdf_ctrl.variables[plot_var][:]
+        iunits = cdf_ctrl[plot_var].units
+        ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
+        ax.plot(ctrl_date[:], ctrl_vals,
+                color=rcp_col_dict[rcp],
+                linestyle='solid',
+                alpha=0.5,
+                linewidth=0.3)
+
+    if do_legend:
+        legend = ax.legend(loc="upper right",
+                           edgecolor='0',
+                           bbox_to_anchor=(0, 0, .35, 0.88),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+                    
+    
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Rate (Gt yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('Rate of GMSL rise\n(mm yr$^{\mathregular{-1}}$)')
+        
+    if time_bounds:
+        ax.set_xlim(time_bounds[0], time_bounds[1])
+
+    if bounds:
+        ax.set_ylim(bounds[0], bounds[1])
+
+    ymin, ymax = ax.get_ylim()
+
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.1f'))
+
+    # axGt =  ax.twinx()
+    # ymi, yma = ax.get_ylim()
+    # axGt.set_ylim(ymi / gt2mmSLE, yma / gt2mmSLE)
+    # axGt.set_ylabel('(Gt yr$^{\mathregular{-1}}$')
+    
+    if rotate_xticks:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+                tick.set_rotation(30)
+    else:
+        ticklabels = ax.get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
+                    
+    if title is not None:
+            plt.title(title)
+
+    set_size(2.44, 0.86, ax)
+    
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
         print "  - writing image %s ..." % out_file
@@ -2546,6 +2652,8 @@ elif plot == 'rcp_ens_mass':
     plot_rcp_ens_mass(plot_var='limnsw')
 elif plot == 'rcp_flux':
     plot_rcp_flux(plot_var='tendency_of_ice_mass_glacierized')
+elif plot == 'rcp_d':
+    plot_rcp_d(plot_var='tendency_of_ice_mass_due_to_discharge')
 elif plot == 'rcp_fluxes':
     for plot_var in flux_plot_vars:
         plot_rcp_flux_gt(plot_var=plot_var)
