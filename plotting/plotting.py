@@ -217,7 +217,7 @@ flux_to_mass_vars_dict = {'tendency_of_ice_mass_glacierized': 'ice_mass',
              'tendency_of_ice_mass_due_to_basal_mass_flux': 'basal_mass_flux_cumulative',
              'tendency_of_ice_mass_due_to_surface_mass_flux': 'surface_mass_flux_cumulative',
              'tendency_of_ice_mass_due_to_discharge': 'discharge_cumulative'}
-flux_vars = flux_to_mass_vars_dict.keys()
+flux_vars = list(flux_to_mass_vars_dict.keys())
 
 flux_abbr_dict = {'tendency_of_ice_mass_glacierized': '$\dot \mathregular{M}$',
                   'tendency_of_ice_mass': '$\dot \mathregular{M}$',
@@ -375,7 +375,7 @@ def plot_cmip5(plot_var='delta_T'):
         
     for out_format in out_formats:
         out_file = outfile + '_cmip5' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
@@ -387,7 +387,7 @@ def plot_profile_ts(plot_var='velsurf_mag'):
     profile_names = nc.variables['profile_name'][:]
     for k, profile in enumerate(profile_names):
 
-        print(u'Processing {} profile'.format(profile))
+        print(('Processing {} profile'.format(profile)))
         
         fig = plt.figure()
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -459,7 +459,7 @@ def plot_profile_ts(plot_var='velsurf_mag'):
 
         for out_format in out_formats:
             out_file = outfile + '_{}_'.format(unidecode(profile).replace(' ', '_'))  + plot_var + '.' + out_format
-            print "  - writing image %s ..." % out_file
+            print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
     nc.close()
@@ -473,7 +473,7 @@ def plot_profile_ts_combined():
     profile_names = nc.variables['profile_name'][:]
     for k, profile in enumerate(profile_names):
 
-        print(u'Processing {} profile'.format(profile))
+        print(('Processing {} profile'.format(profile)))
         
         fig, ax = plt.subplots(3, 1, sharex='col', figsize=[3, 2])
         fig.subplots_adjust(hspace=0.15, wspace=0.05)
@@ -562,7 +562,7 @@ def plot_profile_ts_combined():
 
         for out_format in out_formats:
             out_file = outfile + '_{}'.format(unidecode(profile).replace(' ', '_')) + '.' + out_format
-            print "  - writing image %s ..." % out_file
+            print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
     nc.close()
@@ -638,7 +638,7 @@ def plot_point_ts(plot_var='usurf'):
 
         for out_format in out_formats:
             out_file = outfile + '_{}_'.format(station)  + plot_var + '.' + out_format
-            print "  - writing image %s ..." % out_file
+            print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
     
 def plot_ctrl_mass(plot_var=mass_plot_vars):
@@ -703,7 +703,7 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
 
     for out_format in out_formats:
         out_file = outfile + '_ctrl' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
     
@@ -729,11 +729,11 @@ def plot_percent_mass(plot_var=mass_plot_vars):
                 m_year = date[idx]
             except:
                 m_year = np.nan
-            print('RCP {}, {}% mass lost in Year {}'.format(rcp, pc, m_year))
+            print(('RCP {}, {}% mass lost in Year {}'.format(rcp, pc, m_year)))
 
         try:
             m_year = 4992
-            print('RCP {}, {}% mass lost in Year {}'.format(rcp, var_vals[m_year], m_year))
+            print(('RCP {}, {}% mass lost in Year {}'.format(rcp, var_vals[m_year], m_year)))
         except:
             pass
 
@@ -789,7 +789,7 @@ def plot_percent_mass(plot_var=mass_plot_vars):
 
     for out_format in out_formats:
         out_file = outfile + '_percent' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
@@ -802,7 +802,7 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
         ax = fig.add_subplot(111)
 
-        print('Reading RCP {} files'.format(rcp))
+        print(('Reading RCP {} files'.format(rcp)))
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
 
         for m_file in rcp_files:
@@ -885,7 +885,7 @@ def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
 
         for out_format in out_formats:
             out_file = outfile + '_rcp_{}_grid'.format(rcp) + '_'  + plot_var + '.' + out_format
-            print "  - writing image %s ..." % out_file
+            print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
         
 def plot_grid_pc(plot_var='limnsw'):
@@ -896,7 +896,7 @@ def plot_grid_pc(plot_var='limnsw'):
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
         ax = fig.add_subplot(111)
 
-        print('Reading RCP {} files'.format(rcp))
+        print(('Reading RCP {} files'.format(rcp)))
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
 
         for m_file in rcp_files:
@@ -922,7 +922,7 @@ def plot_grid_pc(plot_var='limnsw'):
                     m_year = date[idx]
                 except:
                     m_year = np.nan
-                print('{}m: {}% mass lost in Year {}'.format(dr, pc, m_year))            
+                print(('{}m: {}% mass lost in Year {}'.format(dr, pc, m_year)))            
 
         
         ax.set_xlabel('Year')
@@ -967,7 +967,7 @@ def plot_grid_pc(plot_var='limnsw'):
 
         for out_format in out_formats:
             out_file = outfile + '_rcp_{}_grid_percent'.format(rcp) + '_'  + plot_var + '.' + out_format
-            print "  - writing image %s ..." % out_file
+            print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
         
 
@@ -979,7 +979,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
     ax = fig.add_subplot(111)
     for k, rcp in enumerate(rcp_list[::-1]):
 
-        print('Reading RCP {} files'.format(rcp))
+        print(('Reading RCP {} files'.format(rcp)))
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
 
         pctl16_file = [f for f in rcp_files if 'enspctl16' in f][0]
@@ -1053,10 +1053,10 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
             m_pctl16_v = (enspctl16[0] - enspctl16[idx]) / enspctl16[0] * 100
             m_pctl84_v = (enspctl84[0] - enspctl84[idx]) / enspctl84[0] * 100
             m_ctrl = ctrl_vals[idx]
-            print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} m SLE, {:1.2f} {:1.2f}'.format(m_year, m_pctl84, m_median, m_pctl16, m_pctl84 - m_median, m_pctl16 - m_median))
-            print('Year {}: {:1.2f} - {:1.2f} percent reduction'.format(m_year, m_pctl84_v, m_pctl16_v))
+            print(('Year {}: {:1.2f} - {:1.2f} - {:1.2f} m SLE, {:1.2f} {:1.2f}'.format(m_year, m_pctl84, m_median, m_pctl16, m_pctl84 - m_median, m_pctl16 - m_median)))
+            print(('Year {}: {:1.2f} - {:1.2f} percent reduction'.format(m_year, m_pctl84_v, m_pctl16_v)))
 
-            print('         CTRL {:1.2f} m SLE'.format(m_ctrl))
+            print(('         CTRL {:1.2f} m SLE'.format(m_ctrl)))
 
 
     if do_legend:
@@ -1096,7 +1096,7 @@ def plot_rcp_mass(plot_var=mass_plot_vars):
 
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
@@ -1111,11 +1111,11 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
         if len(rcp_files) < 3:
             
-            print('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp]))
+            print(('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp])))
 
         else:
 
-            print('Reading files for {}'.format(rcp_dict[rcp]))
+            print(('Reading files for {}'.format(rcp_dict[rcp])))
             cdf_enspctl16 = cdo.enspctl('16',input=rcp_files, returnCdf=True, options=pthreads)
             cdf_enspctl84 = cdo.enspctl('84',input=rcp_files, returnCdf=True, options=pthreads)
             cdf_ensmedian = cdo.enspctl('50', input=rcp_files, returnCdf=True, options=pthreads)
@@ -1183,8 +1183,8 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
                 m_ctrl = ctrl_vals[idx]
-                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} m SLE, {:1.2f} {:1.2f}'.format(m_year, m_pctl84, m_median, m_pctl16, m_pctl84 - m_median, m_pctl16 - m_median))
-                print('         CTRL {:1.2f} m SLE'.format(m_ctrl))
+                print(('Year {}: {:1.2f} - {:1.2f} - {:1.2f} m SLE, {:1.2f} {:1.2f}'.format(m_year, m_pctl84, m_median, m_pctl16, m_pctl84 - m_median, m_pctl16 - m_median)))
+                print(('         CTRL {:1.2f} m SLE'.format(m_ctrl)))
 
 
     if do_legend:
@@ -1225,7 +1225,7 @@ def plot_rcp_ens_mass(plot_var=mass_plot_vars):
     
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
@@ -1237,7 +1237,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
     
     for k, rcp in enumerate(rcp_list[::-1]):
 
-        print('Reading RCP {} files'.format(rcp))
+        print(('Reading RCP {} files'.format(rcp)))
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
 
         pctl16_file = [f for f in rcp_files if 'enspctl16' in f][0]
@@ -1305,23 +1305,23 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
             m_median = ensmedian_vals[idx]
             m_pctl16 = enspctl16_vals[idx]
             m_pctl84 = enspctl84_vals[idx]
-            print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+            print(('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16)))
 
         idx = np.argmax(ensmedian_vals)
         m_year = date[idx]
         m_val = ensmedian_vals[idx]
-        print('Max loss rate 50th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))            
+        print(('Max loss rate 50th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val)))            
         idx = np.argmax(enspctl16_vals)
         m_val = enspctl16_vals[idx]
-        print('Max loss rate 16th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
+        print(('Max loss rate 16th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val)))
         idx = np.argmax(enspctl84_vals)
         m_year = date[idx]
         m_val = enspctl84_vals[idx]
-        print('Max loss rate 84th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
+        print(('Max loss rate 84th pctl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val)))
         idx = np.argmax(enspctl84_vals)
         m_year = ctrl_date[idx]
         m_val = ctrl_vals[idx]
-        print('Max loss rate ctrl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val))
+        print(('Max loss rate ctrl in Year {}: {:1.3f} mm SLE year-1'.format(m_year, m_val)))
 
 
     if do_legend:
@@ -1362,7 +1362,7 @@ def plot_rcp_flux(plot_var=flux_plot_vars):
 
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 def plot_rcp_d(plot_var=flux_plot_vars):
@@ -1374,7 +1374,7 @@ def plot_rcp_d(plot_var=flux_plot_vars):
     
     for k, rcp in enumerate(rcp_list[::-1]):
 
-        print('Reading RCP {} files'.format(rcp))
+        print(('Reading RCP {} files'.format(rcp)))
         rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
 
         cdf_ctrl = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
@@ -1392,7 +1392,7 @@ def plot_rcp_d(plot_var=flux_plot_vars):
 
     for k, rcp in enumerate(rcp_list[::-1]):
 
-        print('Reading RCP {} files'.format(rcp))
+        print(('Reading RCP {} files'.format(rcp)))
         rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
 
         cdf_ctrl = cdo.readCdf(rcp_ctrl_file[0])
@@ -1453,7 +1453,7 @@ def plot_rcp_d(plot_var=flux_plot_vars):
     
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
@@ -1591,7 +1591,7 @@ def plot_flux_partitioning():
     axa[3, 0].set_ylabel('Ratio\n(%)')
     axm =  axa[2, 2].twinx()
     ymi, yma = axa[2, 2].get_ylim()
-    print ymi, yma
+    print(ymi, yma)
     axm.set_ylim(ymi / 910., yma / 910.)
     axm.set_yticks([-6, -4, -2, 0, 2])
     axm.set_ylabel('(m yr$^{\mathregular{-1}}$ ice equiv.)')
@@ -1652,12 +1652,12 @@ def plot_flux_partitioning():
     add_inner_title(axa[3, 2], 'l', 'upper left')
 
     if rotate_xticks:
-        for o, p in range(0, 2), range(0, 2):
+        for o, p in list(range(0, 2)), list(range(0, 2)):
             ticklabels = axa[o, p].get_xticklabels()
             for tick in ticklabels:
                 tick.set_rotation(30)
     else:
-        for o, p in range(0, 2), range(0, 2):
+        for o, p in list(range(0, 2)), list(range(0, 2)):
             ticklabels = axa[o, p].get_xticklabels()
             for tick in ticklabels:
                 tick.set_rotation(0)
@@ -1668,7 +1668,7 @@ def plot_flux_partitioning():
     
     for out_format in out_formats:
         out_file = outfile + '_partitioning.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
@@ -1691,7 +1691,7 @@ def plot_basin_flux_partitioning():
     
             rcp_ctrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'CTRL' in f][0]
             # rcp_ntrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
-            print('Reading {}'.format( rcp_ctrl_file))
+            print(('Reading {}'.format( rcp_ctrl_file)))
             # print('Reading {}'.format( rcp_ntrl_file))
             cdf = cdo.runmean('11', input=rcp_ctrl_file, returnCdf=True, options=pthreads)
             # cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
@@ -1770,7 +1770,7 @@ def plot_basin_flux_partitioning():
     
     for out_format in out_formats:
         out_file = outfile + '_basin_partitioning.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
@@ -1802,7 +1802,7 @@ def plot_basin_cumulative_partitioning():
     
             rcp_ctrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'CTRL' in f][0]
             # rcp_ntrl_file = [f for f in basin_files if 'rcp_{}'.format(rcp) in f and 'NTRL' in f in f][0]
-            print('Reading {}'.format( rcp_ctrl_file))
+            print(('Reading {}'.format( rcp_ctrl_file)))
             # print('Reading {}'.format( rcp_ntrl_file))
             cdf = cdo.timcumsum(input=rcp_ctrl_file, returnCdf=True, options=pthreads)
             # cdf_ntrl = cdo.runmean('11', input=rcp_ntrl_file, returnCdf=True, options=pthreads)
@@ -1857,7 +1857,7 @@ def plot_basin_cumulative_partitioning():
      
     for out_format in out_formats:
         out_file = outfile + '_basin_partitioning_bar.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig_bar.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
@@ -1872,11 +1872,11 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
         if len(rcp_files) < 3:
             
-            print('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp]))
+            print(('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp])))
 
         else:
 
-            print('Reading {} for {}'.format(plot_var, rcp_dict[rcp]))
+            print(('Reading {} for {}'.format(plot_var, rcp_dict[rcp])))
 
             cdf_enspctl16 = cdo.enspctl('16',input=rcp_files, options=pthreads)
             cdf_enspctl84 = cdo.enspctl('84',input=rcp_files, options=pthreads)
@@ -1953,10 +1953,10 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
                 m_median = ensmedian_vals[idx]
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
-                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} Gt year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+                print(('Year {}: {:1.2f} - {:1.2f} - {:1.2f} Gt year-1'.format(m_year, m_pctl84, m_median, m_pctl16)))
                 if ctrl_file:
                     m_ctrl = ctrl_vals[idx]
-                    print('     CTRL    {:1.2f} Gt year-1'.format(m_ctrl))
+                    print(('     CTRL    {:1.2f} Gt year-1'.format(m_ctrl)))
 
 
     if do_legend:
@@ -1995,7 +1995,7 @@ def plot_rcp_flux_gt(plot_var=flux_plot_vars, anomaly=False):
 
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
@@ -2009,11 +2009,11 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
         rcp_files = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
         if len(rcp_files) < 3:
             
-            print('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp]))
+            print(('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp])))
 
         else:
 
-            print('Reading files for {}'.format(rcp_dict[rcp]))
+            print(('Reading files for {}'.format(rcp_dict[rcp])))
             
             cdf_enspctl16 = cdo.enspctl('16',input=rcp_files, options=pthreads)
             cdf_enspctl16 = cdo.timcumsum(input=cdf_enspctl16, returnCdf=True, options=pthreads)
@@ -2072,7 +2072,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
                 m_median = ensmedian_vals[idx]
                 m_pctl16 = enspctl16_vals[idx]
                 m_pctl84 = enspctl84_vals[idx]
-                print('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16))
+                print(('Year {}: {:1.2f} - {:1.2f} - {:1.2f} mm SLE year-1'.format(m_year, m_pctl84, m_median, m_pctl16)))
 
 
     if do_legend:
@@ -2111,7 +2111,7 @@ def plot_rcp_flux_cumulative(plot_var=flux_plot_vars):
 
     for out_format in out_formats:
         out_file = outfile + '_rcp' + '_'  + plot_var + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
         
@@ -2125,11 +2125,11 @@ def plot_rcp_traj_mass(plot_var=mass_plot_vars):
 
         if len(rcp_files) < 3:
             
-            print('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp]))
+            print(('Less than 3 files found for {}, skipping'.format(rcp_dict[rcp])))
 
         else:
 
-            print('Reading files for {}'.format(rcp_dict[rcp]))
+            print(('Reading files for {}'.format(rcp_dict[rcp])))
 
             cdf_mass_enspctl16 = cdo.enspctl('16',input=rcp_files, returnCdf=True, options=pthreads)
             cdf_mass_enspctl84 = cdo.enspctl('84',input=rcp_files, returnCdf=True, options=pthreads)
@@ -2238,7 +2238,7 @@ def plot_rcp_traj_mass(plot_var=mass_plot_vars):
 
                 for out_format in out_formats:
                     out_file = outfile + '_rcp' + '_'  + rcp + '_' + lhs_param.lower() + '_' + plot_var + '.' + out_format
-                    print "  - writing image %s ..." % out_file
+                    print("  - writing image %s ..." % out_file)
                     fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
@@ -2252,7 +2252,7 @@ def plot_basin_mass():
     mass_var_vals_negative_cum = 0
     for k, ifile in enumerate(ifiles):
         basin = basin_list[k]
-        print('reading {}'.format(ifile))
+        print(('reading {}'.format(ifile)))
         nc = NC(ifile, 'r')
         t = nc.variables["time"][:]
 
@@ -2307,11 +2307,11 @@ def plot_basin_mass():
         else:
             mass_var_vals_negative_cum += mass_var_vals
 
-        print('Basin {}'.format(basin))
+        print(('Basin {}'.format(basin)))
         for m_year in [2100, 2200, 2500, 3000]:
             idx = np.where(np.array(date) == m_year)[0][0]
             m = mass_var_vals[idx]
-            print('Year {}: {:1.2f} m SLE'.format(m_year, m))
+            print(('Year {}: {:1.2f} m SLE'.format(m_year, m)))
 
 
     ax.hlines(0, time_bounds[0], time_bounds[-1], lw=0.25)
@@ -2349,7 +2349,7 @@ def plot_basin_mass():
 
     for out_format in out_formats:
         out_file = outfile + '_' + mvar  + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)  
  
 def plot_basin_flux(plot_var='discharge'):
@@ -2364,9 +2364,9 @@ def plot_basin_flux(plot_var='discharge'):
     for basin in basin_list:
 
         basin_file = [f for f in ifiles if 'b_{}'.format(basin) in f]
-        print basin_file
+        print(basin_file)
 
-        print('reading {}'.format(basin_file[0]))
+        print(('reading {}'.format(basin_file[0])))
 
         if plot_var == 'discharge':
             cdf = cdo.expr('discharge=tendency_of_ice_mass_due_to_discharge+tendency_of_ice_mass_due_to_basal_mass_flux', input=basin_file[0])
@@ -2417,7 +2417,7 @@ def plot_basin_flux(plot_var='discharge'):
 
     for out_format in out_formats:
         out_file = outfile  + '_fluxes.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
                    
 
@@ -2437,7 +2437,7 @@ def plot_per_basin_flux(plot_var=None):
         for k, rcp in enumerate(rcp_list[::-1]):
             rcp_file = [f for f in basin_file if 'rcp_{}'.format(rcp) in f]
 
-            print('reading {}'.format(rcp_file[0]))
+            print(('reading {}'.format(rcp_file[0])))
 
             cdf_run = cdo.runmean('11', input=rcp_file[0], returnCdf=True, options=pthreads)
             t = cdf_run.variables["time"][:]
@@ -2495,7 +2495,7 @@ def plot_per_basin_flux(plot_var=None):
 
         for out_format in out_formats:
             out_file = outfile  + '_' + basin + '_' + label_var + '.' + out_format
-            print "  - writing image %s ..." % out_file
+            print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
                    
 if plot == 'ctrl_mass':

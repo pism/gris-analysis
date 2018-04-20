@@ -63,7 +63,7 @@ rus = []
 tass = []
 p_ols = []
 for k, ifile in enumerate(options.FILE):
-    print ifile, k
+    print(ifile, k)
     nc = NC(ifile, 'r')
     forcing = nc.forcing
     gcm, rcp = forcing.split('-')
@@ -75,7 +75,7 @@ for k, ifile in enumerate(options.FILE):
 
     rus.append(ru)
     tass.append(tas)
-    print gcm, rcp
+    print(gcm, rcp)
     ax.scatter(tas, ru, s=2.5, facecolors='none', edgecolors=col_dict[gcm][rcp], label='{}-RCP{}'.format(gcm, rcp), lw=0.5)
 
     tasS = pa.Series(data=tas, index=tas)
@@ -83,7 +83,7 @@ for k, ifile in enumerate(options.FILE):
     # Perform Ordinary Least Squares regression analysis
     m_ols = sm.OLS(ruS, sm.add_constant(tasS)).fit()
     p_ols.append(m_ols)
-    print m_ols.summary()
+    print(m_ols.summary())
     m_ols.rsquared
     bias, trend = m_ols.params
     # ax.plot(tas, bias + trend * tas, color=col_dict[gcm][rcp], lw=0.2)
@@ -100,9 +100,9 @@ tasS = pa.Series(data=tas_cat, index=tas_cat)
 ruS = pa.Series(data=ru_cat, index=tas_cat)
 # Perform Ordinary Least Squares regression analysis
 p_ols = sm.OLS(ruS, sm.add_constant(tasS)).fit()
-print p_ols.summary()
+print(p_ols.summary())
 bias, trend = p_ols.params
-print bias, trend
+print(bias, trend)
 ax.plot(tas_cat, bias + trend * tas_cat, color='k', lw=0.5)
 ax.text(0.25, 3, 'r$^2$={:1.2f}'.format(p_ols.rsquared))
 ax.text(0.25, 3.5, 'y={:1.2f}x + {:1.2f}'.format(trend, bias))
@@ -125,7 +125,7 @@ T = np.linspace(0., 10, 101)
 fig, ax = plt.subplots()
 for alpha, beta in ([0.5, 1.0], [0.54, 1.17], [0.85, 1.61]):
     ax.plot(T, m(T, alpha, beta, C, a), label='$\\alpha$={}, $\\beta$={}'.format(alpha, beta))
-ax.set_xlabel(u'Temperature anomaly (\u00B0C)')
+ax.set_xlabel('Temperature anomaly (\u00B0C)')
 ax.set_ylabel('Melt scale factor (1)')
 ax.set_xlim(0, 10)
 ax.set_ylim(0, 25)

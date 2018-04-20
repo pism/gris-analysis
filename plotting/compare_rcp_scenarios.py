@@ -120,5 +120,5 @@ for k in range(N):
     generate_frame(k, "output/gris_g3600m_rcps_%04d.png" % k)
     sys.stderr.write(".")
 
-print ""
+print("")
 

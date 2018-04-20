@@ -17,7 +17,7 @@ def copy_dimensions(input_file, output_file):
 
     """
     # Create dimensions
-    for dname, the_dim in input_file.dimensions.iteritems():
+    for dname, the_dim in input_file.dimensions.items():
         output_file.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
 
     # Copy coordinate variables
@@ -91,13 +91,13 @@ def calc_deglaciation_time(infile, outfile, output_variable_name, thickness_thre
     k = 0
     N = block_size(thk.shape, memory_limit)
     while k + N < t_length + 1:
-        print("Processing records from {} to {}...".format(k, k + N - 1))
+        print(("Processing records from {} to {}...".format(k, k + N - 1)))
         H = thk[k:k + N]
         process_block(time[k:k + N], H, thickness_threshold, t_min, result)
         k += N
 
     if k < t_length:
-        print("Processing records from {} to {}...".format(k, t_length - 1))
+        print(("Processing records from {} to {}...".format(k, t_length - 1)))
         H = thk[k:]
         process_block(time[k:], H, thickness_threshold, t_min, result)
 

@@ -33,4 +33,4 @@ if __name__ == "__main__":
 
         nc.close()
     pc = float(count) / float(nf) * 100.
-    print('{} percent of simulations are below {}'.format(pc, threshold))
+    print(('{} percent of simulations are below {}'.format(pc, threshold)))

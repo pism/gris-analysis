@@ -97,7 +97,7 @@ var_values = []
 var_ylabels = []
 var_longnames = []
 
-print("opening file %s" % args[0])
+print(("opening file %s" % args[0]))
 nc = NC(args[0], 'r')
 t = nc.variables["time"][:]
 calendar = nc.variables["time"].calendar
@@ -119,7 +119,7 @@ if var in ("enthalpy"):
     var_unit_str = ("J kg$^{\mathregular{-1}}$")
     ylabel = "enthalpy ({})".format(var_unit_str)
 else:
-    print("unit %s not recognized" % var_units)
+    print(("unit %s not recognized" % var_units))
 
 var_vals = unit_converter(np.squeeze(nc.variables[var]), var_units, out_units)
 if normalize:
@@ -170,7 +170,7 @@ for p in range(np):
     outfile = 'station_' + station_name 
     for out_format in out_formats:
         out_file = outfile + '.' + out_format
-        print "  - writing image %s ..." % out_file
+        print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 nc.close()

@@ -156,7 +156,7 @@ elif varname in ('usurf', 'surface', 'surface_altitude'):
     v_flux_o_units_str = 'km$^\mathregular{2}$'
     v_flux_o_units_str_tex = 'km$^2$'
 else:
-    print("variable {} not supported".format(varname))
+    print(("variable {} not supported".format(varname)))
 
 na = len(args)
 shade = 0.15
@@ -263,7 +263,7 @@ params_formatting = (
     '{}',
     '{:1.2f}',
     '{:1.2f}')
-params_formatting_dict = dict(zip(params, params_formatting))
+params_formatting_dict = dict(list(zip(params, params_formatting)))
 params_abbr = (
     '$f_{\mathregular{ice}}$',
     '$f_{\mathregular{snow}}$',
@@ -284,7 +284,7 @@ params_abbr = (
     'B',
     'f',
     '$e_0$')
-params_abbr_dict = dict(zip(params, params_abbr))
+params_abbr_dict = dict(list(zip(params, params_abbr)))
 
 var_long = (
     'velsurf_mag',
@@ -310,7 +310,7 @@ var_short = (
     'ice thickness',
     'ice thickness',
     'ice thickness')
-var_name_dict = dict(zip(var_long, var_short))
+var_name_dict = dict(list(zip(var_long, var_short)))
 
 
 def reverse_enumerate(iterable):
@@ -318,7 +318,7 @@ def reverse_enumerate(iterable):
     Enumerate over an iterable in reverse order while retaining proper indexes
     '''
 
-    return itertools.izip(reversed(xrange(len(iterable))), reversed(iterable))
+    return zip(reversed(range(len(iterable))), reversed(iterable))
 
 
 def get_rmsd(a, b, w=None):
@@ -423,7 +423,7 @@ class FluxGate(object):
         '''
 
         print(
-            (u"      adding experiment to flux gate {0}".format(self.gate_name)))
+            ("      adding experiment to flux gate {0}".format(self.gate_name)))
         pos_id = self.pos_id
         fg_exp = FluxGateExperiment(data, pos_id)
         self.experiments.append(fg_exp)
@@ -440,7 +440,7 @@ class FluxGate(object):
         '''
 
         print(
-            (u"      adding observations to flux gate {0}".format(self.gate_name)))
+            ("      adding observations to flux gate {0}".format(self.gate_name)))
         pos_id = self.pos_id
         fg_obs = FluxGateObservations(data, pos_id)
         self.observations = fg_obs
@@ -761,7 +761,7 @@ class FluxGate(object):
             if normalize:
                 exp_max = np.max(exp_o_vals)
                 exp_o_vals *= obs_max / exp_max
-            if 'label_param_list' in kwargs.keys():
+            if 'label_param_list' in list(kwargs.keys()):
                 params = kwargs['label_param_list']
                 config = exp.config
                 id = exp.id
@@ -813,7 +813,7 @@ class FluxGate(object):
         ax.set_xlim(0, np.max(profile_axis_out))
         xlabel = "{0} ({1})".format(profile_axis_name, profile_axis_out_units)
         ax.set_xlabel(xlabel)
-        if varname in var_name_dict.keys():
+        if varname in list(var_name_dict.keys()):
             v_name = var_name_dict[varname]
         else:
             v_name = varname
@@ -893,7 +893,7 @@ class Dataset(object):
 
     def __init__(self, filename, varname, *args, **kwargs):
         super(Dataset, self).__init__(*args, **kwargs)
-        print("  opening NetCDF file %s ..." % filename)
+        print(("  opening NetCDF file %s ..." % filename))
         try:
             nc = NC(filename, 'r')
         except:
@@ -905,8 +905,8 @@ class Dataset(object):
         for name in nc.variables:
             v = nc.variables[name]
             if getattr(v, "standard_name", "") == varname:
-                print("variabe {0} found by its standard_name {1}".format(name,
-                                                                          varname))
+                print(("variabe {0} found by its standard_name {1}".format(name,
+                                                                          varname)))
                 varname = name
 
         self.values = nc.variables[varname][:]
@@ -984,7 +984,7 @@ class ObservationsDataset(Dataset):
             self.flowtype = None
         varname = self.varname
         error_varname = '_'.join([varname, 'error'])
-        if error_varname in self.nc.variables.keys():
+        if error_varname in list(self.nc.variables.keys()):
             self.error = self.nc.variables[error_varname][:]
             self.has_error = True
 
@@ -1364,7 +1364,7 @@ def make_r2_figure(filename, exp):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     height = 0.4
-    y = np.arange(len(r2s.keys())) + 2
+    y = np.arange(len(list(r2s.keys()))) + 2
     for k, r2 in enumerate(r2s_sorted):
         if r2 < 0.1:
             colorVal = my_ok_colors[0]
@@ -1425,7 +1425,7 @@ def make_correlation_figure(filename, exp):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     height = 0.4
-    y = np.arange(len(corrs.keys())) + 1.25
+    y = np.arange(len(list(corrs.keys()))) + 1.25
     for k, corr in enumerate(corrs_sorted):
         if corr < 0.5:
             colorVal = '#d7191c'
@@ -1436,11 +1436,11 @@ def make_correlation_figure(filename, exp):
         ax.hlines(y[k], -1, corr, colors=colorVal, linestyle='dotted')
         ax.plot(corr, y[k], 'o', markersize=5, color=colorVal)
 
-    corr_median = np.nanmedian(corrs.values())
+    corr_median = np.nanmedian(list(corrs.values()))
     ax.vlines(corr_median, 0, y[-1], linestyle='dotted', color='0.5')
-    print('median correlaction: {}'.format(corr_median))
+    print(('median correlaction: {}'.format(corr_median)))
     plt.yticks(y,
-               [u'{} ({})'. format(flux_gates[x].gate_name,
+               ['{} ({})'. format(flux_gates[x].gate_name,
                                    flux_gates[x].gate_id) for x in sort_order])
     ax.set_xlabel('r (-)', labelpad=0.2)
     ax.set_xlim(-1, 1.1)
@@ -1602,7 +1602,7 @@ def write_shapefile(filename, flux_gates):
 
 # Open first file
 filename = args[0]
-print("  opening NetCDF file %s ..." % filename)
+print(("  opening NetCDF file %s ..." % filename))
 try:
     nc0 = NC(filename, 'r')
 except:
@@ -1729,24 +1729,24 @@ if obs_file:
     corr_undetermined = np.zeros((n_undetermined, ne))
     k, l, m, n = 0, 0, 0, 0
     for gate in flux_gates:
-        corr_all[n, :] = gate.corr.values()
+        corr_all[n, :] = list(gate.corr.values())
         n += 1
         if (gate.flowtype == 0):
-            corr_isbrae[k, :] = gate.corr.values()
+            corr_isbrae[k, :] = list(gate.corr.values())
             k += 1
         elif (gate.flowtype == 1):
-            corr_ice_stream[l, :] = gate.corr.values()
+            corr_ice_stream[l, :] = list(gate.corr.values())
             l += 1
         else:
-            corr_undetermined[m, :] = gate.corr.values()
+            corr_undetermined[m, :] = list(gate.corr.values())
             l += 1
 
     print("median(pearson r(all))")
-    print np.nanmedian(corr_all, axis=0)
+    print(np.nanmedian(corr_all, axis=0))
     print("median(pearson r(isbrae))")
-    print np.nanmedian(corr_isbrae, axis=0)
+    print(np.nanmedian(corr_isbrae, axis=0))
     print("median(pearson r(ice-stream))")
-    print np.nanmedian(corr_ice_stream, axis=0)
+    print(np.nanmedian(corr_ice_stream, axis=0))
 
     # Calculate cumulative RMSD
     observed_fluxes = np.array([x.observed_flux for x in flux_gates])
@@ -1806,13 +1806,13 @@ if obs_file:
         corr_cum_dict[n] = (1.0 / N_rmsd_tot[n]) * corr_cum[n]
 
     rmsd_cum_dict_sorted = sorted(
-        rmsd_cum_dict.iteritems(),
+        iter(rmsd_cum_dict.items()),
         key=operator.itemgetter(1))
     r2_cum_dict_sorted = sorted(
-        r2_cum_dict.iteritems(),
+        iter(r2_cum_dict.items()),
         key=operator.itemgetter(1))
     corr_cum_dict_sorted = sorted(
-        corr_cum_dict.iteritems(),
+        iter(corr_cum_dict.items()),
         key=operator.itemgetter(1))
 
     # Calculate error norm
@@ -1927,9 +1927,9 @@ if do_regress:
     for gate in flux_gates:
 
         # RMSD
-        rmsd_data = gate.rmsd.values()
-        rmsdS = pa.Series(data=rmsd_data, index=gate.rmsd.keys())
-        gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
+        rmsd_data = list(gate.rmsd.values())
+        rmsdS = pa.Series(data=rmsd_data, index=list(gate.rmsd.keys()))
+        gridS = pa.Series(data=grid_dx_meters, index=list(gate.rmsd.keys()))
         d = {'grid_resolution': gridS, 'RMSD': rmsdS}
         df = pa.DataFrame(d)
         model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
@@ -1978,9 +1978,9 @@ if do_regress:
         id = gate.pos_id
 
         # RMSD
-        rmsd_data = gate.rmsd.values()
-        rmsdS = pa.Series(data=rmsd_data, index=gate.rmsd.keys())
-        gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
+        rmsd_data = list(gate.rmsd.values())
+        rmsdS = pa.Series(data=rmsd_data, index=list(gate.rmsd.keys()))
+        gridS = pa.Series(data=grid_dx_meters, index=list(gate.rmsd.keys()))
         d = {'grid_resolution': gridS, 'RMSD': rmsdS}
         df = pa.DataFrame(d)
         model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
@@ -2024,9 +2024,9 @@ if do_regress:
         # print(u"selecting glacier {}".format(gate.gate_name))
 
         # RMSD
-        rmsd_data = gate.rmsd.values()
-        rmsdS = pa.Series(data=rmsd_data, index=gate.rmsd.keys())
-        gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
+        rmsd_data = list(gate.rmsd.values())
+        rmsdS = pa.Series(data=rmsd_data, index=list(gate.rmsd.keys()))
+        gridS = pa.Series(data=grid_dx_meters, index=list(gate.rmsd.keys()))
         d = {'grid_resolution': gridS, 'RMSD': rmsdS}
         df = pa.DataFrame(d)
         model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
@@ -2043,7 +2043,7 @@ if do_regress:
         elif id == 23:  # Koge Bugt S
             colorVal = '#a50f15'
         else:
-            print "How did I get here?"
+            print("How did I get here?")
 
         if (p_selected >= 0.05):
             line_l, = ax.plot([grid_dx_meters[0], grid_dx_meters[-
@@ -2062,9 +2062,9 @@ if do_regress:
         legend_handles.append(line_l)
 
     # all isbrae RMSD
-    rmsd_data = rmsd_isbrae_cum_dict.values()
-    rmsdS = pa.Series(data=rmsd_data, index=rmsd_isbrae_cum_dict.keys())
-    gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
+    rmsd_data = list(rmsd_isbrae_cum_dict.values())
+    rmsdS = pa.Series(data=rmsd_data, index=list(rmsd_isbrae_cum_dict.keys()))
+    gridS = pa.Series(data=grid_dx_meters, index=list(gate.rmsd.keys()))
     d = {'grid_resolution': gridS, 'RMSD': rmsdS}
     df = pa.DataFrame(d)
     model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
@@ -2089,12 +2089,12 @@ if do_regress:
             color='#8c510a', markeredgewidth=markeredgewidth)
     legend_handles.append(line_l)
 
-    print('Isbrae regression r2 = {:2.2f}'.format(r2_isbrae))
+    print(('Isbrae regression r2 = {:2.2f}'.format(r2_isbrae)))
 
     # all ice-stream RMSD
-    rmsd_data = rmsd_ice_stream_cum_dict.values()
-    rmsdS = pa.Series(data=rmsd_data, index=rmsd_ice_stream_cum_dict.keys())
-    gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
+    rmsd_data = list(rmsd_ice_stream_cum_dict.values())
+    rmsdS = pa.Series(data=rmsd_data, index=list(rmsd_ice_stream_cum_dict.keys()))
+    gridS = pa.Series(data=grid_dx_meters, index=list(gate.rmsd.keys()))
     d = {'grid_resolution': gridS, 'RMSD': rmsdS}
     df = pa.DataFrame(d)
     model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
@@ -2120,12 +2120,12 @@ if do_regress:
             color='#01665e', markeredgewidth=markeredgewidth)
     legend_handles.append(line_l)
 
-    print('Ice-stream regression r2 = {:2.2f}'.format(r2_ice_stream))
+    print(('Ice-stream regression r2 = {:2.2f}'.format(r2_ice_stream)))
 
     # global RMSD
-    rmsd_data = rmsd_cum_dict.values()
-    rmsdS = pa.Series(data=rmsd_data, index=rmsd_cum_dict.keys())
-    gridS = pa.Series(data=grid_dx_meters, index=gate.rmsd.keys())
+    rmsd_data = list(rmsd_cum_dict.values())
+    rmsdS = pa.Series(data=rmsd_data, index=list(rmsd_cum_dict.keys()))
+    gridS = pa.Series(data=grid_dx_meters, index=list(gate.rmsd.keys()))
     d = {'grid_resolution': gridS, 'RMSD': rmsdS}
     df = pa.DataFrame(d)
     model = sm.OLS(rmsdS, sm.add_constant(gridS)).fit()
@@ -2150,9 +2150,9 @@ if do_regress:
             color='0.4', markeredgewidth=markeredgewidth)
     legend_handles.append(line_l)
 
-    print('Global regression r2 = {:2.2f}'.format(r2_global))
+    print(('Global regression r2 = {:2.2f}'.format(r2_global)))
 
-    legend_labels = ['JIB', 'good', 'median', 'poor', u'isbr\u00E6', 'ice-stream', 'all']
+    legend_labels = ['JIB', 'good', 'median', 'poor', 'isbr\u00E6', 'ice-stream', 'all']
     # lg = ax.legend(legend_handles, legend_labels,
     #                loc="upper left",
     #                shadow=True, numpoints=numpoints,
@@ -2187,9 +2187,9 @@ if do_regress:
 
     for n, gate in enumerate(flux_gates):
         # R2
-        r2_data = gate.r2.values()
-        r2S = pa.Series(data=r2_data, index=gate.r2.keys())
-        gridS = pa.Series(data=grid_dx_meters, index=gate.r2.keys())
+        r2_data = list(gate.r2.values())
+        r2S = pa.Series(data=r2_data, index=list(gate.r2.keys()))
+        gridS = pa.Series(data=grid_dx_meters, index=list(gate.r2.keys()))
         d = {'grid_resolution': gridS, 'R2': r2S}
         df = pa.DataFrame(d)
         model = sm.OLS(r2S, sm.add_constant(gridS)).fit()
@@ -2209,9 +2209,9 @@ if do_regress:
                 markeredgecolor='#1f78b4', markersize=1.75)
 
     # global R2
-    r2_data = r2_cum_dict.values()
-    r2S = pa.Series(data=r2_data, index=r2_cum_dict.keys())
-    gridS = pa.Series(data=grid_dx_meters, index=gate.r2.keys())
+    r2_data = list(r2_cum_dict.values())
+    r2S = pa.Series(data=r2_data, index=list(r2_cum_dict.keys()))
+    gridS = pa.Series(data=grid_dx_meters, index=list(gate.r2.keys()))
     d = {'grid_resolution': gridS, 'R2': r2S}
     df = pa.DataFrame(d)
     model = sm.OLS(gridS, sm.add_constant(r2S)).fit()
@@ -2258,9 +2258,9 @@ if do_regress:
     ax = fig.add_subplot(111)
     for n, gate in enumerate(flux_gates):
         # correlation
-        corr_data = gate.corr.values()
-        corrS = pa.Series(data=corr_data, index=gate.corr.keys())
-        gridS = pa.Series(data=grid_dx_meters, index=gate.corr.keys())
+        corr_data = list(gate.corr.values())
+        corrS = pa.Series(data=corr_data, index=list(gate.corr.keys()))
+        gridS = pa.Series(data=grid_dx_meters, index=list(gate.corr.keys()))
         d = {'grid_resolution': gridS, 'CORR': corrS}
         df = pa.DataFrame(d)
         model = pa.ols(x=gridS, y=corrS)

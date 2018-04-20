@@ -45,8 +45,7 @@ def extract_basins():
     if GEOM is None:
         select_ugid = None
     else:
-        select_geom = filter(lambda x: x['properties']['basin'] == basin,
-                             ocgis.GeomCabinetIterator(path=SHAPEFILE_PATH))
+        select_geom = [x for x in ocgis.GeomCabinetIterator(path=SHAPEFILE_PATH) if x['properties']['basin'] == basin]
         ## this argument must always come in as a list
         select_ugid = [select_geom[0]['properties']['UGID']]
     ## parameterize the operations to be performed on the target dataset
@@ -135,7 +134,7 @@ mvars_dict = {'tendency_of_ice_mass': 'ice_mass',
               'smelt': 'smelt',
               'srunoff': 'srunoff'}
 
-mvars = mvars_dict.keys()
+mvars = list(mvars_dict.keys())
 mvars = ['ice_mass',
        'tendency_of_ice_mass',
        'tendency_of_ice_mass_due_to_flow',

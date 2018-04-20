@@ -67,13 +67,13 @@ eb_values = np.zeros_like(thk)
 for t in range(n_times):
     k = 0
     while k + Nz < Mz + 1:
-        print("Processing record {}, block {}:{}...".format(t, k, k + Nz - 1))
+        print(("Processing record {}, block {}:{}...".format(t, k, k + Nz - 1)))
         data = enthalpy[t, :, :, k:k + Nz]
         process_block(t, data, z[k:k + Nz], thk, basal_layer_thickness_fraction, eb_values)
         k += Nz
 
     if k < Mz:
-        print("Processing record {}, the last block...".format(t))
+        print(("Processing record {}, the last block...".format(t)))
         data = enthalpy[t, :, :, k:]
         process_block(t, data, z[k:], thk, basal_layer_thickness_fraction, eb_values)
 
