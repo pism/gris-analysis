@@ -217,6 +217,8 @@ if __name__ == "__main__":
     multidirectional = options.multidirectional
     zf = options.zf
     
-    hs = Hillshade(ifile, variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
+    hs = Hillshade(ifile, variable='usurf', variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
+    hs.run() 
+    hs = Hillshade(ifile, variable='topg', variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
     hs.run() 
 

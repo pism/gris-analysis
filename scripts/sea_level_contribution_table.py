@@ -153,6 +153,12 @@ def mass_rate_table(prefix, window_width=20, years=[2100, 2200, 2500, 3000]):
          "sign"     : 1.0},
         {"label"    : "basal mass balance",
          "variable" : "tendency_of_ice_mass_due_to_basal_mass_flux",
+         "sign"     : 1.0},
+        {"label"    : "flow",
+         "variable" : "tendency_of_ice_mass_due_to_flow",
+         "sign"     : 1.0},
+        {"label"    : "error",
+         "variable" : "tendency_of_ice_mass_due_to_conservation_error",
          "sign"     : 1.0}
     ]
 

@@ -387,7 +387,7 @@ def plot_profile_ts(plot_var='velsurf_mag'):
     profile_names = nc.variables['profile_name'][:]
     for k, profile in enumerate(profile_names):
 
-        print(('Processing {} profile'.format(profile)))
+        print((u'Processing {} profile'.format(profile)))
         
         fig = plt.figure()
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
@@ -473,7 +473,7 @@ def plot_profile_ts_combined():
     profile_names = nc.variables['profile_name'][:]
     for k, profile in enumerate(profile_names):
 
-        print(('Processing {} profile'.format(profile)))
+        print((u'Processing {} profile'.format(profile)))
         
         fig, ax = plt.subplots(3, 1, sharex='col', figsize=[3, 2])
         fig.subplots_adjust(hspace=0.15, wspace=0.05)
@@ -543,10 +543,12 @@ def plot_profile_ts_combined():
         if bounds:
             ax[1].set_ylim(bounds[0], bounds[1])
             
-
         ax[0].set_xlim(0, 65)
         ax[1].set_xlim(0, 65)
         ax[2].set_xlim(0, 65)
+        ax[0].set_xlim(0, 100)
+        ax[1].set_xlim(0, 100)
+        ax[2].set_xlim(0, 100)
 
         if rotate_xticks:
             ticklabels = ax[1].get_xticklabels()
@@ -1390,25 +1392,6 @@ def plot_rcp_d(plot_var=flux_plot_vars):
                 linestyle='solid',
                 linewidth=lw)
 
-    for k, rcp in enumerate(rcp_list[::-1]):
-
-        print(('Reading RCP {} files'.format(rcp)))
-        rcp_ctrl_file = [f for f in ifiles if 'rcp_{}'.format(rcp) in f]
-
-        cdf_ctrl = cdo.readCdf(rcp_ctrl_file[0])
-        ctrl_t = cdf_ctrl.variables['time'][:]
-        ctrl_date = np.arange(start_year + step,
-                             start_year + (len(ctrl_t[:]) + 1) , step) 
-
-        ctrl_vals = cdf_ctrl.variables[plot_var][:]
-        iunits = cdf_ctrl[plot_var].units
-        ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
-        ax.plot(ctrl_date[:], ctrl_vals,
-                color=rcp_col_dict[rcp],
-                linestyle='solid',
-                alpha=0.5,
-                linewidth=0.3)
-
     if do_legend:
         legend = ax.legend(loc="upper right",
                            edgecolor='0',
@@ -1432,6 +1415,7 @@ def plot_rcp_d(plot_var=flux_plot_vars):
 
     ax.yaxis.set_major_formatter(FormatStrFormatter('%1.1f'))
 
+    ax.set_xticks([start_year, 2200, 2400, 2600, 2800, 3000])
     # axGt =  ax.twinx()
     # ymi, yma = ax.get_ylim()
     # axGt.set_ylim(ymi / gt2mmSLE, yma / gt2mmSLE)
