@@ -38,6 +38,117 @@ def set_size(w,h, ax=None):
     figw = float(w)/(r-l)
     figh = float(h)/(t-b)
     ax.figure.set_size_inches(figw, figh)
+
+def gmtColormap(fileName, log_color=False, reverse=False):
+    '''
+    Import a CPT colormap from GMT.
+
+    Parameters
+    ----------
+    fileName : a cpt file.
+
+    Example
+    -------
+    >>> cdict = gmtColormap("mycolormap.cpt")
+    >>> gmt_colormap = colors.LinearSegmentedColormap("my_colormap", cdict)
+
+    Notes
+    -----
+    This code snipplet modified after
+    http://www.mail-archive.com/matplotlib-users@lists.sourceforge.net/msg09547.html
+    '''
+    import colorsys
+    import os
+
+    try:
+        try:
+            f = open(fileName)
+        except:
+            # Check if it's a colormap provided in colormaps/
+            basedir, fname = os.path.split(__file__)
+            my_file = os.path.join(basedir, 'colormaps', fileName)
+            f = open(my_file)
+    except:
+        print("file ", fileName, "not found")
+        return None
+
+    lines = f.readlines()
+    f.close()
+
+    x = []
+    r = []
+    g = []
+    b = []
+    colorModel = "RGB"
+    for l in lines:
+        ls = l.split()
+        if l[0] == "#":
+            if ls[-1] == "HSV":
+                colorModel = "HSV"
+                continue
+            else:
+                continue
+        if ls[0] == "B" or ls[0] == "F" or ls[0] == "N":
+            pass
+        else:
+            x.append(float(ls[0]))
+            r.append(float(ls[1]))
+            g.append(float(ls[2]))
+            b.append(float(ls[3]))
+            xtemp = float(ls[4])
+            rtemp = float(ls[5])
+            gtemp = float(ls[6])
+            btemp = float(ls[7])
+
+    x.append(xtemp)
+    r.append(rtemp)
+    g.append(gtemp)
+    b.append(btemp)
+
+    if reverse:
+        r.reverse()
+        g.reverse()
+        b.reverse()
+
+    x = np.array(x, np.float32)
+    r = np.array(r, np.float32)
+    g = np.array(g, np.float32)
+    b = np.array(b, np.float32)
+    if colorModel == "HSV":
+        for i in range(r.shape[0]):
+            rr, gg, bb = colorsys.hsv_to_rgb(r[i] / 360., g[i], b[i])
+            r[i] = rr
+            g[i] = gg
+            b[i] = bb
+    if colorModel == "HSV":
+        for i in range(r.shape[0]):
+            rr, gg, bb = colorsys.hsv_to_rgb(r[i] / 360., g[i], b[i])
+            r[i] = rr
+            g[i] = gg
+            b[i] = bb
+    if colorModel == "RGB":
+        r = r / 255.
+        g = g / 255.
+        b = b / 255.
+
+    if log_color:
+        xNorm = np.zeros((len(x), ))
+        xNorm[1::] = np.logspace(-1, 0, len(x) - 1)
+        xNorm[1::-2] /= 4
+    else:
+        xNorm = (x - x[0]) / (x[-1] - x[0])
+
+    red = []
+    blue = []
+    green = []
+    for i in range(len(x)):
+        red.append([xNorm[i], r[i], r[i]])
+        green.append([xNorm[i], g[i], g[i]])
+        blue.append([xNorm[i], b[i], b[i]])
+    colorDict = {'red': red, 'green': green, 'blue': blue}
+    return (colorDict)
+
+    
     
 basin_list = ['CW', 'NE', 'NO', 'NW', 'SE', 'SW']
 rcp_list = ['26', '45', '85']
@@ -53,6 +164,8 @@ parser.add_argument("--time_bounds", dest="time_bounds", nargs=2, type=float,
 parser.add_argument("-b", "--basin", dest="basin",
                     choices=basin_list,
                     help="Basin to plot", default='GRIS')
+parser.add_argument("-c", "--colormap", dest="my_colormap",
+                    help="Colormap for flowline plots", default='jet')
 parser.add_argument("-l", "--labels", dest="labels",
                     help="comma-separated list with labels, put in quotes like 'label 1,label 2'", default=None)
 parser.add_argument("-f", "--output_format", dest="out_formats",
@@ -113,6 +226,7 @@ parser.add_argument("--ctrl_file", dest="ctrl_file", nargs='*',
 options = parser.parse_args()
 basin = options.basin
 mrcp = options.mrcp
+my_colormap = options.my_colormap
 ifiles = options.FILE
 if options.labels != None:
     labels = options.labels.split(',')
@@ -381,7 +495,7 @@ def plot_cmip5(plot_var='delta_T'):
 
 def plot_profile_ts(plot_var='velsurf_mag'):
 
-    mcm = cm = plt.get_cmap('jet')
+    mcm = cm = plt.get_cmap('viridis')
 
     nc = NC(ifiles[0], 'r')
     profile_names = nc.variables['profile_name'][:]
@@ -467,7 +581,14 @@ def plot_profile_ts(plot_var='velsurf_mag'):
 
 def plot_profile_ts_combined():
 
-    mcm = cm = plt.get_cmap('jet')
+    try:
+        cmap = getattr(plt.cm, my_colormap)
+    except:
+        # import and convert colormap
+        cdict = gmtColormap(my_colormap)
+        cmap = mpl.colors.LinearSegmentedColormap('my_colormap', cdict, 1024)
+    
+    mcm = cm = plt.get_cmap(cmap)
 
     nc = NC(ifiles[0], 'r')
     profile_names = nc.variables['profile_name'][:]
@@ -513,15 +634,23 @@ def plot_profile_ts_combined():
             usurf_mask = (usurf_vals < 100)
             usurf_mask = np.logical_or((usurf_vals < topg_vals), thk_mask)
             usurf_vals = np.ma.array(usurf_vals, mask=usurf_mask)
-            ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color=colorVal)
-            ax[1].plot(profile_vals, speed_vals, color=colorVal)
+            ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color=colorVal, linewidth=0.3)
+            ax[1].plot(profile_vals, speed_vals, color=colorVal, linewidth=0.3)
             try:
-                ax[2].plot(profile_vals, usurf_vals, color=colorVal)
+                ax[2].plot(profile_vals, usurf_vals, color=colorVal, linewidth=0.3)
                 bottom_vals = np.maximum(usurf_vals - thk_vals, topg_vals)
-                ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color=colorVal)
+                ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color=colorVal, linewidth=0.3)
             except:
                 pass
-            ax[2].plot(profile_vals, topg_vals, color='k')
+            if t == plot_times[-1]:
+                ax[2].plot(profile_vals, topg_vals, color='k', linewidth=0.3)
+                try:
+                    ax[2].plot(profile_vals, usurf_vals, color='k', linewidth=0.1)
+                    bottom_vals = np.maximum(usurf_vals - thk_vals, topg_vals)
+                    ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color='k', linewidth=0.1)
+                except:
+                    pass
+                
 
         xmin, xmax = ax[1].get_xlim()
         ymin, ymax = ax[1].get_ylim()
@@ -529,11 +658,10 @@ def plot_profile_ts_combined():
         ax[0].set_ylabel('Flux\n (km$^{\mathregular{2}}$ yr$^{\mathregular{-1}}$)', multialignment='center')
         ax[1].set_ylabel('Speed\n (m yr$^{\mathregular{-1}}$)', multialignment='center')
         ax[2].fill_between([xmin, xmax], [ymin, ymin], color='#c6dbef', linewidth=0)
-
         tz = ax[2].fill_between(profile_vals, topg_vals * 0 + ymin, topg_vals, color='#fdbe85', linewidth=0)
-        #tz.set_zorder(1)
         ax[2].set_ylabel('Altitude\n (masl)', multialignment='center')
-        #ax[1].axhline(profile_vals[0], linestyle='dashed', color='k')
+        tz = ax[2].axhline(profile_vals[0], linestyle='solid', color='k', linewidth=0.3)
+        tz.set_zorder(-1)
         ax[2].set_xlabel('distance ({})'.format(profile_ounits))
 
         ax[2].set_xlim(np.nanmin(profile_vals), np.nanmax(profile_vals))
@@ -546,9 +674,6 @@ def plot_profile_ts_combined():
         ax[0].set_xlim(0, 65)
         ax[1].set_xlim(0, 65)
         ax[2].set_xlim(0, 65)
-        ax[0].set_xlim(0, 100)
-        ax[1].set_xlim(0, 100)
-        ax[2].set_xlim(0, 100)
 
         if rotate_xticks:
             ticklabels = ax[1].get_xticklabels()
@@ -568,6 +693,7 @@ def plot_profile_ts_combined():
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
     nc.close()
+
 
 def plot_point_ts(plot_var='usurf'):
 
