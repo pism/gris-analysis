@@ -77,17 +77,19 @@ class Hillshade(object):
             if key in ('altitude', 'azimuth', 'fill_value', 'hillshade_var', 'zf'):
                 self.params[key] = kwargs[key]
 
-        self._check_vars()
+        filters = self._check_vars()
         self.dx = self._get_dx()
-        self._create_vars()
+        self._create_vars(filters)
 
     def _check_vars(self):
 
+        filters = ()
         logger.info('Checking for variables')
         nc = NC(self.ifile, 'r')
         for mvar in (['time'] + [self.variable]):
             if mvar in nc.variables:
                 logger.info('variable {} found'.format(mvar))
+                ncfilters = nc.variables[self.variable].filters()
             else:
                 logger.info('variable {} NOT found'.format(mvar))
 
@@ -98,6 +100,9 @@ class Hillshade(object):
                 else:
                     logger.info('variable {} NOT found'.format(mvar))
         nc.close()
+        
+        return filters
+    
            
     def _cart2pol(self, x, y):
         '''
@@ -107,7 +112,7 @@ class Hillshade(object):
         rho = np.sqrt(x**2 + y**2)
         return (theta, rho) 
 
-    def _create_vars(self):
+    def _create_vars(self, filters):
         '''
         create netCDF variables if they don't exist yet
         '''
@@ -117,7 +122,7 @@ class Hillshade(object):
         variable = self.variable
         hs_var = self.variable + '_hs'
         if hs_var  not in nc.variables:
-            hs = nc.createVariable(hs_var, 'i', dimensions=('time', 'y', 'x'), fill_value=self.params['fill_value'])
+            hs = nc.createVariable(hs_var, 'i', dimensions=('time', 'y', 'x'), fill_value=self.params['fill_value'], *filters)
             hs.grid_mapping = 'mapping'
         nc.close()
                 
