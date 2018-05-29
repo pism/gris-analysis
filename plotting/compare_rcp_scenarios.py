@@ -89,22 +89,22 @@ def generate_frame(index, output_filename):
          "RCP 2.6",
          img_width  / 6,
          header / 2,
-         (253, 190, 133))
+         (253, 174, 101))
 
     text(draw,
          "RCP 4.5",
          img_width / 2,
          header / 2,
-         (253, 141, 60))
+         (241, 105, 15))
 
     text(draw,
          "RCP 8.5",
          5 * img_width / 6,
          header / 2,
-         (217, 71, 1))
+         (140, 45, 4))
 
     text(draw,
-         "Year %04d CE" % (2008 + index),
+         "Year %04d CE" % (200 + index),
          img_width / 2,
          header + panel_height + border + bar_height / 2,
          (0, 0, 0))

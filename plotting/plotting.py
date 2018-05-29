@@ -301,10 +301,6 @@ basin_col_dict = {'SW': '#542788',
                   'SE': '#8073ac',
                   'GR': '#000000'}
 
-rcp_col_dict = {'CTRL': 'k',
-                '85': '#7f2704',
-                '45': '#f16913',
-                '26': '#fdae6b'}
 
 rcp_col_dict = {'CTRL': 'k',
                 '85': '#8c2d04',
@@ -869,9 +865,9 @@ def plot_ctrl_mass_anim(plot_var=mass_plot_vars):
                 plt.title(title)
 
         for out_format in out_formats:
-            out_file = 'dgmsl_'  + plot_var + '_{:04d}.{}'.format(frame, out_format) 
+            out_file = 'dgmsl_'  + plot_var + '_{:04d}.{}'.format(frame, 'png') 
             print("  - writing image %s ..." % out_file)
-            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+            fig.savefig(out_file, bbox_inches='tight', dpi=300)
 
         plt.close(fig)
 
