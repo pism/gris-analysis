@@ -200,6 +200,7 @@ parser.add_argument("--plot", dest="plot",
                              'basin_cumulative_partitioning',
                              'cmip5',
                              'ctrl_mass',
+                             'ctrl_mass_anim',
                              'percent_mass',
                              'flux_partitioning',
                              'grid_pc',
@@ -207,8 +208,6 @@ parser.add_argument("--plot", dest="plot",
                              'per_basin_flux',
                              'per_basin_d',
                              'profile_combined',
-                             'profile_speed',
-                             'profile_topo',
                              'rcp_mass',
                              'rcp_accum',
                              'rcp_runoff',
@@ -494,91 +493,6 @@ def plot_cmip5(plot_var='delta_T'):
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
 
-def plot_profile_ts(plot_var='velsurf_mag'):
-
-    mcm = cm = plt.get_cmap('viridis')
-
-    nc = NC(ifiles[0], 'r')
-    profile_names = nc.variables['profile_name'][:]
-    for k, profile in enumerate(profile_names):
-
-        print((u'Processing {} profile'.format(profile)))
-        
-        fig = plt.figure()
-        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
-        ax = fig.add_subplot(111)
-
-        profile_iunits = nc.variables['profile'].units
-        profile_ounits = 'km'
-        profile_vals = nc.variables['profile'][k, :]
-        profile_vals = unit_converter(profile_vals, profile_iunits, profile_ounits)
-
-        t_var = nc.variables['time'][:]
-        date = np.arange(start_year,
-                             start_year + (len(t_var[:]) + 1),
-                             step)
-        ma = np.where(date == time_bounds[0])[0][0]
-        me = np.where(date == time_bounds[1])[0][0]
-        plot_times = np.arange(ma, me+1, step)
-        nt = len(plot_times)
-        cNorm = colors.Normalize(vmin=time_bounds[0], vmax=time_bounds[1])
-        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=mcm)
-        for t in plot_times:
-            colorVal = scalarMap.to_rgba(date[t])
-            if plot_var not in ['topo']:
-                var_vals = nc.variables[plot_var][k, t, :]
-                mask = (var_vals < 1)
-                var_vals = np.ma.array(var_vals, mask = mask)
-                ax.plot(profile_vals, var_vals, color=colorVal)
-                ax.set_ylabel('speed (m yr$^{\mathregular{-1}}$)')
-            else:
-                # mask_vals = nc.variables['mask'][k, t, :]
-                topg_vals = nc.variables['topg'][k, t, :]
-                thk_vals = nc.variables['thk'][k, t, :]
-                usurf_vals = nc.variables['usurf'][k, t, :]
-                mask = (thk_vals == 0)
-                thk_vals = np.ma.array(thk_vals, mask=mask)
-                try:
-                    idx = np.where(thk_vals > 0)[0][0]
-                    ax.plot([profile_vals[idx], profile_vals[idx]], [usurf_vals[idx], usurf_vals[idx] - thk_vals[idx]], color=colorVal)
-                    ax.plot(profile_vals[idx::], usurf_vals[idx::], color=colorVal)
-                    ax.plot(profile_vals[idx::], usurf_vals[idx::] - thk_vals[idx::], color=colorVal)
-                except:
-                    pass
-                ax.plot(profile_vals, topg_vals, color='k')
-                ax.set_ylabel('altitude (masl)')
-
-        ax.axhline(profile_vals[0], linestyle='dashed', color='k')
-        ax.set_xlabel('Distance ({})'.format(profile_ounits))
-
-        # ax.set_xlim(0)
-        
-        if bounds:
-            ax.set_ylim(bounds[0], bounds[1])
-
-        ymin, ymax = ax.get_ylim()
-
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-
-        if rotate_xticks:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(30)
-        else:
-            ticklabels = ax.get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(0)
-                    
-        if title is not None:
-            plt.title(title)
-
-        for out_format in out_formats:
-            out_file = outfile + '_{}_'.format(unidecode(profile).replace(' ', '_'))  + plot_var + '.' + out_format
-            print("  - writing image %s ..." % out_file)
-            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
-
-    nc.close()
-
 
 def plot_profile_ts_combined():
 
@@ -770,6 +684,7 @@ def plot_point_ts(plot_var='usurf'):
             print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
     
+
 def plot_ctrl_mass(plot_var=mass_plot_vars):
     
     fig = plt.figure()
@@ -835,7 +750,132 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
         print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
-    
+def plot_ctrl_mass_anim(plot_var=mass_plot_vars):
+
+    rcp_26_file = [f for f in ifiles if 'rcp_{}'.format(26) in f][0]
+    cdf_26 = cdo.readCdf(rcp_26_file)
+    t_26 = cdf_26.variables['time'][:]
+    date_26 = np.arange(start_year + step,
+                     start_year + (len(t_26[:]) + 1) ,
+                     step) 
+    var_vals_26 = cdf_26.variables[plot_var][:] - cdf_26.variables[plot_var][0]
+    iunits = cdf_26.variables[plot_var].units
+    var_vals_26 = -unit_converter(var_vals_26, iunits, mass_ounits) * gt2mSLE
+
+    rcp_45_file = [f for f in ifiles if 'rcp_{}'.format(45) in f][0]
+    cdf_45 = cdo.readCdf(rcp_45_file)
+    t_45 = cdf_45.variables['time'][:]
+    date_45 = np.arange(start_year + step,
+                     start_year + (len(t_45[:]) + 1) ,
+                     step) 
+    var_vals_45 = cdf_45.variables[plot_var][:] - cdf_45.variables[plot_var][0]
+    iunits = cdf_45.variables[plot_var].units
+    var_vals_45 = -unit_converter(var_vals_45, iunits, mass_ounits) * gt2mSLE
+
+    rcp_85_file = [f for f in ifiles if 'rcp_{}'.format(85) in f][0]
+    cdf_85 = cdo.readCdf(rcp_85_file)
+    t_85 = cdf_85.variables['time'][:]
+    date_85 = np.arange(start_year + step,
+                     start_year + (len(t_85[:]) + 1) ,
+                     step) 
+    var_vals_85 = cdf_85.variables[plot_var][:] - cdf_85.variables[plot_var][0]
+    iunits = cdf_85.variables[plot_var].units
+    var_vals_85 = -unit_converter(var_vals_85, iunits, mass_ounits) * gt2mSLE
+
+    for frame in range(1000):
+
+        fig = plt.figure()
+        offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+        ax = fig.add_subplot(111)            
+
+        plt.plot(date_26, var_vals_26,
+                 color=rcp_col_dict['26'],
+                 linewidth=lw,
+                 alpha=0.5)
+
+        plt.plot(date_26[:frame], var_vals_26[:frame],
+                 color=rcp_col_dict['26'],
+                 linewidth=lw,
+                 label=rcp_dict['26'],)
+
+        plt.plot(date_26[frame], var_vals_26[frame],
+                 color=rcp_col_dict['26'],
+                 marker='o',
+                 markersize=3,
+                 linewidth=0)
+
+        plt.plot(date_45, var_vals_45,
+                 color=rcp_col_dict['45'],
+                 linewidth=lw,
+                 alpha=0.5)
+
+        plt.plot(date_45[:frame], var_vals_45[:frame],
+                 color=rcp_col_dict['45'],
+                 linewidth=lw,
+                 label=rcp_dict['45'],)
+
+        plt.plot(date_45[frame], var_vals_45[frame],
+                 color=rcp_col_dict['45'],
+                 marker='o',
+                 markersize=3,
+                 linewidth=0)
+
+        plt.plot(date_85, var_vals_85,
+                 color=rcp_col_dict['85'],
+                 linewidth=lw,
+                 alpha=0.5)
+
+        plt.plot(date_85[:frame], var_vals_85[:frame],
+                 color=rcp_col_dict['85'],
+                 linewidth=lw,
+                 label=rcp_dict['85'],)
+
+        plt.plot(date_85[frame], var_vals_85[frame],
+                 color=rcp_col_dict['85'],
+                 marker='o',
+                 markersize=3,
+                 linewidth=0)
+
+        legend = ax.legend(loc="center left",
+                           edgecolor='0',
+                           bbox_to_anchor=(0.15, .65),
+                           bbox_transform=plt.gcf().transFigure)
+        legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
+
+        ax.set_xlabel('Year')
+        ax.set_ylabel('sea level contribution (m)')
+
+        if time_bounds:
+            ax.set_xlim(time_bounds[0], time_bounds[1])
+
+        if bounds:
+            ax.set_ylim(bounds[0], bounds[1])
+
+        ymin, ymax = ax.get_ylim()
+
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%1.2f'))
+
+        if rotate_xticks:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                    tick.set_rotation(30)
+        else:
+            ticklabels = ax.get_xticklabels()
+            for tick in ticklabels:
+                tick.set_rotation(0)
+
+        if title is not None:
+                plt.title(title)
+
+        for out_format in out_formats:
+            out_file = 'dgmsl_'  + plot_var + '_{:04d}.{}'.format(frame, out_format) 
+            print("  - writing image %s ..." % out_file)
+            fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
+
+        plt.close(fig)
+
+        
 def plot_percent_mass(plot_var=mass_plot_vars):
     
     fig = plt.figure(figsize=[4, 1.5])
@@ -2611,6 +2651,8 @@ def plot_per_basin_flux(plot_var=None):
                    
 if plot == 'ctrl_mass':
     plot_ctrl_mass(plot_var='limnsw')
+elif plot == 'ctrl_mass_anim':
+    plot_ctrl_mass_anim(plot_var='limnsw')
 if plot == 'percent_mass':
     plot_percent_mass(plot_var='limnsw')
 elif plot == 'rcp_mass':
@@ -2652,7 +2694,3 @@ elif plot == 'grid_pc':
     plot_grid_pc()
 elif plot == 'profile_combined':
     plot_profile_ts_combined()
-elif plot == 'profile_speed':
-    plot_profile_ts(plot_var='velsurf_mag')
-elif plot == 'profile_topo':
-    plot_profile_ts(plot_var='topo')

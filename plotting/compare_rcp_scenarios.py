@@ -104,7 +104,7 @@ def generate_frame(index, output_filename):
          (217, 71, 1))
 
     text(draw,
-         "Year %04d CE" % (2009 + index),
+         "Year %04d CE" % (2008 + index),
          img_width / 2,
          header + panel_height + border + bar_height / 2,
          (0, 0, 0))
@@ -117,7 +117,7 @@ import sys
 N = 1000
 
 for k in range(N):
-    generate_frame(k, "output/gris_g3600m_rcps_%04d.png" % k)
+    generate_frame(k, "output/gris_g900m_rcps_%04d.png" % k)
     sys.stderr.write(".")
 
 print("")
