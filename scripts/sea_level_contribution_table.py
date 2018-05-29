@@ -191,7 +191,7 @@ if __name__ == "__main__":
     parser.description = "Generate tables for the paper"
     parser.add_argument("--prefix", dest="prefix",
                         help="the directory containing output files from the study",
-                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2017_12_ctrl/scalar/")
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_05_ctrl/scalar/")
     parser.add_argument("--ensstat_prefix", dest="ensstat_prefix",
                         help="the directory containing ensemble stats from the study",
                         default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_01_les/scalar_ensstat/")

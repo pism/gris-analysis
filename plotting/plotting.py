@@ -317,10 +317,11 @@ rcp_dict = {'26': 'RCP 2.6',
             '85': 'RCP 8.5',
             'CTRL': 'CTRL'}
 
-res_col_dict = {'600': '#006d2c',
-                '900': '#31a354',
-                '1800': '#74c476',
-                '3600': '#bae4b3',
+res_col_dict = {'450': '#006d2c',
+                '600': '#31a354',
+                '900': '#74c476',
+                '1800': '#bae4b3',
+                '3600': '#fcae91',
                 '4500': '#fb6a4a',
                 '9000': '#de2d26',
                 '18000': '#a50f15'}
@@ -924,7 +925,7 @@ def plot_percent_mass(plot_var=mass_plot_vars):
 
 def plot_grid_res(plot_var='tendency_of_ice_mass_due_to_discharge'):
     
-    for k, rcp in enumerate(rcp_list[::-1]):
+    for k, rcp in enumerate(['45']):
 
         fig = plt.figure()
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)

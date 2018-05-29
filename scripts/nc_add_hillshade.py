@@ -179,12 +179,13 @@ class Hillshade(object):
     def run(self):
         logger.info('Processing file {}'.format(ifile))
         fill_value = self.params['fill_value']
+        logger.info('Processing variable {}'.format(self.variable))
         hs_var = self.variable  + '_hs'
         nc = NC(ifile, 'a')
         nt = len(nc.variables['time'][:])
         for t in range(nt):
             logger.info('Processing time {} of {}'.format(t, nt))
-            dem = nc.variables['usurf'][t, Ellipsis]
+            dem = nc.variables[self.variable][t, Ellipsis]
             hs = self._hillshade(dem)
             hs[dem==0] = fill_value
             nc.variables[hs_var][t, Ellipsis] = hs
@@ -214,16 +215,16 @@ if __name__ == "__main__":
                         help="file", default=None)
     parser.add_argument("-z", dest='zf', type=float,
                         help="ZFactor", default=2.5)
-    parser.add_argument("--multidirectional", dest='multidirectional', action='store_true',
-                        help="Multidirectional hillshade", default=False)
+    parser.add_argument("-v", "--variables", dest='variables',
+                        help="Variables to create hillshade, comma-separated list. Default='usurf,topg'", default='usurf,topg')
 
     options = parser.parse_args()
     ifile = options.FILE[0]
-    multidirectional = options.multidirectional
+    variables = options.variables.split(',')
     zf = options.zf
-    
-    hs = Hillshade(ifile, variable='usurf', variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
-    hs.run() 
-    hs = Hillshade(ifile, variable='topg', variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
-    hs.run() 
+    multidirectional = False
+
+    for m_var in variables:
+        hs = Hillshade(ifile, variable=m_var, variables_to_mask='velsurf_mag,usurf_hs,usurf,thk', multidirectional=multidirectional, zf=zf)
+        hs.run() 
 

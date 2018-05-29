@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-# Copyright (C) 2016-17 Andy Aschwanden
-
+##!/usr/bin/env python
+# Copyright (C) 2016-18 Andy Aschwanden
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import ocgis
