@@ -31,7 +31,7 @@ def generate_frame(index, output_filename):
     rcp45_filename = "data/rcp45/frame%04d.png" % index
     rcp85_filename = "data/rcp85/frame%04d.png" % index
 
-    ts_filename = "data/ts_plots/dgmsl_ice_mass_%04d.png" % index
+    ts_filename = "data/ts_plots/dgmsl_limnsw_%04d.png" % index
 
     rcp26 = PIL.Image.open(rcp26_filename)
     rcp45 = PIL.Image.open(rcp45_filename)
@@ -79,8 +79,8 @@ def generate_frame(index, output_filename):
     img.paste(rcp85, (3*border + 2*panel_width, header))
     img.paste(speed, (3*border + 2*panel_width, header + panel_height + border), mask=speed.split()[3])
 
-    img.paste(ts, (img_width / 2 - panel_width * 3 / 2,
-                   header + panel_height + border + bar_height + border))
+    img.paste(ts, (int(img_width / 2 - panel_width * 3 / 2),
+                   int(header + panel_height + border + bar_height + border)))
 
     # add text
     draw = PIL.ImageDraw.Draw(img)
@@ -104,7 +104,7 @@ def generate_frame(index, output_filename):
          (140, 45, 4))
 
     text(draw,
-         "Year %04d CE" % (200 + index),
+         "Year %04d CE" % (2008 + index),
          img_width / 2,
          header + panel_height + border + bar_height / 2,
          (0, 0, 0))
