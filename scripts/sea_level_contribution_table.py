@@ -56,6 +56,7 @@ def sl_contribution_cm(filename, years, variable="limnsw"):
 def latex_table_row(label, array):
     "Format a table row for a latex table."
     return label + " & " + " & ".join(["{:.0f}".format(x) for x in array]) + " \\\\"
+        
 
 def ensstat_filename(prefix, percentile, rcp):
     "Return the ensemble statistics file name for given percentile and RCP scenario."
@@ -152,10 +153,10 @@ def mass_rate_table(prefix, window_width=20, years=[2100, 2200, 2500, 3000]):
          "variable" : "tendency_of_ice_mass_due_to_discharge",
          "sign"     : 1.0},
         {"label"    : "basal mass balance",
-         "variable" : "tendency_of_ice_mass_due_to_basal_mass_flux",
+         "variable" : "tendency_of_ice_mass_due_to_basal_mass_balance",
          "sign"     : 1.0},
         {"label"    : "flow",
-         "variable" : "tendency_of_ice_mass_due_to_flow",
+         "variable" : "tendency_of_ice_mass_due_to_influx",
          "sign"     : 1.0},
         {"label"    : "error",
          "variable" : "tendency_of_ice_mass_due_to_conservation_error",
@@ -179,7 +180,12 @@ def mass_rate_table(prefix, window_width=20, years=[2100, 2200, 2500, 3000]):
 
             for year in years:
                 f = extract_time_mean(filename, year, window_width)
-
+                d = sign * convert_units(f.variables[variable])
+                try:
+                    val = np.squeeze(d.data)
+                except:
+                    val = np.squeeze(d)
+                print val
                 data.append(sign * convert_units(f.variables[variable]))
 
         result.append(latex_table_row(label, data))

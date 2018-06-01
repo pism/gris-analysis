@@ -565,6 +565,8 @@ def plot_profile_ts_combined():
 
         xmin, xmax = ax[1].get_xlim()
         ymin, ymax = ax[1].get_ylim()
+
+        ymin = -1200
         
         ax[0].set_ylabel('Flux\n (km$^{\mathregular{2}}$ yr$^{\mathregular{-1}}$)', multialignment='center')
         ax[1].set_ylabel('Speed\n (m yr$^{\mathregular{-1}}$)', multialignment='center')
@@ -1566,7 +1568,7 @@ def plot_rcp_d(plot_var=flux_plot_vars):
     
     ax.set_xlabel('Year')
     ax.set_ylabel('Rate (Gt yr$^{\mathregular{-1}}$)')
-    ax.set_ylabel('Rate of GMSL rise\n(mm yr$^{\mathregular{-1}}$)')
+    ax.set_ylabel('Rate of GMSL eqivalent\n(mm yr$^{\mathregular{-1}}$)')
         
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
