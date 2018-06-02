@@ -44,9 +44,9 @@ def generate_frame(index, output_filename):
     panel_height = panel_size[1]
 
     # height of the header (white strip above the panels), in pixels
-    header = 100
+    header = 50
     # size of the border around the panels, in pixels
-    border = 10
+    border = 5
 
     # resize input images
     rcp26 = rcp26.resize(panel_size, resample=1)
@@ -66,7 +66,7 @@ def generate_frame(index, output_filename):
 
     # set the size of the resulting image
     canvas_size = (panel_width * 3 + 4 * border,
-                   header + panel_height + border + bar_height + border + ts_height + border)
+                   header + panel_height + bar_height + ts_height + 3)
     img_width = canvas_size[0]
 
     # create the output image
@@ -80,7 +80,7 @@ def generate_frame(index, output_filename):
     img.paste(speed, (3*border + 2*panel_width, header + panel_height + border), mask=speed.split()[3])
 
     img.paste(ts, (int(img_width / 2 - panel_width * 3 / 2),
-                   int(header + panel_height + border + bar_height + border)))
+                   int(header + panel_height  + bar_height  )))
 
     # add text
     draw = PIL.ImageDraw.Draw(img)
