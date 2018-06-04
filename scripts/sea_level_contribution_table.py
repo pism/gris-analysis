@@ -48,9 +48,7 @@ def sl_contribution_cm(filename, years, variable="limnsw"):
     except:
         # the ensstat case: times are in 365-day years since 2008
         requested_times = np.array(years) * 365 * 86400
-
     data = np.interp(requested_times, t[:], v[:])
-
     return sl_cm(data[0] - data[1:], v.units)
 
 def latex_table_row(label, array):
@@ -64,7 +62,7 @@ def ensstat_filename(prefix, percentile, rcp):
 
     return os.path.join(prefix, filename)
 
-def les_table_row(prefix, label="LES"):
+def les_table_row(prefix, label="ENS"):
     "Gather large ensemble statistics into a row for the sea level contribution table."
 
     # years since 2008
@@ -98,7 +96,7 @@ def sea_level_contribution_table(prefix, ensstat_prefix):
         {"label"      : "NTRL" ,
          "resolution" : 900,
          "run"        : "NTRL"},
-        {"label"      : "NISO" ,
+        {"label"      : "NGIA" ,
          "resolution" : 900,
          "run"        : "NISO"},
         {"label"      : "G600",
@@ -127,7 +125,6 @@ def sea_level_contribution_table(prefix, ensstat_prefix):
         data = []
         for rcp in rcps:
             filename = input_filename(prefix, row["run"], row["resolution"], rcp)
-
             data.append(sl_contribution_cm(filename, years))
 
         result.append(latex_table_row(row["label"], np.hstack(data)))
