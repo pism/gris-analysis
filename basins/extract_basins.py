@@ -1,4 +1,4 @@
-##!/usr/bin/env python
+#!/usr/bin/env python
 # Copyright (C) 2016-18 Andy Aschwanden
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -72,7 +72,7 @@ def calculate_time_series():
     ifile = os.path.join(odir, prefix, prefix + '.nc')
     scalar_ofile = os.path.join(odir, 'scalar', '.'.join(['_'.join(['ts', prefix]), 'nc']))
     logger.info('Calculating field sum and saving to \n {}'.format(scalar_ofile))
-    cdo.setattribute('discharge_flux@units="Gt year-1"', input='-aexpr,discharge_flux=tendency_of_ice_mass_due_to_discharge+tendency_of_ice_mass_due_to_basal_mass_flux -fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True, options='-L')
+    cdo.setattribute('discharge_flux@units="Gt year-1",dMdt@units="Gt year-1"', input='-aexpr,dMdt=tendency_of_ice_mass-tendency_of_ice_mass_due_to_flow,discharge_flux=tendency_of_ice_mass_due_to_discharge+tendency_of_ice_mass_due_to_basal_mass_flux -fldsum -selvar,{} {}'.format(','.join(mvar for mvar in mvars), ifile), output=scalar_ofile, overwrite=True, options='-L')
 
 # set up the option parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

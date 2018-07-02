@@ -689,7 +689,8 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    ax.axhline(7.21,
+    sle = 7.21
+    ax.axhline(sle,
                color='k',
                linestyle='dashed',
                linewidth=0.2)
@@ -705,7 +706,7 @@ def plot_ctrl_mass(plot_var=mass_plot_vars):
         iunits = cdf.variables[plot_var].units
         var_vals = -unit_converter(var_vals, iunits, mass_ounits) * gt2mSLE
 
-        plt.plot(date, var_vals,
+        plt.plot(date[var_vals<sle], var_vals[var_vals<sle],
                  color=rcp_col_dict[rcp],
                  linewidth=lw,
                  label=rcp_dict[rcp],)
@@ -1637,9 +1638,9 @@ def plot_flux_partitioning():
         area_vals = cdf.variables[area_var][:]
         area_iunits = cdf[area_var].units
 
-        tom_var = 'tendency_of_ice_mass'
-        tom_vals = cdf.variables[tom_var][:]
-        tom_cum_vals = cdf_cum.variables[tom_var][:]
+        tom_var = 'dMdt'
+        tom_vals = np.squeeze(cdf.variables[tom_var][:])
+        tom_cum_vals = np.squeeze(cdf_cum.variables[tom_var][:])
         tom_s_vals = tom_vals / area_vals
         tom_iunits = cdf[tom_var].units
         tom_vals = unit_converter(tom_vals, tom_iunits, flux_ounits)
@@ -1649,8 +1650,8 @@ def plot_flux_partitioning():
         tom_cum_vals = unit_converter(tom_cum_vals, tom_cum_iunits, mass_ounits) * gt2mSLE
         
         snow_var = 'surface_accumulation_rate'
-        snow_vals = cdf.variables[snow_var][:]
-        snow_cum_vals = cdf_cum.variables[snow_var][:]
+        snow_vals = np.squeeze(cdf.variables[snow_var][:])
+        snow_cum_vals = np.squeeze(cdf_cum.variables[snow_var][:])
         snow_s_vals = snow_vals / area_vals
         snow_iunits = cdf[snow_var].units
         snow_vals = unit_converter(snow_vals, snow_iunits, flux_ounits)
@@ -1660,8 +1661,8 @@ def plot_flux_partitioning():
         snow_cum_vals = unit_converter(snow_cum_vals, snow_cum_iunits, mass_ounits) * gt2mSLE
 
         ru_var = 'surface_runoff_rate'
-        ru_vals = cdf.variables[ru_var][:]
-        ru_ntrl_vals = cdf_ntrl.variables[ru_var][:]
+        ru_vals = np.squeeze(cdf.variables[ru_var][:])
+        ru_ntrl_vals = np.squeeze(cdf_ntrl.variables[ru_var][:])
         ru_cum_vals = cdf_cum.variables[ru_var][:]
         ru_s_vals = ru_vals / area_vals
         ru_ntrl_s_vals = ru_ntrl_vals / area_vals
@@ -1676,8 +1677,8 @@ def plot_flux_partitioning():
         ru_cum_vals = unit_converter(ru_cum_vals, ru_cum_iunits, mass_ounits) * gt2mSLE
 
         d_var = 'tendency_of_ice_mass_due_to_discharge'
-        d_vals = cdf.variables[d_var][:]
-        d_cum_vals = cdf_cum.variables[d_var][:]
+        d_vals = np.squeeze(cdf.variables[d_var][:])
+        d_cum_vals = np.squeeze(cdf_cum.variables[d_var][:])
         d_s_vals = d_vals / area_vals
         d_iunits = cdf[d_var].units
         d_vals = unit_converter(d_vals, d_iunits, flux_ounits)
@@ -1687,8 +1688,8 @@ def plot_flux_partitioning():
         d_cum_vals = unit_converter(d_cum_vals, d_cum_iunits, mass_ounits) * gt2mSLE
 
         b_var = 'tendency_of_ice_mass_due_to_basal_mass_flux'
-        b_vals = cdf.variables[b_var][:]
-        b_cum_vals = cdf_cum.variables[b_var][:]
+        b_vals = np.squeeze(cdf.variables[b_var][:])
+        b_cum_vals = np.squeeze(cdf_cum.variables[b_var][:])
         b_s_vals = b_vals / area_vals
         b_iunits = cdf[b_var].units
         b_vals = unit_converter(b_vals, b_iunits, flux_ounits)
@@ -1849,7 +1850,7 @@ def plot_basin_flux_partitioning():
             date = np.arange(start_year + step,
                              start_year + (len(t[:]) + 1) , step) 
 
-            tom_var = 'tendency_of_ice_mass'
+            tom_var = 'dMdt'
             tom_vals = np.squeeze(cdf.variables[tom_var][:])
             tom_iunits = cdf[tom_var].units
             tom_vals = unit_converter(tom_vals, tom_iunits, flux_ounits)

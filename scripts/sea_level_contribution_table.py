@@ -54,7 +54,7 @@ def sl_contribution_cm(filename, years, variable="limnsw"):
 def latex_table_row(label, array):
     "Format a table row for a latex table."
     return label + " & " + " & ".join(["{:.0f}".format(x) for x in array]) + " \\\\"
-        
+
 
 def ensstat_filename(prefix, percentile, rcp):
     "Return the ensemble statistics file name for given percentile and RCP scenario."
@@ -135,10 +135,10 @@ def convert_units(variable):
     "Convert units to Gt/year."
     return Unit(variable.units).convert(variable[0], "Gt year-1")
 
-def mass_rate_table(prefix, window_width=20, years=[2100, 2200, 2500, 3000]):
+def mass_rate_table(prefix, window_width=10, years=[2100, 2200, 2500, 3000]):
     rows = [
         {"label"    : "total",
-         "variable" : "tendency_of_ice_mass",
+         "variable" : "dMdt",
          "sign"     : 1.0},
         {"label"    : "snowfall",
          "variable" : "surface_accumulation_rate",
@@ -177,12 +177,6 @@ def mass_rate_table(prefix, window_width=20, years=[2100, 2200, 2500, 3000]):
 
             for year in years:
                 f = extract_time_mean(filename, year, window_width)
-                d = sign * convert_units(f.variables[variable])
-                try:
-                    val = np.squeeze(d.data)
-                except:
-                    val = np.squeeze(d)
-                print val
                 data.append(sign * convert_units(f.variables[variable]))
 
         result.append(latex_table_row(label, data))
@@ -195,6 +189,9 @@ if __name__ == "__main__":
     parser.add_argument("--prefix", dest="prefix",
                         help="the directory containing output files from the study",
                         default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_05_ctrl/scalar/")
+    parser.add_argument("--prefix_rates", dest="prefix_rates",
+                        help="the directory containing output files from the study",
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_05_ctrl/fldsum/")
     parser.add_argument("--ensstat_prefix", dest="ensstat_prefix",
                         help="the directory containing ensemble stats from the study",
                         default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_01_les/scalar_ensstat/")
@@ -205,5 +202,5 @@ if __name__ == "__main__":
         print(row)
 
     print("% mass rate of change table, in Gt/year, for RCP 2.6, 4.5, 8.5 as in the previous table")
-    for row in mass_rate_table(options.prefix):
+    for row in mass_rate_table(options.prefix_rates):
         print(row)
