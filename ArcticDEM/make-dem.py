@@ -41,7 +41,7 @@ def wget_file(tasks, downloaded_files, process_name, tar_dir, dry):
         else:           
             print('Processing file {}'.format(url))
             if dry==False:
-                out_file = wget.download(url, out=tar_dir, bar=wget.bar_thermometer)
+                out_file = wget.download(url, out=tar_dir)
             else:
                 out_file = wget.filename_from_url(url)
 
