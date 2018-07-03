@@ -22,6 +22,7 @@ def extract_tar(file, extracted_dir):
     '''
     Extract all files from archive
     '''
+    print("Extracting DEM from file {}".format(file))
     tar = tarfile.open(file)
     tar.extractall(path=extracted_dir, members=dem_files(tar))
     tar.close()
@@ -48,7 +49,6 @@ def wget_file(tasks, downloaded_files, process_name, tar_dir, dry):
                 out_file = wget.filename_from_url(url)
 
             downloaded_files.put(out_file)
-            print('File downloaded to '.format(out_file))
     return
 
 
@@ -144,11 +144,20 @@ if __name__ == "__main__":
     fileurls = get_fileurls(csv_file)
     all_downloaded_files = download_files(fileurls, num_processes, tar_dir=tar_dir, dry=dry_download)
     extracted_dir = 'extracted_files'
-    for file in all_downloaded_files:
-        m_file = join(tar_dir, file)
-        extract_tar(m_file, extracted_dir=extracted_dir)
+    # for m_file in all_downloaded_files:
+    #     extract_tar(m_file, extracted_dir=extracted_dir)
 
-    destName = 'test.vrt'
+    resolution = 30
+    destName = 'gris-dem-{}m.vrt'.format(resolution)
     srcDSOrSrcDSTab = glob(join(extracted_dir, '*dem.tif'))
-    #gdal.BuildVRT(destName, srcDSOrSrcDSTab)
+    options = gdal.BuildVRTOptions(resolution='user', xRes=resolution, yRes=resolution, resampleAlg=gdal.GRA_Average)
+    print("Building VRT {}".format(destName))
+    #gdal.BuildVRT(destName, srcDSOrSrcDSTab, options=options)
+    img = gdal.Open(destName, 0)  # 0 = read-only, 1 = read-write.
+    print("Building pyramids for {}".format(destName))
+    gdal.SetConfigOption('BIGTIFF', 'YES')
+    gdal.SetConfigOption('BIGTIFF_OVERVIEW', 'YES')
+    gdal.SetConfigOption('COMPRESS_OVERVIEW', 'DEFLATE')
+    img.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64] )
+    del img
     
