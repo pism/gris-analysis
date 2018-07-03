@@ -8,7 +8,7 @@ from glob import glob
 import multiprocessing as mp
 import tarfile
 import wget
-from os.path import join, realpath, dirname, exists, splitext
+from os.path import join, realpath, dirname, exists, splitext, isfile
 from os import mkdir
 script_path = dirname(realpath(__file__))
 
@@ -41,7 +41,9 @@ def wget_file(tasks, downloaded_files, process_name, tar_dir, dry):
         else:           
             print('Processing file {}'.format(url))
             if dry==False:
-                out_file = wget.download(url, out=tar_dir)
+                out_file = join(tar_dir, wget.filename_from_url(url))
+                if not isfile(out_file):
+                    out_file = wget.download(url, out=tar_dir)
             else:
                 out_file = wget.filename_from_url(url)
 
@@ -128,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument("--tar_dir", dest="tar_dir",
                         help="Directory to store the tar files. Default='tar_files'",
                         default='tar_files')
-    parser.add_argument("--tiles_file", dest="csv_file",
+    parser.add_argument("--csv_file", dest="csv_file",
                         help="CSV file that containes tiles information. Default='gris-tiles.csv'",
                         default=join(script_path, 'gris-tiles.csv'))
     options = parser.parse_args()
