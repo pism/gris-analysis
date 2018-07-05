@@ -147,12 +147,13 @@ if __name__ == "__main__":
     # for m_file in all_downloaded_files:
     #     extract_tar(m_file, extracted_dir=extracted_dir)
 
-    resolution = 30
+    resolution = 5
     destName = 'gris-dem-{}m.vrt'.format(resolution)
     srcDSOrSrcDSTab = glob(join(extracted_dir, '*dem.tif'))
     options = gdal.BuildVRTOptions(resolution='user', xRes=resolution, yRes=resolution, resampleAlg=gdal.GRA_Average)
     print("Building VRT {}".format(destName))
-    #gdal.BuildVRT(destName, srcDSOrSrcDSTab, options=options)
+    # gdal.BuildVRT(destName, srcDSOrSrcDSTab, options=options)
+    gdal.BuildVRT(destName, srcDSOrSrcDSTab)
     img = gdal.Open(destName, 0)  # 0 = read-only, 1 = read-write.
     print("Building pyramids for {}".format(destName))
     gdal.SetConfigOption('BIGTIFF', 'YES')
