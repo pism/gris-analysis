@@ -18,16 +18,17 @@ def dem_files(members):
             yield tarinfo
             
             
-def extract_tar(file, extracted_dir):
+def extract_tar(file, dem_dir=None):
     '''
     Extract all files from archive
     '''
     print("Extracting DEM from file {}".format(file))
     tar = tarfile.open(file)
-    tar.extractall(path=extracted_dir, members=dem_files(tar))
+    tar.extractall(path=dem_dir, members=dem_files(tar))
     tar.close()
 
-def wget_file(tasks, downloaded_files, process_name, tar_dir, dry):
+
+def wget_file(tasks, downloaded_files, process_name, tar_dir):
     '''
     Download file using wget
     '''
@@ -41,13 +42,9 @@ def wget_file(tasks, downloaded_files, process_name, tar_dir, dry):
             break
         else:           
             print('Processing file {}'.format(url))
-            if dry==False:
-                out_file = join(tar_dir, wget.filename_from_url(url))
-                if not isfile(out_file):
-                    out_file = wget.download(url, out=tar_dir)
-            else:
-                out_file = wget.filename_from_url(url)
-
+            out_file = join(tar_dir, wget.filename_from_url(url))
+            if not isfile(out_file):
+                out_file = wget.download(url, out=tar_dir)
             downloaded_files.put(out_file)
     return
 
@@ -63,7 +60,7 @@ def get_fileurls(file):
     return fileurls
 
 
-def download_files(fileurls, num_processes, tar_dir='.', dry=False):
+def download_files(fileurls, num_processes, tar_dir='.'):
 
     '''
     Download requested files
@@ -84,7 +81,7 @@ def download_files(fileurls, num_processes, tar_dir='.', dry=False):
         process_name = 'P%i' % i
 
         # Create the process, and connect it to the worker function
-        new_process = mp.Process(target=wget_file, args=(tasks, downloaded_files, process_name, tar_dir, dry))
+        new_process = mp.Process(target=wget_file, args=(tasks, downloaded_files, process_name, tar_dir))
 
         # Add new process to the list of processes
         processes.append(new_process)
@@ -121,44 +118,74 @@ def download_files(fileurls, num_processes, tar_dir='.', dry=False):
     return all_downloaded_files
 
 
+def calc_stats(destName):
+
+    ds = gdal.OpenEx(destName, 0)  # 0 = read-only, 1 = read-write.
+    print('Building overviews and calculating stats for {}'.format(destName))
+    ds.GetRasterBand(1).GetStatistics(0, 1)
+    gdal.SetConfigOption('COMPRESS_OVERVIEW', 'PACKBITS')
+    ds.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
+    del ds
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.description = "Generate tables for the paper"
+    parser.add_argument("-l",  "--levels", dest="levels",
+                        help="Comma seperated list of preview levesl. Default: 2,4,8,16,32,64", 
+                        default='2,4,8,16,32,64')
     parser.add_argument("--num_procs", dest="num_processes",
                         help="Number of simultaneous downloads. Default=4", type=int,
                         default=4)
+    parser.add_argument("-o", "--outname_prefix", dest="outname_prefix",
+                        help="Prefix of the output Virtual Raster file {outname}-{resolution}m.vrt. Default='gris-dem'",
+                        default='gris-dem')
+    parser.add_argument("-r", "--resolution", dest="resolution", type=int,
+                        help="Resolution in meters. Default='5'",
+                        default=5)
     parser.add_argument("--tar_dir", dest="tar_dir",
                         help="Directory to store the tar files. Default='tar_files'",
+                        default='tar_files')
+    parser.add_argument("--dem_dir", dest="dem_dir",
+                        help="Directory to store the dem files. Default='dem_files'",
                         default='tar_files')
     parser.add_argument("--csv_file", dest="csv_file",
                         help="CSV file that containes tiles information. Default='gris-tiles.csv'",
                         default=join(script_path, 'gris-tiles.csv'))
     options = parser.parse_args()
     csv_file = options.csv_file
+    pyramid_levels = [int(x) for x in options.levels.split(',')]
     num_processes = options.num_processes
+    outname_prefix = options.outname_prefix
+    resolution = options.resolution
     tar_dir = options.tar_dir
-    dry_download = False
+    dem_dir = options.dem_dir
+    
     if not exists(tar_dir):
         mkdir(tar_dir)
+    if not exists(dem_dir):
+        mkdir(dem_dir)
             
     fileurls = get_fileurls(csv_file)
-    all_downloaded_files = download_files(fileurls, num_processes, tar_dir=tar_dir, dry=dry_download)
-    extracted_dir = 'extracted_files'
-    # for m_file in all_downloaded_files:
-    #     extract_tar(m_file, extracted_dir=extracted_dir)
+    all_downloaded_files = download_files(fileurls, num_processes, tar_dir=tar_dir)
+    for m_file in all_downloaded_files:
+        extract_tar(m_file, dem_dir=dem_dir)
 
-    resolution = 5
-    destName = 'gris-dem-{}m.vrt'.format(resolution)
-    srcDSOrSrcDSTab = glob(join(extracted_dir, '*dem.tif'))
+    destName = '{prefix}-{resolution}m.vrt'.format(prefix=outname_prefix, resolution=resolution)
+    srcDSOrSrcDSTab = glob(join(dem_dir, '*dem.tif'))
+    for m_file in srcDSOrSrcDSTab:
+        calc_stats(m_file)
+
     options = gdal.BuildVRTOptions(resolution='user', xRes=resolution, yRes=resolution, resampleAlg=gdal.GRA_Average)
     print("Building VRT {}".format(destName))
     # gdal.BuildVRT(destName, srcDSOrSrcDSTab, options=options)
     gdal.BuildVRT(destName, srcDSOrSrcDSTab)
-    img = gdal.Open(destName, 0)  # 0 = read-only, 1 = read-write.
+    ds = gdal.OpenEx(destName, 0)  # 0 = read-only, 1 = read-write.
     print("Building pyramids for {}".format(destName))
     gdal.SetConfigOption('BIGTIFF', 'YES')
     gdal.SetConfigOption('BIGTIFF_OVERVIEW', 'YES')
-    gdal.SetConfigOption('COMPRESS_OVERVIEW', 'DEFLATE')
-    img.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64] )
-    del img
+    gdal.SetConfigOption('COMPRESS_OVERVIEW', 'PACKBITS')
+    ds.GetRasterBand(1).GetStatistics(0, 1)
+    ds.BuildOverviews("NEAREST", pyramid_levels)
+    del ds
     
