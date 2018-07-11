@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# (c) 2018, Andy Aschwanden
+
 
 import numpy as np
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -8,19 +10,20 @@ from glob import glob
 import multiprocessing as mp
 import tarfile
 import wget
-from os.path import join, realpath, dirname, exists, splitext, isfile
+from os.path import basename, join, realpath, dirname, exists, split, splitext, isfile
 from os import mkdir
 script_path = dirname(realpath(__file__))
 
+
 def dem_files(members):
     for tarinfo in members:
-        if splitext(tarinfo.name)[1] == ".tif":
+        if tarinfo.name.find('reg_dem.tif') != -1:
             yield tarinfo
             
             
 def extract_tar(file, dem_dir=None):
     '''
-    Extract all files from archive
+    Extract DEM files from archive
     '''
     print("Extracting DEM from file {}".format(file))
     tar = tarfile.open(file)
@@ -28,9 +31,9 @@ def extract_tar(file, dem_dir=None):
     tar.close()
 
 
-def wget_file(tasks, downloaded_files, process_name, tar_dir):
+def process_file(tasks, dem_files, process_name, tar_dir, dem_dir):
     '''
-    Download file using wget
+    Download file using wget, extract dem from tar archive, and calculate stats
     '''
     while True:
         url = tasks.get()
@@ -38,14 +41,21 @@ def wget_file(tasks, downloaded_files, process_name, tar_dir):
             print('[%s] evaluation routine quits' % process_name)
             
             # Indicate finished
-            downloaded_files.put(0)
+            dem_files.put(0)
             break
         else:           
             print('Processing file {}'.format(url))
             out_file = join(tar_dir, wget.filename_from_url(url))
             if not isfile(out_file):
                 out_file = wget.download(url, out=tar_dir)
-            downloaded_files.put(out_file)
+            #extract_tar(out_file, dem_dir=dem_dir)
+            m_file = basename(out_file)
+            root, ext = splitext(m_file)
+            if ext == '.gz':
+                root, ext = splitext(root)
+            m_file =  join(dem_dir, root + '_reg_dem.tif')
+            #calc_stats_and_overviews(m_file)
+            dem_files.put(m_file)
     return
 
 
@@ -60,17 +70,17 @@ def get_fileurls(file):
     return fileurls
 
 
-def download_files(fileurls, num_processes, tar_dir='.'):
+def collect_files_mp(fileurls, num_processes, tar_dir='.', dem_dir='.'):
 
     '''
-    Download requested files
+    Collect and process requested files
     '''
     
     manager = mp.Manager()
 
     # Define a list (queue) for tasks and computation results
     tasks = manager.Queue()
-    downloaded_files = mp.Queue()
+    dem_files = mp.Queue()
 
     pool = mp.Pool(processes=num_processes)  
     processes = []
@@ -81,7 +91,7 @@ def download_files(fileurls, num_processes, tar_dir='.'):
         process_name = 'P%i' % i
 
         # Create the process, and connect it to the worker function
-        new_process = mp.Process(target=wget_file, args=(tasks, downloaded_files, process_name, tar_dir))
+        new_process = mp.Process(target=process_file, args=(tasks, dem_files, process_name, tar_dir, dem_dir))
 
         # Add new process to the list of processes
         processes.append(new_process)
@@ -99,11 +109,11 @@ def download_files(fileurls, num_processes, tar_dir='.'):
 
     # Read calculation results
     num_finished_processes = 0
-    all_downloaded_files = []
+    all_dem_files = []
     k = 0
     while True:  
         # Read result
-        new_result = downloaded_files.get()
+        new_result = dem_files.get()
         # Have a look at the results
         if new_result == 0:
             # Process has finished
@@ -113,13 +123,16 @@ def download_files(fileurls, num_processes, tar_dir='.'):
                 break
         else:
             # Output result
-            all_downloaded_files.append(new_result)
+            all_dem_files.append(new_result)
             k += 1
-    return all_downloaded_files
+    return all_dem_files
 
 
-def calc_stats(destName):
-
+def calc_stats_and_overviews(destName):
+    '''
+    Calculate statistics and build overviews for tile
+    '''
+    
     ds = gdal.OpenEx(destName, 0)  # 0 = read-only, 1 = read-write.
     print('Building overviews and calculating stats for {}'.format(destName))
     ds.GetRasterBand(1).GetStatistics(0, 1)
@@ -132,8 +145,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.description = "Generate tables for the paper"
     parser.add_argument("-l",  "--levels", dest="levels",
-                        help="Comma seperated list of preview levesl. Default: 2,4,8,16,32,64", 
-                        default='2,4,8,16,32,64')
+                        help="Comma seperated list of preview levels. Default: 16,32,64,128,256,512,1024", 
+                        default='16,32,64,128,256,512,1024')
     parser.add_argument("--num_procs", dest="num_processes",
                         help="Number of simultaneous downloads. Default=4", type=int,
                         default=4)
@@ -148,7 +161,7 @@ if __name__ == "__main__":
                         default='tar_files')
     parser.add_argument("--dem_dir", dest="dem_dir",
                         help="Directory to store the dem files. Default='dem_files'",
-                        default='tar_files')
+                        default='dem_files')
     parser.add_argument("--csv_file", dest="csv_file",
                         help="CSV file that containes tiles information. Default='gris-tiles.csv'",
                         default=join(script_path, 'gris-tiles.csv'))
@@ -167,19 +180,11 @@ if __name__ == "__main__":
         mkdir(dem_dir)
             
     fileurls = get_fileurls(csv_file)
-    all_downloaded_files = download_files(fileurls, num_processes, tar_dir=tar_dir)
-    for m_file in all_downloaded_files:
-        extract_tar(m_file, dem_dir=dem_dir)
+    all_dem_files = collect_files_mp(fileurls, num_processes, tar_dir=tar_dir, dem_dir=dem_dir)
 
     destName = '{prefix}-{resolution}m.vrt'.format(prefix=outname_prefix, resolution=resolution)
-    srcDSOrSrcDSTab = glob(join(dem_dir, '*dem.tif'))
-    for m_file in srcDSOrSrcDSTab:
-        calc_stats(m_file)
-
-    options = gdal.BuildVRTOptions(resolution='user', xRes=resolution, yRes=resolution, resampleAlg=gdal.GRA_Average)
     print("Building VRT {}".format(destName))
-    # gdal.BuildVRT(destName, srcDSOrSrcDSTab, options=options)
-    gdal.BuildVRT(destName, srcDSOrSrcDSTab)
+    gdal.BuildVRT(destName, all_dem_files)
     ds = gdal.OpenEx(destName, 0)  # 0 = read-only, 1 = read-write.
     print("Building pyramids for {}".format(destName))
     gdal.SetConfigOption('BIGTIFF', 'YES')
