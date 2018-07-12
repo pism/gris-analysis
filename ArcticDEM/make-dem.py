@@ -31,7 +31,7 @@ def extract_tar(file, dem_dir=None):
     tar.close()
 
 
-def process_file(tasks, dem_files, process_name, tar_dir, dem_dir):
+def process_file(tasks, dem_files, process_name, options_dict, tile_pyramid_levels, tar_dir, dem_dir):
     '''
     Download file using wget, extract dem from tar archive, and calculate stats
     '''
@@ -39,22 +39,23 @@ def process_file(tasks, dem_files, process_name, tar_dir, dem_dir):
         url = tasks.get()
         if not isinstance(url, str):
             print('[%s] evaluation routine quits' % process_name)
-            
             # Indicate finished
             dem_files.put(0)
             break
         else:           
             print('Processing file {}'.format(url))
             out_file = join(tar_dir, wget.filename_from_url(url))
-            if not isfile(out_file):
+            if options_dict['download']:
                 out_file = wget.download(url, out=tar_dir)
-            #extract_tar(out_file, dem_dir=dem_dir)
+            if options_dict['extract']:
+                extract_tar(out_file, dem_dir=dem_dir)
             m_file = basename(out_file)
             root, ext = splitext(m_file)
             if ext == '.gz':
                 root, ext = splitext(root)
             m_file =  join(dem_dir, root + '_reg_dem.tif')
-            #calc_stats_and_overviews(m_file)
+            if options_dict['build_tile_overviews']:
+                calc_stats_and_overviews(m_file, tile_pyramid_levels)
             dem_files.put(m_file)
     return
 
@@ -70,7 +71,7 @@ def get_fileurls(file):
     return fileurls
 
 
-def collect_files_mp(fileurls, num_processes, tar_dir='.', dem_dir='.'):
+def collect_files_mp(fileurls, num_processes, tile_pyramid_levels, options_dict, tar_dir='.', dem_dir='.'):
 
     '''
     Collect and process requested files
@@ -91,7 +92,7 @@ def collect_files_mp(fileurls, num_processes, tar_dir='.', dem_dir='.'):
         process_name = 'P%i' % i
 
         # Create the process, and connect it to the worker function
-        new_process = mp.Process(target=process_file, args=(tasks, dem_files, process_name, tar_dir, dem_dir))
+        new_process = mp.Process(target=process_file, args=(tasks, dem_files, process_name, options_dict, tile_pyramid_levels, tar_dir, dem_dir))
 
         # Add new process to the list of processes
         processes.append(new_process)
@@ -128,34 +129,38 @@ def collect_files_mp(fileurls, num_processes, tar_dir='.', dem_dir='.'):
     return all_dem_files
 
 
-def calc_stats_and_overviews(destName):
+def calc_stats_and_overviews(destName, pyramid_levels):
     '''
     Calculate statistics and build overviews for tile
     '''
     
-    ds = gdal.OpenEx(destName, 0)  # 0 = read-only, 1 = read-write.
+    ds = gdal.OpenEx(destName, 0)  # 0 = read-only (create external .ovr file)
     print('Building overviews and calculating stats for {}'.format(destName))
     ds.GetRasterBand(1).GetStatistics(0, 1)
     gdal.SetConfigOption('COMPRESS_OVERVIEW', 'PACKBITS')
-    ds.BuildOverviews("NEAREST", [2, 4, 8, 16, 32, 64])
+    ds.BuildOverviews("NEAREST", pyramid_levels)
     del ds
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.description = "Generate tables for the paper"
-    parser.add_argument("-l",  "--levels", dest="levels",
-                        help="Comma seperated list of preview levels. Default: 16,32,64,128,256,512,1024", 
+    parser.description = "Create Virtual Raster DEM from ArcticDEM tiles."
+    parser.add_argument("-l",  "--levels", dest="vrt_levels",
+                        help="Comma seperated list of overview levels used for the Virtual Raster. Default: 16,32,64,128,256,512,1024", 
                         default='16,32,64,128,256,512,1024')
+    parser.add_argument("-p",  "--levels_tiles", dest="tile_levels",
+                        help="Comma seperated list of overview levels used for the individual tiles. Default: 2,4,8,16,32,64", 
+                        default='2,4,8,16,32,64')
     parser.add_argument("--num_procs", dest="num_processes",
                         help="Number of simultaneous downloads. Default=4", type=int,
                         default=4)
+    parser.add_argument("--options", dest="process_options",
+                        help="Default='all'",
+                        default='all',
+                        choices=['all', 'download', 'extract', 'build_tile_overviews', 'build_vrt_raster', 'build_vrt_overviews', 'none'])
     parser.add_argument("-o", "--outname_prefix", dest="outname_prefix",
                         help="Prefix of the output Virtual Raster file {outname}-{resolution}m.vrt. Default='gris-dem'",
                         default='gris-dem')
-    parser.add_argument("-r", "--resolution", dest="resolution", type=int,
-                        help="Resolution in meters. Default='5'",
-                        default=5)
     parser.add_argument("--tar_dir", dest="tar_dir",
                         help="Directory to store the tar files. Default='tar_files'",
                         default='tar_files')
@@ -164,33 +169,62 @@ if __name__ == "__main__":
                         default='dem_files')
     parser.add_argument("--csv_file", dest="csv_file",
                         help="CSV file that containes tiles information. Default='gris-tiles.csv'",
-                        default=join(script_path, 'gris-tiles.csv'))
+                        default=join(script_path, 'test-tiles.csv'))
+
+    options_dict = {'download': False,
+                    'extract': False,
+                    'build_vrt_raster': False,
+                    'build_vrt_overviews': False,
+                    'build_tile_overviews': False}
+    
     options = parser.parse_args()
     csv_file = options.csv_file
-    pyramid_levels = [int(x) for x in options.levels.split(',')]
+    vrt_pyramid_levels = [int(x) for x in options.vrt_levels.split(',')]
+    tile_pyramid_levels = [int(x) for x in options.tile_levels.split(',')]
     num_processes = options.num_processes
     outname_prefix = options.outname_prefix
-    resolution = options.resolution
     tar_dir = options.tar_dir
     dem_dir = options.dem_dir
-    
+
+    process_options = options.process_options
+
+    if process_options == 'all':
+        for k in options_dict:
+            options_dict[k] = True
+    elif process_options == 'download':
+        options_dict['download'] = True
+    elif process_options == 'extract':
+        options_dict['extract'] = True
+    elif process_options == 'build_tile_overviews':
+        options_dict['build_tile_overviews'] = True
+    elif process_options == 'build_vrt_raster':
+        options_dict['build_vrt_raster'] = True
+    elif process_options == 'build_vrt_overviews':
+        options_dict['build_vrt_overviews'] = True
+    else:
+        pass
+        
     if not exists(tar_dir):
         mkdir(tar_dir)
     if not exists(dem_dir):
         mkdir(dem_dir)
             
+    # Extract URLs from a CSV file generated from the SHP Tiles File
     fileurls = get_fileurls(csv_file)
-    all_dem_files = collect_files_mp(fileurls, num_processes, tar_dir=tar_dir, dem_dir=dem_dir)
+    # Collect and process all DEM files using multiprocessing
+    all_dem_files = collect_files_mp(fileurls, num_processes, tile_pyramid_levels, options_dict, tar_dir=tar_dir, dem_dir=dem_dir)
 
-    destName = '{prefix}-{resolution}m.vrt'.format(prefix=outname_prefix, resolution=resolution)
-    print("Building VRT {}".format(destName))
-    gdal.BuildVRT(destName, all_dem_files)
-    ds = gdal.OpenEx(destName, 0)  # 0 = read-only, 1 = read-write.
-    print("Building pyramids for {}".format(destName))
-    gdal.SetConfigOption('BIGTIFF', 'YES')
-    gdal.SetConfigOption('BIGTIFF_OVERVIEW', 'YES')
-    gdal.SetConfigOption('COMPRESS_OVERVIEW', 'PACKBITS')
-    ds.GetRasterBand(1).GetStatistics(0, 1)
-    ds.BuildOverviews("NEAREST", pyramid_levels)
-    del ds
+    destName = '{prefix}.vrt'.format(prefix=outname_prefix)
+    if options_dict['build_vrt_raster']:
+        print("Building VRT {}".format(destName))
+        gdal.BuildVRT(destName, all_dem_files)
+    if options_dict['build_vrt_overviews']:
+        ds = gdal.OpenEx(destName, 0)  # 0 = read-only (create external .ovr file)
+        print("Building pyramids for {}".format(destName))
+        gdal.SetConfigOption('BIGTIFF', 'YES')
+        gdal.SetConfigOption('BIGTIFF_OVERVIEW', 'YES')
+        gdal.SetConfigOption('COMPRESS_OVERVIEW', 'PACKBITS')
+        ds.GetRasterBand(1).GetStatistics(0, 1)
+        ds.BuildOverviews("NEAREST", vrt_pyramid_levels)
+        del ds
     
