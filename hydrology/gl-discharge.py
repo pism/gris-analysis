@@ -19,6 +19,8 @@ def set_size(w,h, ax=None):
 
 basins = ('CW', 'NE', 'NO', 'NW', 'SE', 'SW')
 
+normalize = False
+
 for basin in basins:
     nc = NC('b_{basin}_ex_g3600m_water_routing_DMI-HIRHAM5_GL2_ERAI_1980_2014_dm.nc'.format(basin=basin), 'r')
     time = nc.variables['time']
@@ -32,8 +34,13 @@ for basin in basins:
     input_flux_ts = pd.Series(data=gl_flux, index=time, name='input_flux')
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot_date(dates, input_flux / np.max(input_flux), lw=0.4, ls='solid', markersize=0, label='Input Flux')
-    ax.plot_date(dates, -gl_flux /  np.max(-gl_flux), lw=0.5, ls='solid', markersize=0, label='Grounding Line Flux')
+    if normalize:
+        ax.plot_date(dates, input_flux / np.max(input_flux), lw=0.4, ls='solid', markersize=0, label='Input Flux')
+        ax.plot_date(dates, -gl_flux /  np.max(-gl_flux), lw=0.5, ls='solid', markersize=0, label='Grounding Line Flux')
+    else:
+        ax.plot_date(dates, input_flux, lw=0.4, ls='solid', markersize=0, label='Input Flux')
+        ax.plot_date(dates, -gl_flux, lw=0.5, ls='solid', markersize=0, label='Grounding Line Flux')
+
     plt.title('basin {basin}'.format(basin=basin))
     legend = plt.legend()
     legend.get_frame().set_linewidth(0.0)
