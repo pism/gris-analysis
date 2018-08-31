@@ -199,7 +199,6 @@ parser.add_argument("--plot", dest="plot",
                              'basin_flux_partitioning',
                              'basin_cumulative_partitioning',
                              'cmip5',
-                             'cmip5_ens',
                              'cmip5_rcp',
                              'ctrl_mass',
                              'ctrl_mass_anim',
@@ -310,14 +309,16 @@ rcp_col_dict = {'CTRL': 'k',
                 '26': '#fdae6b'}
 
 rcp_col_dict = {'CTRL': 'k',
-                '85': '#de2d26',
-                '45': '#3182bd',
-                '26': '#636363'}
+                '85': '#990002',
+                '45': '#5492CD',
+                '26': '#003466'}
 
 rcp_dict = {'26': 'RCP 2.6',
             '45': 'RCP 4.5',
             '85': 'RCP 8.5',
             'CTRL': 'CTRL'}
+
+line_colors = ['#5492CD', '#C47900', '#004F00', '#003466', '#808080']
 
 res_col_dict = {'450': '#006d2c',
                 '600': '#31a354',
@@ -413,15 +414,14 @@ def add_inner_title(ax, title, loc, size=None, **kwargs):
     return at
 
 
-def plot_cmip5(plot_var='delta_T'):
+def plot_cmip5_forcing(plot_var='delta_T'):
 
     fig = plt.figure()
     offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
     ax = fig.add_subplot(111)
 
-    time_bounds = [2008, 3000]
 
-    for k, rcp in enumerate(rcp_list[:]):
+    for k, rcp in reversed(list(enumerate(rcp_list[:]))):
 
         rcp_files = [f for f in ifiles if 'rcp{}'.format(rcp) in f]
 
@@ -465,7 +465,8 @@ def plot_cmip5(plot_var='delta_T'):
                 label=rcp_dict[rcp], linewidth=lw)
     
     if do_legend:
-        legend = ax.legend(loc="upper right",
+        legend = ax.legend(
+                           loc="upper right",
                            edgecolor='0',
                            bbox_to_anchor=(.2, 0, .7, 0.89),
                            bbox_transform=plt.gcf().transFigure)
@@ -500,98 +501,7 @@ def plot_cmip5(plot_var='delta_T'):
     set_size(2.44, 0.86)
         
     for out_format in out_formats:
-        out_file = outfile + '_cmip5' + '_'  + plot_var + '.' + out_format
-        print("  - writing image %s ..." % out_file)
-        fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
-
-
-def plot_cmip5_ens(plot_var='delta_T'):
-
-    fig = plt.figure()
-    offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
-    ax = fig.add_subplot(111)
-
-    for k, rcp in enumerate(rcp_list[:]):
-
-        rcp_files = [f for f in ifiles if 'rcp{}'.format(rcp) in f]
-
-        gcm_files = [f for f in rcp_files if 'r1i1p1' in f]
-        ensstdm1_file = [f for f in rcp_files if 'ensstdm1' in f][0]
-        ensstdp1_file = [f for f in rcp_files if 'ensstdp1' in f][0]
-        giss_file = [f for f in rcp_files if 'ens' in f][0]
-        ensstdm1_cdf = cdo.readCdf(ensstdm1_file)
-        ensstdp1_cdf = cdo.readCdf(ensstdp1_file)
-        giss_cdf = cdo.readCdf(giss_file)
-        
-        t = ensstdp1_cdf.variables['time'][:]
-        cmip5_date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
-                         step) 
-
-        t = giss_cdf.variables['time'][:]
-        giss_date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
-                         step) 
-
-        ensstdm1_vals = np.squeeze(ensstdm1_cdf.variables[plot_var][:])
-        ensstdp1_vals = np.squeeze(ensstdp1_cdf.variables[plot_var][:])
-        giss_vals = np.squeeze(giss_cdf.variables[plot_var][:])
-
-        # ax.fill_between(cmip5_date,  ensstdm1_vals, ensstdp1_vals,
-        #                 alpha=0.40,
-        #                 linewidth=0.50,
-        #                 color=rcp_col_dict[rcp])
-
-        for gcm_file in gcm_files:
-            gcm_cdf = cdo.readCdf(gcm_file)
-            t = giss_cdf.variables['time'][:]
-            gcm_date = np.arange(start_year + step,
-                         start_year + (len(t[:]) + 1) * step,
-                         step) 
-            gcm_vals = np.squeeze(gcm_cdf.variables[plot_var][:])
-            ax.plot(gcm_date, gcm_vals, color=rcp_col_dict[rcp],
-                    linewidth=0.3)
-            
-        ax.plot(giss_date, giss_vals, color=rcp_col_dict[rcp],
-                label=rcp_dict[rcp], linewidth=lw)
-    
-    if do_legend:
-        legend = ax.legend(loc="upper right",
-                           edgecolor='0',
-                           bbox_to_anchor=(.2, 0, .7, 0.89),
-                           bbox_transform=plt.gcf().transFigure)
-        legend.get_frame().set_linewidth(0.0)
-        legend.get_frame().set_alpha(0.0)
-    
-    ax.set_xlabel('Year')
-    ax.set_ylabel('T-anomaly (K)')
-
-    if time_bounds:
-        ax.set_xlim(time_bounds[0], time_bounds[1])
-
-    if bounds:
-        ax.set_ylim(bounds[0], bounds[1])
-
-    ymin, ymax = ax.get_ylim()
-
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-
-    if rotate_xticks:
-        ticklabels = ax.get_xticklabels()
-        for tick in ticklabels:
-                tick.set_rotation(30)
-    else:
-        ticklabels = ax.get_xticklabels()
-        for tick in ticklabels:
-            tick.set_rotation(0)
-                    
-    if title is not None:
-            plt.title(title)
-
-    set_size(2.44, 0.86)
-        
-    for out_format in out_formats:
-        out_file = outfile + '_cmip5' + '_'  + plot_var + '.' + out_format
+        out_file = outfile + '_cmip5_forcing_'  + plot_var + '.' + out_format
         print("  - writing image %s ..." % out_file)
         fig.savefig(out_file, bbox_inches='tight', dpi=out_res)
 
@@ -619,11 +529,11 @@ def plot_cmip5_rcp(plot_var='delta_T'):
         ensstdm1_vals = np.squeeze(ensstdm1_cdf.variables[plot_var][:])
         ensstdp1_vals = np.squeeze(ensstdp1_cdf.variables[plot_var][:])
         ax[k].fill_between(cmip5_date,  ensstdm1_vals, ensstdp1_vals,
-                           alpha=0.25,
+                           alpha=0.20,
                            linewidth=0.50,
                            color='k')
 
-        for gcm_file in gcm_files:
+        for m, gcm_file in enumerate(gcm_files):
             gcm = gcm_file.split('tas_Amon_')[1].split('_rcp')[0]
             gcm_cdf = cdo.readCdf(gcm_file)
             t = gcm_cdf.variables['time'][:]
@@ -631,8 +541,8 @@ def plot_cmip5_rcp(plot_var='delta_T'):
                          start_year + (len(t[:]) + 1) * step,
                          step) 
             gcm_vals = np.squeeze(gcm_cdf.variables[plot_var][:])
-            ax[k].plot(gcm_date, gcm_vals, label=gcm,
-                       linewidth=0.35)
+            ax[k].plot(gcm_date, gcm_vals, label=gcm, color=line_colors[m],
+                       linewidth=0.4)
             
         ensmean_file = [f for f in rcp_files if ('r1i1p1' in f) and ('ENSMEAN' in f)][0]
         ensmean_cdf = cdo.readCdf(ensmean_file)
@@ -2880,9 +2790,7 @@ elif plot == 'basin_flux_partitioning':
 elif plot == 'basin_cumulative_partitioning':
     plot_basin_cumulative_partitioning()
 elif plot == 'cmip5':
-    plot_cmip5()
-elif plot == 'cmip5_ens':
-    plot_cmip5_ens()
+    plot_cmip5_forcing()
 elif plot == 'cmip5_rcp':
     plot_cmip5_rcp()
 elif plot == 'station_usurf':
