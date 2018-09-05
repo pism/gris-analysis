@@ -42,7 +42,6 @@ def sl_contribution_cm(filename, years, variable="limnsw"):
 
     t = f.variables["time"]
     v = f.variables[variable]
-
     try:
         requested_times = date2num([datetime(y, 1, 1) for y in years], t.units, "365_day")
     except:
@@ -66,7 +65,7 @@ def les_table_row(prefix, label="ENS"):
     "Gather large ensemble statistics into a row for the sea level contribution table."
 
     # years since 2008
-    years = np.array([8, 100, 200, 500, 1000]) - 8
+    years = np.array([8, 100, 200, 300, 1000]) - 8
     rcps = [26, 45, 85]
 
     result = []
@@ -87,36 +86,36 @@ def les_table_row(prefix, label="ENS"):
     return table_row
 
 def sea_level_contribution_table(prefix, ensstat_prefix):
-    years = [2008, 2100, 2200, 2500, 3000]
+    years = [2008, 2100, 2200, 2300, 3000]
     rcps = [26, 45, 85]
     rows = [
         {"label"      : "CTRL" ,
          "resolution" : 900,
          "run"        : "CTRL"},
-        {"label"      : "NTRL" ,
-         "resolution" : 900,
-         "run"        : "NTRL"},
-        {"label"      : "NGIA" ,
-         "resolution" : 900,
-         "run"        : "NISO"},
-        {"label"      : "G600",
-         "resolution" : 600,
-         "run"        : "CTRL"},
-        {"label"      : "G1800",
-         "resolution" : 1800,
-         "run"        : "CTRL"},
-        {"label"      : "G3600",
-         "resolution" : 3600,
-         "run"        : "CTRL"},
-        {"label"      : "G4500",
-         "resolution" : 4500,
-         "run"        : "CTRL"},
-        {"label"      : "G9000",
-         "resolution" : 9000,
-         "run"        : "CTRL"},
-        {"label"      : "G18000",
-         "resolution" : 18000,
-         "run"        : "CTRL"},
+        # {"label"      : "NTRL" ,
+        #  "resolution" : 900,
+        #  "run"        : "NTRL"},
+        # {"label"      : "NGIA" ,
+        #  "resolution" : 900,
+        #  "run"        : "NISO"},
+        # {"label"      : "G600",
+        #  "resolution" : 600,
+        #  "run"        : "CTRL"},
+        # {"label"      : "G1800",
+        #  "resolution" : 1800,
+        #  "run"        : "CTRL"},
+        # {"label"      : "G3600",
+        #  "resolution" : 3600,
+        #  "run"        : "CTRL"},
+        # {"label"      : "G4500",
+        #  "resolution" : 4500,
+        #  "run"        : "CTRL"},
+        # {"label"      : "G9000",
+        #  "resolution" : 9000,
+        #  "run"        : "CTRL"},
+        # {"label"      : "G18000",
+        #  "resolution" : 18000,
+        #  "run"        : "CTRL"},
     ]
 
     result = [les_table_row(ensstat_prefix)]
@@ -125,6 +124,7 @@ def sea_level_contribution_table(prefix, ensstat_prefix):
         data = []
         for rcp in rcps:
             filename = input_filename(prefix, row["run"], row["resolution"], rcp)
+            print(rcp, filename)
             data.append(sl_contribution_cm(filename, years))
 
         result.append(latex_table_row(row["label"], np.hstack(data)))
@@ -135,7 +135,7 @@ def convert_units(variable):
     "Convert units to Gt/year."
     return Unit(variable.units).convert(variable[0], "Gt year-1")
 
-def mass_rate_table(prefix, window_width=10, years=[2100, 2200, 2500, 3000]):
+def mass_rate_table(prefix, window_width=10, years=[2100, 2200, 2300, 3000]):
     rows = [
         {"label"    : "total",
          "variable" : "dMdt",
@@ -188,13 +188,13 @@ if __name__ == "__main__":
     parser.description = "Generate tables for the paper"
     parser.add_argument("--prefix", dest="prefix",
                         help="the directory containing output files from the study",
-                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_05_ctrl/scalar/")
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_ctrl/scalar/")
     parser.add_argument("--prefix_rates", dest="prefix_rates",
                         help="the directory containing output files from the study",
-                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_05_ctrl/fldsum/")
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_ctrl/fldsum/")
     parser.add_argument("--ensstat_prefix", dest="ensstat_prefix",
                         help="the directory containing ensemble stats from the study",
-                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_01_les/scalar_ensstat/")
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_les/scalar_ensstat/")
     options = parser.parse_args()
 
     print("% sea level contribution table")
