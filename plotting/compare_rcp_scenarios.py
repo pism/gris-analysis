@@ -66,7 +66,7 @@ def generate_frame(index, output_filename):
 
     # set the size of the resulting image
     canvas_size = (panel_width * 3 + 4 * border,
-                   header + panel_height + bar_height + ts_height + 3)
+                   header + panel_height + bar_height + ts_height + 2)
     img_width = canvas_size[0]
 
     # create the output image
@@ -89,19 +89,19 @@ def generate_frame(index, output_filename):
          "RCP 2.6",
          img_width  / 6,
          header / 2,
-         (253, 174, 101))
+         '#003466')
 
     text(draw,
          "RCP 4.5",
          img_width / 2,
          header / 2,
-         (241, 105, 15))
+         '#5492CD')
 
     text(draw,
          "RCP 8.5",
          5 * img_width / 6,
          header / 2,
-         (140, 45, 4))
+         '#990002')
 
     text(draw,
          "Year %04d CE" % (2008 + index),
@@ -111,14 +111,13 @@ def generate_frame(index, output_filename):
 
     img.save(output_filename)
 
-import sys
 
 # max index to process
 N = 1000
 
 for k in range(N):
+    print('Generating frame {}'.format(k))
     generate_frame(k, "output/gris_g900m_rcps_%04d.png" % k)
-    sys.stderr.write(".")
 
 print("")
 
