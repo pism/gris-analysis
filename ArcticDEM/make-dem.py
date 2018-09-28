@@ -19,8 +19,8 @@ def dem_files(members):
     for tarinfo in members:
         if tarinfo.name.find('reg_dem.tif') != -1:
             yield tarinfo
-            
-            
+
+
 def extract_tar(file, dem_dir=None):
     '''
     Extract DEM files from archive
@@ -43,7 +43,7 @@ def process_file(tasks, dem_files, dem_hs_files, process_name, options_dict, zf,
             dem_files.put(0)
             dem_hs_files.put(0)
             break
-        else:           
+        else:
             out_file = join(tar_dir, wget.filename_from_url(url))
             if options_dict['download']:
                 print('Processing file {}'.format(url))
@@ -54,8 +54,8 @@ def process_file(tasks, dem_files, dem_hs_files, process_name, options_dict, zf,
             root, ext = splitext(m_file)
             if ext == '.gz':
                 root, ext = splitext(root)
-            m_file =  join(dem_dir, root + '_reg_dem.tif')
-            m_hs_file =  join(dem_dir, root + '_reg_dem_hs.tif')
+            m_file = join(dem_dir, root + '_reg_dem.tif')
+            m_hs_file = join(dem_dir, root + '_reg_dem_hs.tif')
             if options_dict['build_tile_overviews']:
                 calc_stats_and_overviews(m_file, tile_pyramid_levels)
             if options_dict['build_tile_hillshade']:
@@ -79,11 +79,10 @@ def get_fileurls(file):
 
 
 def collect_files_mp(fileurls, num_processes, zf, multiDirectional, tile_pyramid_levels, options_dict, tar_dir='.', dem_dir='.'):
-
     '''
     Collect and process requested files
     '''
-    
+
     manager = mp.Manager()
 
     # Define a list (queue) for tasks and computation results
@@ -91,16 +90,17 @@ def collect_files_mp(fileurls, num_processes, zf, multiDirectional, tile_pyramid
     dem_files = mp.Queue()
     dem_hs_files = mp.Queue()
 
-    pool = mp.Pool(processes=num_processes)  
+    pool = mp.Pool(processes=num_processes)
     processes = []
-    
+
     for i in range(num_processes):
 
         # Set process name
         process_name = 'P%i' % i
 
         # Create the process, and connect it to the worker function
-        new_process = mp.Process(target=process_file, args=(tasks, dem_files, dem_hs_files, process_name, options_dict, zf, multiDirectional, tile_pyramid_levels, tar_dir, dem_dir))
+        new_process = mp.Process(target=process_file, args=(tasks, dem_files, dem_hs_files,
+                                                            process_name, options_dict, zf, multiDirectional, tile_pyramid_levels, tar_dir, dem_dir))
 
         # Add new process to the list of processes
         processes.append(new_process)
@@ -110,10 +110,10 @@ def collect_files_mp(fileurls, num_processes, zf, multiDirectional, tile_pyramid
 
     # Fill task queue
     task_list = fileurls
-    for single_task in task_list:  
+    for single_task in task_list:
         tasks.put(single_task)
 
-    for i in range(num_processes):  
+    for i in range(num_processes):
         tasks.put(0)
 
     # Read calculation results
@@ -121,7 +121,7 @@ def collect_files_mp(fileurls, num_processes, zf, multiDirectional, tile_pyramid
     all_dem_files = []
     all_dem_hs_files = []
     k = 0
-    while True:  
+    while True:
          # Read result
         dem_result = dem_files.get()
         hs_result = dem_hs_files.get()
@@ -137,7 +137,7 @@ def collect_files_mp(fileurls, num_processes, zf, multiDirectional, tile_pyramid
             all_dem_files.append(dem_result)
             all_dem_hs_files.append(hs_result)
             k += 1
-            
+
     return all_dem_files, all_dem_hs_files
 
 
@@ -145,7 +145,7 @@ def calc_stats_and_overviews(destName, pyramid_levels):
     '''
     Calculate statistics and build overviews for tile
     '''
-    
+
     ds = gdal.OpenEx(destName, 0)  # 0 = read-only (create external .ovr file)
     print('Building overviews and calculating stats for {}'.format(destName))
     ds.GetRasterBand(1).GetStatistics(0, 1)
@@ -158,7 +158,7 @@ def create_hillshade(srcDS, destName, zf, multiDirectional):
     '''
     Calculate hillshade for tile
     '''
-    
+
     print('Creating hillshade for {}'.format(destName))
     gdal.DEMProcessingOptions(zFactor=zf, multiDirectional=multiDirectional)
     gdal.DEMProcessing(destName, srcDS, 'hillshade')
@@ -168,10 +168,10 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.description = "Create Virtual Raster DEM from ArcticDEM tiles."
     parser.add_argument("-l",  "--levels", dest="vrt_levels",
-                        help="Comma seperated list of overview levels used for the Virtual Raster. Default: 16,32,64,128,256,512,1024", 
+                        help="Comma seperated list of overview levels used for the Virtual Raster. Default: 16,32,64,128,256,512,1024",
                         default='16,32,64,128,256,512,1024')
     parser.add_argument("-p",  "--levels_tiles", dest="tile_levels",
-                        help="Comma seperated list of overview levels used for the individual tiles. Default: 2,4,8,16,32,64", 
+                        help="Comma seperated list of overview levels used for the individual tiles. Default: 2,4,8,16,32,64",
                         default='2,4,8,16,32,64')
     parser.add_argument("--num_procs", dest="num_processes",
                         help="Number of simultaneous downloads. Default=4", type=int,
@@ -218,7 +218,7 @@ if __name__ == "__main__":
                     'build_vrt_raster': False,
                     'build_vrt_overviews': False,
                     'build_tile_overviews': False}
-    
+
     options = parser.parse_args()
     csv_file = options.csv_file
     vrt_pyramid_levels = [int(x) for x in options.vrt_levels.split(',')]
@@ -254,7 +254,7 @@ if __name__ == "__main__":
         options_dict['build_vrt_hillshade_overviews'] = True
     else:
         pass
-        
+
     if not exists(tar_dir):
         mkdir(tar_dir)
     if not exists(dem_dir):
@@ -263,7 +263,8 @@ if __name__ == "__main__":
     # Extract URLs from a CSV file generated from the SHP Tiles File
     fileurls = get_fileurls(csv_file)
     # Collect and process all DEM files using multiprocessing
-    all_dem_files, all_dem_hs_files = collect_files_mp(fileurls, num_processes, zf, multiDirectional, tile_pyramid_levels, options_dict, tar_dir=tar_dir, dem_dir=dem_dir)
+    all_dem_files, all_dem_hs_files = collect_files_mp(
+        fileurls, num_processes, zf, multiDirectional, tile_pyramid_levels, options_dict, tar_dir=tar_dir, dem_dir=dem_dir)
 
     destName = '{prefix}.vrt'.format(prefix=outname_prefix)
     if options_dict['build_vrt_raster']:
@@ -292,4 +293,3 @@ if __name__ == "__main__":
         ds.GetRasterBand(1).GetStatistics(0, 1)
         ds.BuildOverviews("NEAREST", vrt_pyramid_levels)
         del ds
-

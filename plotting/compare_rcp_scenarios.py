@@ -1,7 +1,8 @@
 import PIL
 from PIL import ImageDraw
 from PIL import ImageFont
-import tempfile, os
+import tempfile
+import os
 
 # HD resolution: 1920x1080
 
@@ -18,11 +19,13 @@ def text(draw, text, x, y, color):
               text,
               color, font=font)
 
+
 def size(old_size, desired_width):
     "Compute the new size of an image given its old size and the desired width. Preserves the aspect ratio."
     ratio = float(desired_width) / old_size[0]
     # and the actual panel size
     return int(old_size[0] * ratio), int(old_size[1] * ratio)
+
 
 def generate_frame(index, output_filename):
     "generate one frame and save it to the file output_filename"
@@ -70,7 +73,7 @@ def generate_frame(index, output_filename):
     img_width = canvas_size[0]
 
     # create the output image
-    img = PIL.Image.new("RGB", canvas_size, color=(255,255,255))
+    img = PIL.Image.new("RGB", canvas_size, color=(255, 255, 255))
 
     # paste individual panels into the output image
     img.paste(rcp26, (border, header))
@@ -80,14 +83,14 @@ def generate_frame(index, output_filename):
     img.paste(speed, (3*border + 2*panel_width, header + panel_height + border), mask=speed.split()[3])
 
     img.paste(ts, (int(img_width / 2 - panel_width * 3 / 2),
-                   int(header + panel_height  + bar_height  )))
+                   int(header + panel_height + bar_height)))
 
     # add text
     draw = PIL.ImageDraw.Draw(img)
 
     text(draw,
          "RCP 2.6",
-         img_width  / 6,
+         img_width / 6,
          header / 2,
          '#003466')
 
@@ -120,4 +123,3 @@ for k in range(N):
     generate_frame(k, "output/gris_g900m_rcps_%04d.png" % k)
 
 print("")
-

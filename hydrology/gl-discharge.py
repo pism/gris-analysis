@@ -4,10 +4,12 @@ import pylab as plt
 import pandas as pd
 from cftime import num2date
 
-def set_size(w,h, ax=None):
+
+def set_size(w, h, ax=None):
     """ w, h: width, height in inches """
-    
-    if not ax: ax=plt.gca()
+
+    if not ax:
+        ax = plt.gca()
     l = ax.figure.subplotpars.left
     r = ax.figure.subplotpars.right
     t = ax.figure.subplotpars.top
@@ -36,7 +38,7 @@ for basin in basins:
     ax = fig.add_subplot(111)
     if normalize:
         ax.plot_date(dates, input_flux / np.max(input_flux), lw=0.4, ls='solid', markersize=0, label='Input Flux')
-        ax.plot_date(dates, -gl_flux /  np.max(-gl_flux), lw=0.5, ls='solid', markersize=0, label='Grounding Line Flux')
+        ax.plot_date(dates, -gl_flux / np.max(-gl_flux), lw=0.5, ls='solid', markersize=0, label='Grounding Line Flux')
     else:
         ax.plot_date(dates, input_flux, lw=0.4, ls='solid', markersize=0, label='Input Flux')
         ax.plot_date(dates, -gl_flux, lw=0.5, ls='solid', markersize=0, label='Grounding Line Flux')

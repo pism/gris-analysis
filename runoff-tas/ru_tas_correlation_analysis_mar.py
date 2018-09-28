@@ -68,7 +68,7 @@ for k, ifile in enumerate(options.FILE):
     forcing = nc.forcing
     gcm, rcp = forcing.split('-')
     rcp = rcp.split('rcp')[-1]
-    tas = np.squeeze(nc.variables['ST'][:]) 
+    tas = np.squeeze(nc.variables['ST'][:])
     ru = np.squeeze(nc.variables['RU'][:])
     tas -= tas.min()
     ru /= ru.min()
@@ -76,7 +76,8 @@ for k, ifile in enumerate(options.FILE):
     rus.append(ru)
     tass.append(tas)
     print(gcm, rcp)
-    ax.scatter(tas, ru, s=2.5, facecolors='none', edgecolors=col_dict[gcm][rcp], label='{}-RCP{}'.format(gcm, rcp), lw=0.5)
+    ax.scatter(tas, ru, s=2.5, facecolors='none',
+               edgecolors=col_dict[gcm][rcp], label='{}-RCP{}'.format(gcm, rcp), lw=0.5)
 
     tasS = pa.Series(data=tas, index=tas)
     ruS = pa.Series(data=ru, index=tas)
@@ -88,11 +89,11 @@ for k, ifile in enumerate(options.FILE):
     bias, trend = m_ols.params
     # ax.plot(tas, bias + trend * tas, color=col_dict[gcm][rcp], lw=0.2)
     nc.close()
-    
+
 ru_cat = rus[0]
 tas_cat = tass[0]
 for k in range(len(rus)):
-    if k>0:
+    if k > 0:
         ru_cat = np.concatenate((ru_cat, rus[k]))
         tas_cat = np.concatenate((tas_cat, tass[k]))
 
@@ -118,8 +119,11 @@ plt.savefig('tas_ru.pdf', bbox_inches='tight')
 
 a = 0.5
 C = 0.15
+
+
 def m(x, alpha, beta, C, a):
     return (1 + C * (a * x)**alpha * x**beta)
+
 
 T = np.linspace(0., 10, 101)
 fig, ax = plt.subplots()
