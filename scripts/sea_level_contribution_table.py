@@ -52,7 +52,11 @@ def sl_contribution_cm(filename, years, variable="limnsw"):
 
 def latex_table_row(label, array):
     "Format a table row for a latex table."
-    return label + " & " + " & ".join(["{:.0f}".format(x) for x in array]) + " \\\\"
+    try:
+        d = label + " & " + " & ".join(["{:.0f}".format(x.data[0][0]) for x in array]) + " \\\\"
+    except:
+        d = label + " & " + " & ".join(["{:.0f}".format(x) for x in array]) + " \\\\"
+    return d
 
 
 def ensstat_filename(prefix, percentile, rcp):
@@ -92,30 +96,33 @@ def sea_level_contribution_table(prefix, ensstat_prefix):
         {"label"      : "CTRL" ,
          "resolution" : 900,
          "run"        : "CTRL"},
-        # {"label"      : "NTRL" ,
-        #  "resolution" : 900,
-        #  "run"        : "NTRL"},
-        # {"label"      : "NGIA" ,
-        #  "resolution" : 900,
-        #  "run"        : "NISO"},
-        # {"label"      : "G600",
-        #  "resolution" : 600,
-        #  "run"        : "CTRL"},
-        # {"label"      : "G1800",
-        #  "resolution" : 1800,
-        #  "run"        : "CTRL"},
-        # {"label"      : "G3600",
-        #  "resolution" : 3600,
-        #  "run"        : "CTRL"},
-        # {"label"      : "G4500",
-        #  "resolution" : 4500,
-        #  "run"        : "CTRL"},
-        # {"label"      : "G9000",
-        #  "resolution" : 9000,
-        #  "run"        : "CTRL"},
-        # {"label"      : "G18000",
-        #  "resolution" : 18000,
-        #  "run"        : "CTRL"},
+        {"label"      : "NTRL" ,
+         "resolution" : 900,
+         "run"        : "NTRL"},
+        {"label"      : "NGIA" ,
+         "resolution" : 900,
+         "run"        : "NISO"},
+        {"label"      : "G600",
+         "resolution" : 600,
+         "run"        : "CTRL"},
+        {"label"      : "G1800",
+         "resolution" : 1800,
+         "run"        : "CTRL"},
+        {"label"      : "G3600",
+         "resolution" : 3600,
+         "run"        : "CTRL"},
+        {"label"      : "G4500",
+         "resolution" : 4500,
+         "run"        : "CTRL"},
+        {"label"      : "G9000",
+         "resolution" : 9000,
+         "run"        : "CTRL"},
+        {"label"      : "G18000",
+         "resolution" : 18000,
+         "run"        : "CTRL"},
+        {"label"      : "SIA18000",
+         "resolution" : 18000,
+         "run"        : "SIA"},
     ]
 
     result = [les_table_row(ensstat_prefix)]
@@ -124,7 +131,6 @@ def sea_level_contribution_table(prefix, ensstat_prefix):
         data = []
         for rcp in rcps:
             filename = input_filename(prefix, row["run"], row["resolution"], rcp)
-            print(rcp, filename)
             data.append(sl_contribution_cm(filename, years))
 
         result.append(latex_table_row(row["label"], np.hstack(data)))
@@ -150,10 +156,10 @@ def mass_rate_table(prefix, window_width=10, years=[2100, 2200, 2300, 3000]):
          "variable" : "tendency_of_ice_mass_due_to_discharge",
          "sign"     : 1.0},
         {"label"    : "basal mass balance",
-         "variable" : "tendency_of_ice_mass_due_to_basal_mass_balance",
+         "variable" : "tendency_of_ice_mass_due_to_basal_mass_flux",
          "sign"     : 1.0},
         {"label"    : "flow",
-         "variable" : "tendency_of_ice_mass_due_to_influx",
+         "variable" : "tendency_of_ice_mass_due_to_flow",
          "sign"     : 1.0},
         {"label"    : "error",
          "variable" : "tendency_of_ice_mass_due_to_conservation_error",
@@ -188,7 +194,7 @@ if __name__ == "__main__":
     parser.description = "Generate tables for the paper"
     parser.add_argument("--prefix", dest="prefix",
                         help="the directory containing output files from the study",
-                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_ctrl/scalar/")
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_ctrl/scalar_clean/")
     parser.add_argument("--prefix_rates", dest="prefix_rates",
                         help="the directory containing output files from the study",
                         default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_ctrl/fldsum/")
