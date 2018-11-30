@@ -24,6 +24,10 @@ def text(draw, text, x, y, color):
               text,
               color, font=font)
 
+def box(draw, pos, color):
+    "Draw text 'rectangle', spanning pos =  [(x0,y0), (x1, y1)], using color 'color' (R,G,B)."
+    draw.rectangle(pos, color)
+
 
 def size(old_size, desired_width):
     "Compute the new size of an image given its old size and the desired width. Preserves the aspect ratio."
@@ -81,16 +85,18 @@ def generate_frame(index, output_filename):
     # create the output image
     img = PIL.Image.new("RGB", canvas_size, color=(255, 255, 255))
 
+    # add text and box
+    draw = PIL.ImageDraw.Draw(img)
+
     # paste individual panels into the output image
     img.paste(rcp85, (hd_res[0] - panel_size[0], 0))
-    img.paste(ts,  (0, 260))
+    img.paste(ts,  (0, 220))
     img.paste(overview, (hd_res[0] - overview.size[0], 0))
     img.paste(pism, (10, hd_res[1] - 100))
     img.paste(time, (400, hd_res[1] - 100), mask=time.split()[3])
+    box(draw, [(1150, hd_res[1] - 100), (1150 + speed.size[0], hd_res[1] - 100 + speed.size[1])], (255, 255, 255))
     img.paste(speed, (1150, hd_res[1] - 100), mask=speed.split()[3])
 
-    # add text
-    draw = PIL.ImageDraw.Draw(img)
 
     text(draw,
          "Year {:04d} CE".format(2008 + index + offset),
@@ -99,9 +105,15 @@ def generate_frame(index, output_filename):
          (0, 0, 0))
 
     text(draw,
+         "RCP 8.5",
+         800,
+         40,
+         "#990002")
+
+    text(draw,
          u"Upernavik Isstr\u00F8m S".format(2008 + index + offset),
          600,
-         250,
+         220,
          (0, 0, 0))
     
     img.save(output_filename)
