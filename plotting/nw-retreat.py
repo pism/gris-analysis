@@ -5,11 +5,14 @@ import tempfile
 import os
 
 # HD resolution: 1920x1080
+hd_res = [1920, 1080]
 
 font = ImageFont.truetype("/Library/Fonts/Arial Bold.ttf", 40)
 
-time_colorbar = PIL.Image.open("data/colorbars/bath_112_horizontal.png")
+pism_logo = PIL.Image.open("data/colorbars/pism-logo.png")
 speed_colorbar = PIL.Image.open("data/colorbars/speed_blue_red_nonlin_0_1500_horizontal.png")
+time_colorbar = PIL.Image.open("data/colorbars/bath_112_horizontal.png")
+overview_map = PIL.Image.open("data/colorbars/overview.png")
 
 # Start Year 2015
 offset = 7
@@ -28,6 +31,12 @@ def size(old_size, desired_width):
     # and the actual panel size
     return int(old_size[0] * ratio), int(old_size[1] * ratio)
 
+def size_height(old_size, desired_height):
+    "Compute the new size of an image given its old size and the desired height. Preserves the aspect ratio."
+    ratio = float(desired_height) / old_size[1]
+    # and the actual panel size
+    return int(old_size[0] * ratio), int(old_size[1] * ratio)
+
 
 def generate_frame(index, output_filename):
     "generate one frame and save it to the file output_filename"
@@ -39,11 +48,10 @@ def generate_frame(index, output_filename):
     rcp85 = PIL.Image.open(rcp85_filename)
 
     # set the panel width
-    panel_width = 400
     # and the actual panel size
-    panel_size = size(rcp85.size, panel_width)
-    panel_height = panel_size[1]
-
+    panel_height = hd_res[1]
+    panel_size = size_height(rcp85.size, panel_height)
+    panel_width = panel_size[0]
     # height of the header (white strip above the panels), in pixels
     header = 50
     # size of the border around the panels, in pixels
@@ -54,40 +62,48 @@ def generate_frame(index, output_filename):
 
     # open the ts plot
     ts = PIL.Image.open(ts_filename)
-    ts = ts.resize(size(ts.size, panel_width * 3), resample=1)
+    ts = ts.resize(size(ts.size, hd_res[0] - panel_width - border), resample=1)
+    ts_width = ts.size[0]
     ts_height = ts.size[1]
 
     # resize colorbars
-    time = time_colorbar.resize(size(time_colorbar.size, panel_width), resample=1)
-    speed = speed_colorbar.resize(size(time_colorbar.size, panel_width), resample=1)
+    overview = overview_map.resize(size(overview_map.size, 150), resample=1)
+    pism = pism_logo.resize(size(pism_logo.size, 280), resample=1)
+    speed = speed_colorbar.resize(size(time_colorbar.size, 500), resample=1)
+    time = time_colorbar.resize(size(time_colorbar.size, 500), resample=1)
 
     bar_height = time.size[1]
 
     # set the size of the resulting image
-    canvas_size = (panel_width * 3 + 4 * border,
-                   header + panel_height + bar_height + ts_height + 2)
+    canvas_size = (hd_res[0], hd_res[1])
     img_width = canvas_size[0]
 
     # create the output image
     img = PIL.Image.new("RGB", canvas_size, color=(255, 255, 255))
 
     # paste individual panels into the output image
-    img.paste(rcp85, (border, header))
-    img.paste(time, (border, header + panel_height + border), mask=time.split()[3])
-    img.paste(speed, (3*border + 2*panel_width, header + panel_height + border), mask=speed.split()[3])
-
-    img.paste(ts, (int(img_width / 2 - panel_width * 3 / 2),
-                   int(header + panel_height + bar_height)))
+    img.paste(rcp85, (hd_res[0] - panel_size[0], 0))
+    img.paste(ts,  (0, 260))
+    img.paste(overview, (hd_res[0] - overview.size[0], 0))
+    img.paste(pism, (10, hd_res[1] - 100))
+    img.paste(time, (400, hd_res[1] - 100), mask=time.split()[3])
+    img.paste(speed, (1150, hd_res[1] - 100), mask=speed.split()[3])
 
     # add text
     draw = PIL.ImageDraw.Draw(img)
 
     text(draw,
-         "Year %04d CE" % (2008 + index + offset),
-         img_width / 2,
-         header + panel_height + border + bar_height / 2,
+         "Year {:04d} CE".format(2008 + index + offset),
+         200,
+         40,
          (0, 0, 0))
 
+    text(draw,
+         u"Upernavik Isstr\u00F8m S".format(2008 + index + offset),
+         600,
+         250,
+         (0, 0, 0))
+    
     img.save(output_filename)
 
 
