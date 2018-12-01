@@ -217,6 +217,7 @@ parser.add_argument(
     dest="out_res",
     help="""Resolution ofoutput graphics in dots per
                   inch (DPI), default = 300""",
+    type=int,
     default=300,
 )
 parser.add_argument(
@@ -613,14 +614,14 @@ def plot_profile_ts_animation():
         usurf_mask = usurf_vals < 100
         usurf_mask = np.logical_or((usurf_vals < topg_vals), thk_mask)
         usurf_vals = np.ma.array(usurf_vals, mask=usurf_mask)
-        ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color=colorVal, linewidth=0.6)
-        ax[1].plot(profile_vals, speed_vals, color=colorVal, linewidth=0.6)
+        ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color="k", linewidth=0.6)
+        ax[1].plot(profile_vals, speed_vals, color="k", linewidth=0.6)
         try:
-            ax[2].plot(profile_vals, usurf_vals, color='k', linewidth=0.3)
+            ax[2].plot(profile_vals, usurf_vals, color="k", linewidth=0.3)
             bottom_vals = np.maximum(usurf_vals - thk_vals, topg_vals)
-            ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color='k', linewidth=0.3)
-            ax[2].fill_between(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), usurf_vals, color=colorVal, linewidth=0.3)
-            ax[2].fill_between(profile_vals, bottom_vals, usurf_vals, color=colorVal, linewidth=0.3)
+            ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color="k", linewidth=0.3)
+            ax[2].fill_between(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), usurf_vals, color="#d9d9d9", linewidth=0.3)
+            ax[2].fill_between(profile_vals, bottom_vals, usurf_vals, color="#bdbdbd", linewidth=0.3)
         except:
             pass
         if t == plot_times[-1]:
@@ -628,7 +629,7 @@ def plot_profile_ts_animation():
             try:
                 ax[2].plot(profile_vals, usurf_vals, color="k", linewidth=0.1)
                 bottom_vals = np.maximum(usurf_vals - thk_vals, topg_vals)
-                ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color="k", linewidth=0.1)
+                ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color="k", linewidth=0.15)
             except:
                 pass
 
@@ -653,10 +654,11 @@ def plot_profile_ts_animation():
         if bounds:
             ax[1].set_ylim(bounds[0], bounds[1])
 
-        ax[0].set_ylim(0, 2.5)
-        ax[0].set_xlim(0, 80)
-        ax[1].set_xlim(0, 80)
-        ax[2].set_xlim(0, 80)
+        ax[0].set_ylim(0, 2.75)
+        ax[2].set_ylim(-600, 2000)
+        ax[0].set_xlim(0, 100)
+        ax[1].set_xlim(0, 100)
+        ax[2].set_xlim(0, 100)
 
         if rotate_xticks:
             ticklabels = ax[1].get_xticklabels()
