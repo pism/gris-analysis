@@ -1,3 +1,5 @@
+#/usr/bin/env python
+
 import PIL
 from PIL import ImageDraw
 from PIL import ImageFont
@@ -119,11 +121,137 @@ def generate_frame(index, output_filename):
     img.save(output_filename)
 
 
+def generate_nw_frame(index, output_filename):
+    "generate one frame and save it to the file output_filename"
+    # load panels
+    rcp85_filename = "data/nw-600m-wide/frame{:04d}.png".format(index + offset)
+    rcp85 = PIL.Image.open(rcp85_filename)
+
+    # set the panel width
+    # and the actual panel size
+    panel_height = hd_res[1]
+    panel_size = size_height(rcp85.size, panel_height)
+    panel_width = panel_size[0]
+    # height of the header (white strip above the panels), in pixels
+    header = 50
+    # size of the border around the panels, in pixels
+    border = 5
+
+    # resize input images
+    rcp85 = rcp85.resize(panel_size, resample=1)
+
+    # resize colorbars
+    overview = overview_map.resize(size(overview_map.size, 150), resample=1)
+    pism = pism_logo.resize(size(pism_logo.size, 240), resample=1)
+    speed = speed_colorbar.resize(size(speed_colorbar.size, 440), resample=1)
+
+    bar_height = speed.size[1]
+
+    # set the size of the resulting image
+    canvas_size = (hd_res[0], hd_res[1])
+    img_width = canvas_size[0]
+
+    # create the output image
+    img = PIL.Image.new("RGB", canvas_size, color=(255, 255, 255))
+
+    # add text and box
+    draw = PIL.ImageDraw.Draw(img)
+
+    # paste individual panels into the output image
+    img.paste(rcp85, (400, 0))
+    img.paste(overview, (hd_res[0] - overview.size[0], 0))
+    img.paste(pism, (10, hd_res[1] - 100))
+    box(draw, [(400, hd_res[1] - 110), (400 + speed.size[0], hd_res[1] - 110 + speed.size[1])], (255, 255, 255))
+    img.paste(speed, (400, hd_res[1] - 110), mask=speed.split()[3])
+
+
+    text(draw,
+         "Year {:04d} CE".format(2008 + index + offset),
+         200,
+         40,
+         (0, 0, 0))
+
+    text(draw,
+         "RCP 8.5",
+         1600,
+         40,
+         "#990002")
+    
+    img.save(output_filename)
+
+
+def generate_upernavik_frame(index, output_filename):
+    "generate one frame and save it to the file output_filename"
+
+    # height of the header (white strip above the panels), in pixels
+    header = 50
+    # size of the border around the panels, in pixels
+    border = 5
+
+    # load panels
+
+    ts_filename = "data/profiles/rcp85_Upernavik_Isstrom_S_{:04d}.png".format(index + offset)
+
+    # open the ts plot
+    ts = PIL.Image.open(ts_filename)
+
+    # set the panel width
+    # and the actual panel size
+    panel_height = hd_res[1]
+    panel_size = size_height(ts.size, panel_height)
+    panel_width = panel_size[0]
+
+    ts = ts.resize(size_height(ts.size, hd_res[1] - 200), resample=1)
+    ts_width = ts.size[0]
+    ts_height = ts.size[1]
+
+    # resize colorbars
+    overview = overview_map.resize(size(overview_map.size, 150), resample=1)
+    pism = pism_logo.resize(size(pism_logo.size, 280), resample=1)
+
+    # set the size of the resulting image
+    canvas_size = (hd_res[0], hd_res[1])
+    img_width = canvas_size[0]
+
+    # create the output image
+    img = PIL.Image.new("RGB", canvas_size, color=(255, 255, 255))
+
+    # add text and box
+    draw = PIL.ImageDraw.Draw(img)
+
+    # paste individual panels into the output image
+    img.paste(ts, (200, 0))
+    img.paste(pism, (10, hd_res[1]))
+
+
+    text(draw,
+         "Year {:04d} CE".format(2008 + index + offset),
+         200,
+         40,
+         (0, 0, 0))
+
+    text(draw,
+         "RCP 8.5",
+         1700,
+         40,
+         "#990002")
+
+    text(draw,
+         u"Upernavik Isstr\u00F8m S".format(2008 + index + offset),
+         900,
+         100,
+         (0, 0, 0))
+    
+    img.save(output_filename)
+
+
 # max index to process
 N = 300
 
 for k in range(N):
     print('Generating frame {}'.format(k))
-    generate_frame(k, "output/nw_g600m_rcp85_%04d.png" % k)
+    generate_nw_frame(k, "output/nw_g600m_rcp85_%04d.png" % k)
+    generate_upernavik_frame(k, "output/upernavik_g600m_rcp85_%04d.png" % k)
+    #generate_frame(k, "output/nw_g600m_rcp85_%04d.png" % k)
 
 print("")
