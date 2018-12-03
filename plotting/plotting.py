@@ -27,12 +27,15 @@ try:
 except:
     from pypismtools.pypismtools import unit_converter, smooth
 
+prefix = "les_gcm"
+    
 def input_filename(prefix, rcp, year):
-    return "{prefix}_rcp{rcp}_{year}_sobel.txt".format(prefix=prefix, rcp=rcp, year=year)
+    return "2018_09_les/les_results/{prefix}_rcp{rcp}_{year}_sobel.txt".format(prefix=prefix, rcp=rcp, year=year)
 
 
 def read_sobel_file(filename):
-    data = np.loadtxt(filename, usecols=(1))
+    print(filename)
+    data = np.loadtxt(filename, usecols=(1,))
     return data
 
 def set_size(w, h, ax=None):
@@ -243,6 +246,7 @@ parser.add_argument(
         "flux_partitioning",
         "basin_flux_partitioning",
         "ctrl_mass_anim",
+        "d_contrib_anim",
         "grid_res",
         "random_flux",
         "sobel", 
@@ -664,9 +668,14 @@ def plot_profile_ts_animation():
 
         ax[0].set_ylim(0, 2.75)
         ax[2].set_ylim(-600, 2000)
-        ax[0].set_xlim(0, 100)
-        ax[1].set_xlim(0, 100)
-        ax[2].set_xlim(0, 100)
+        if time_bounds:
+            ax[0].set_xlim(time_bounds[0], time_bounds[-1])
+            ax[1].set_xlim(time_bounds[0], time_bounds[-1])
+            ax[2].set_xlim(time_bounds[0], time_bounds[-1])
+        else:
+            ax[0].set_xlim(0, 100)
+            ax[1].set_xlim(0, 100)
+            ax[2].set_xlim(0, 100)
 
         if rotate_xticks:
             ticklabels = ax[1].get_xticklabels()
@@ -777,6 +786,69 @@ def plot_ctrl_mass_anim(plot_var=mass_plot_var):
             fig.savefig(out_file, bbox_inches="tight", dpi=300)
 
         plt.close(fig)
+
+
+def plot_d_contrib_anim(plot_var=mass_plot_var):
+
+    for k, rcp in reversed(list(enumerate(rcp_list[::-1]))):
+
+        rcp_files = [f for f in ifiles if "rcp_{}".format(rcp) in f]
+        pctl16_file = [f for f in rcp_files if "enspctl16" in f]
+        pctl84_file = [f for f in rcp_files if "enspctl84" in f]
+
+        cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
+        cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
+        t = cdf_enspctl16.variables["time"][:]
+        date = np.arange(start_year + step, start_year + (len(t[:]) + 1), step)
+
+        enspctl16 = cdf_enspctl16.variables[plot_var][:]
+        enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
+
+        enspctl84 = cdf_enspctl84.variables[plot_var][:]
+        enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
+
+        for frame in range(1000):
+
+            fig = plt.figure()
+            offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
+            ax = fig.add_subplot(111)
+
+            ax.fill_between(date, enspctl84_vals, enspctl16_vals, color=rcp_col_dict[rcp], linewidth=lw, alpha=0.1)
+            ax.plot(date[:frame], enspctl16_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw)
+            ax.plot(date[:frame], enspctl84_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw)
+            ax.fill_between(date[:frame], enspctl84_vals[:frame], enspctl16_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw)
+
+            ax.set_xlabel("Year")
+            ax.set_ylabel("$\dot D_{\%}$ (%)")
+
+            if time_bounds:
+                ax.set_xlim(time_bounds[0], time_bounds[1])
+
+            if bounds:
+                ax.set_ylim(bounds[0], bounds[1])
+
+            ymin, ymax = ax.get_ylim()
+
+            ax.yaxis.set_major_formatter(FormatStrFormatter("%1.0f"))
+
+            if rotate_xticks:
+                ticklabels = ax.get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(30)
+            else:
+                ticklabels = ax.get_xticklabels()
+                for tick in ticklabels:
+                    tick.set_rotation(0)
+
+            if title is not None:
+                plt.title(title)
+
+            for out_format in out_formats:
+                out_file = "d_contrib_" + plot_var + "_rcp{}_{:04d}.{}".format(rcp, frame, out_format)
+                print("  - writing image %s ..." % out_file)
+                fig.savefig(out_file, bbox_inches="tight", dpi=300)
+
+            plt.close(fig)
 
 
 def plot_grid_res(plot_var="tendency_of_ice_mass_due_to_discharge"):
@@ -1451,23 +1523,27 @@ def plot_sobel(plot_var=mass_plot_var):
 
     end_years = [992, 992, 992]
 
+    categories = ["Climate", "Surface", "Ocean", "Ice Dynamics"]
+    category_col_dict = {"Climate": "#81c77f",
+                         "Surface": "#886c62",
+                         "Ocean": "#beaed4",
+                         "Ice Dynamics": "#dcd588"}
 
+    print("Cumulative Mass")
+    plot_var = "limnsw"
     for k, rcp in enumerate(rcp_list[::-1]):
 
         fig, ax = plt.subplots(2, 1, sharex="col", sharey="row", figsize=[3, 2])
-        fig.subplots_adjust(hspace=0.05, wspace=0.30)
-        
-        print("Cumulative Mass")
-        plot_var = "limnsw"
-        
+        fig.subplots_adjust(hspace=0.2, wspace=0.30)
+
         print(("Reading RCP {} files".format(rcp)))
         rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and not ("tas" in f)]
 
         pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
         pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
 
-        cdf_enspctl16 = cdo.readCdf(pctl16_file)
-        cdf_enspctl84 = cdo.readCdf(pctl84_file)
+        cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
+        cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
         t = cdf_enspctl16.variables["time"][:]
 
         enspctl16 = cdf_enspctl16.variables[plot_var][:]
@@ -1483,91 +1559,61 @@ def plot_sobel(plot_var=mass_plot_var):
         date = np.arange(start_year + step, start_year + (len(t[:]) + 1), step)
 
         # ensemble between 16th and 84th quantile
-        ax[0].fill_between(date[:], enspctl16_vals, enspctl84_vals, color=rcp_shade_col_dict[rcp], linewidth=0)
+        l = ax[0].fill_between(date[:], enspctl16_vals, enspctl84_vals, color=rcp_shade_col_dict[rcp], linewidth=0)
 
         ax[0].plot(date[:], enspctl16_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
-
         ax[0].plot(date[:], enspctl84_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
 
-        if ctrl_file is not None:
-            rcp_ctrl_file = [f for f in ctrl_file if "rcp_{}".format(rcp) in f][0]
+        years = range(int(time_bounds[0]), int(time_bounds[-1] + 1))
 
-            cdf_ctrl = cdo.readCdf(rcp_ctrl_file)
-            ctrl_t = cdf_ctrl.variables["time"][:]
-            cdf_date = np.arange(start_year + step, start_year + (len(ctrl_t[:]) + 1), step)
+        nt = len(years)
+        nc = len(categories)
+        climate = np.zeros(nt)
+        surface = np.zeros(nt)
+        ocean = np.zeros(nt)
+        ice = np.zeros(nt)
 
-            ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
-            iunits = cdf_ctrl[plot_var].units
-            ctrl_vals = -unit_converter(ctrl_vals, iunits, mass_ounits) * gt2mSLE
-            ax[0].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+        for t, year in enumerate(years):
+            filename = input_filename(prefix, rcp, year)
+            mdata = read_sobel_file(filename) * 100  # convert to percent
+            climate[t] = mdata[0] + mdata[3]
+            surface[t] = mdata[1] + mdata[2] + mdata[4]
+            ocean[t] = mdata[5] + mdata[6] + mdata[7] + mdata[8]
+            ice[t] = mdata[9] + mdata[10]
 
-        print("Discharge Contribution Relative")
-        plot_var = "discharge_contrib"
+        ax[1].fill_between(years, np.zeros(nt), climate, color=category_col_dict[categories[0]], label=categories[0])
+        ax[1].fill_between(years, climate, climate + surface, color=category_col_dict[categories[1]], label=categories[1])
+        ax[1].fill_between(years, climate + surface, climate + surface + ocean, color=category_col_dict[categories[2]], label=categories[2])
+        ax[1].fill_between(years, climate + surface + ocean, climate + surface + ocean + ice, color=category_col_dict[categories[3]], label=categories[3])
 
-        rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and ("flux_percent" in f)]
-        pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
-        pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
-
-        cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
-        cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
-        t = cdf_enspctl16.variables["time"][:]
-
-        enspctl16 = cdf_enspctl16.variables[plot_var][:]
-        enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
-
-        enspctl84 = cdf_enspctl84.variables[plot_var][:]
-        enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
-        date = np.arange(start_year + step, start_year + (len(t[:]) + 1), step)
-
-        # ensemble between 16th and 84th quantile
-        ax[1].fill_between(
-            date[: end_years[k]],
-            enspctl16_vals[: end_years[k]],
-            enspctl84_vals[: end_years[k]],
-            color=rcp_shade_col_dict[rcp],
-            linewidth=0,
-        )
-
-        ax[1].plot(
-            date[: end_years[k]],
-            enspctl16_vals[: end_years[k]],
-            color=rcp_col_dict[rcp],
-            linestyle="solid",
-            linewidth=0.2,
-        )
-
-        ax[1].plot(
-            date[: end_years[k]],
-            enspctl84_vals[: end_years[k]],
-            color=rcp_col_dict[rcp],
-            linestyle="solid",
-            linewidth=0.2,
-        )
-
-        if ctrl_file is not None:
-            rcp_ctrl_file = [f for f in ctrl_file if ("rcp_{}".format(rcp) in f) and ("flux_percent" in f)][0]
-            cdf_ctrl = cdo.runmean(runmean_window, input=rcp_ctrl_file, returnCdf=True, options=pthreads)
-            ctrl_t = cdf_ctrl.variables["time"][:]
-            cdf_date = np.arange(start_year + step, start_year + (len(ctrl_t[:]) + 1), step)
-
-            ctrl_vals = cdf_ctrl.variables[plot_var][:]
-            ax[1].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
-            
         if do_legend:
+            legend = ax[0].legend((l, ), ("{}".format(rcp_dict[rcp]), ), 
+                                  loc="upper left", edgecolor="0",
+            )
+            legend.get_frame().set_linewidth(0.0)
+            legend.get_frame().set_alpha(0.0)
             legend = ax[1].legend(
+                ncol=4,
+                loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
+            )
+            legend.get_frame().set_linewidth(0.0)
+            legend.get_frame().set_alpha(0.0)
+            legend = ax[1].legend(
+                ncol=4,
                 loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
             )
             legend.get_frame().set_linewidth(0.0)
             legend.get_frame().set_alpha(0.0)
 
         ax[0].set_ylabel("$\Delta$(GMSL)\n(m)")
-        ax[1].set_ylabel("$\dot D_{\%}$ (%)")
-
+        ax[1].set_ylabel("Variance (%)")
+        ax[1].set_xlabel("Year")
+        
         if time_bounds:
             ax[1].set_xlim(time_bounds[0], time_bounds[1])
 
-        # ax[0].set_ylim(-1, 16)
-        # ax[1].set_ylim(0, 8)
+        ax[0].set_ylim(-0, 7.3)
+        ax[1].set_ylim(0, 100)
 
         ymin, ymax = ax[1].get_ylim()
         ax[1].yaxis.set_major_formatter(FormatStrFormatter("%1.0f"))
@@ -1587,7 +1633,7 @@ def plot_sobel(plot_var=mass_plot_var):
         # set_size(2.44, 0.86)
 
         for out_format in out_formats:
-            out_file = outfile + "_mass_d_rcp_{}.".format(rcp) + out_format
+            out_file = outfile + "_ts_{}.".format(rcp) + out_format
             print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
@@ -2117,6 +2163,8 @@ elif plot == "ctrl_mass":
     plot_ctrl_mass(plot_var="limnsw")
 elif plot == "ctrl_mass_anim":
     plot_ctrl_mass_anim(plot_var="limnsw")
+elif plot == "d_contrib_anim":
+    plot_d_contrib_anim(plot_var="discharge_contrib")
 elif plot == "flux_partitioning":
     plot_flux_partitioning()
 elif plot == "basin_flux_partitioning":
