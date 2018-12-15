@@ -200,7 +200,7 @@ if __name__ == "__main__":
                         default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_ctrl/fldsum/")
     parser.add_argument("--ensstat_prefix", dest="ensstat_prefix",
                         help="the directory containing ensemble stats from the study",
-                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_08_les/scalar_ensstat/")
+                        default="/import/c1/ICESHEET/aaschwanden/pism-gris/stability/2018_09_les/scalar_ensstat/")
     options = parser.parse_args()
 
     print("% sea level contribution table")
