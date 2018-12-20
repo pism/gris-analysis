@@ -4,15 +4,14 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import ocgis
 import os
 from datetime import datetime
-import fiona
 from unidecode import unidecode
-
+import fiona
 
 import logging
 import logging.handlers
 
 # create logger
-logger = logging.getLogger("extract_glaciers")
+logger = logging.getLogger("extract_glacier")
 logger.setLevel(logging.DEBUG)
 
 # create file handler which logs even debug messages
@@ -91,8 +90,8 @@ def calculate_time_series():
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.description = "Extract basins from continental scale files."
 parser.add_argument("FILE", nargs=1)
-parser.add_argument("--basin", dest="basin", help="Basin to select glaciers from", default=None)
-parser.add_argument("--o_dir", dest="odir", help="output directory", default=".")
+parser.add_argument("--ugid", help="UGID", type=int, default=None)
+parser.add_argument("--o_dir", dest="odir", help="output directory", default="../glaciers")
 parser.add_argument(
     "--shape_file",
     dest="shape_file",
@@ -114,9 +113,8 @@ parser.add_argument(
 )
 parser.add_argument("--start_date", help="Start date YYYY-MM-DD", default="2008-1-1")
 parser.add_argument("--end_date", help="End date YYYY-MM-DD", default="2299-1-1")
-
 options = parser.parse_args()
-basin = options.basin
+ugid = options.ugid
 no_extraction = options.no_extraction
 no_timeseries = options.no_timeseries
 time_range = [datetime.strptime(options.start_date, "%Y-%M-%d"), datetime.strptime(options.end_date, "%Y-%M-%d")]
@@ -176,29 +174,19 @@ mvars = [
 
 ds = fiona.open(shape_file, encoding="utf-8")
 
-glacier_ids = []
-glacier_names = []
-glacier_basins = []
-glacier_ugids = []
-for item in ds.items():
-    if item[1]["properties"]["id"] is not None:
-        glacier_names.append(item[1]["properties"]["Name"])
-        glacier_ids.append(item[1]["properties"]["id"])
-        glacier_basins.append(item[1]["properties"]["basin"])
-        glacier_basins.append(item[1]["properties"]["UGID"])
-
 cvars = ["pism_config"]
-basins = ("CW", "NE", "NO", "NW", "SE", "SW")
 variable = mvars
 
-for k, gl_id in enumerate(glacier_ids):
-    gl_basin = glacier_basins[k]
-    if gl_basin == basin:
-        gl_name = glacier_names[k]
-        prefix = "b_{basin}_id_{gl_id}_{glacier}_{savename}".format(
-            basin=basin, gl_id=gl_id, glacier=unidecode(gl_name).replace(" ", "_"), savename=savename
-        )
-        if not no_extraction:
-            extract_glacier(gl_id, gl_name, basin=basin)
-        if not no_timeseries:
-            calculate_time_series()
+with fiona.open(shape_file, encoding="utf-8") as ds:
+    glacier = filter(lambda f: f["properties"]["UGID"] == ugid, ds)
+
+gl_id = glacier[0]["properties"]["id"]
+gl_name = glacier[0]["properties"]["Name"]
+basin = glacier[0]["properties"]["basin"]
+prefix = "b_{basin}_id_{gl_id}_{gl_name}_{savename}".format(
+    basin=basin, gl_id=gl_id, gl_name=unidecode(gl_name).replace(" ", "_"), savename=savename
+)
+if not no_extraction:
+    extract_glacier(gl_id, gl_name, basin=basin)
+if not no_timeseries:
+    calculate_time_series()

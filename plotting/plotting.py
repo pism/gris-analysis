@@ -23,9 +23,9 @@ import pylab as plt
 from unidecode import unidecode
 
 try:
-    from pypismtools import unit_converter, smooth
+    from pypismtools import unit_converter
 except:
-    from pypismtools.pypismtools import unit_converter, smooth
+    from pypismtools.pypismtools import unit_converter
 
 prefix = "les_gcm"
     
@@ -1328,9 +1328,9 @@ def plot_forcing_mass(plot_var=mass_plot_var):
         legend.get_frame().set_alpha(0.0)
 
     ax[0].set_ylabel("T-anomaly\n(K)")
-    ax[1].set_ylabel("$\Delta$(GMSL)\n(m)")
+    ax[1].set_ylabel("sea-level\n(m)")
     ax2[0].set_ylabel("T-anomaly\n(K)")
-    ax2[1].set_ylabel("$\Delta$(GMSL)\n(m)")
+    ax2[1].set_ylabel("sea-level\n(m)")
 
     add_inner_title(ax[0], "a", "upper left")
     add_inner_title(ax[1], "b", "upper left")
@@ -1529,40 +1529,11 @@ def plot_sobel(plot_var=mass_plot_var):
                          "Ocean": "#beaed4",
                          "Ice Dynamics": "#dcd588"}
 
-    print("Cumulative Mass")
-    plot_var = "limnsw"
-    for k, rcp in enumerate(rcp_list[::-1]):
 
-        fig, ax = plt.subplots(2, 1, sharex="col", sharey="row", figsize=[3, 2])
-        fig.subplots_adjust(hspace=0.2, wspace=0.30)
+    fig, ax = plt.subplots(len(rcp_list), 1, sharex="col", sharey="row", figsize=[3, 2])
+    fig.subplots_adjust(hspace=0.2, wspace=0.30)
 
-        print(("Reading RCP {} files".format(rcp)))
-        rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and not ("tas" in f)]
-
-        pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
-        pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
-
-        cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
-        cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
-        t = cdf_enspctl16.variables["time"][:]
-
-        enspctl16 = cdf_enspctl16.variables[plot_var][:]
-        enspctl16_vals = cdf_enspctl16.variables[plot_var][:] - cdf_enspctl16.variables[plot_var][0]
-        iunits = cdf_enspctl16[plot_var].units
-        enspctl16_vals = -unit_converter(enspctl16_vals, iunits, mass_ounits) * gt2mSLE
-
-        enspctl84 = cdf_enspctl84.variables[plot_var][:]
-        enspctl84_vals = cdf_enspctl84.variables[plot_var][:] - cdf_enspctl84.variables[plot_var][0]
-        iunits = cdf_enspctl84[plot_var].units
-        enspctl84_vals = -unit_converter(enspctl84_vals, iunits, mass_ounits) * gt2mSLE
-
-        date = np.arange(start_year + step, start_year + (len(t[:]) + 1), step)
-
-        # ensemble between 16th and 84th quantile
-        l = ax[0].fill_between(date[:], enspctl16_vals, enspctl84_vals, color=rcp_shade_col_dict[rcp], linewidth=0)
-
-        ax[0].plot(date[:], enspctl16_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
-        ax[0].plot(date[:], enspctl84_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
+    for k, rcp in enumerate(rcp_list):
 
         years = range(int(time_bounds[0]), int(time_bounds[-1] + 1))
 
@@ -1572,7 +1543,6 @@ def plot_sobel(plot_var=mass_plot_var):
         surface = np.zeros(nt)
         ocean = np.zeros(nt)
         ice = np.zeros(nt)
-
         for t, year in enumerate(years):
             filename = input_filename(prefix, rcp, year)
             mdata = read_sobel_file(filename) * 100  # convert to percent
@@ -1581,61 +1551,50 @@ def plot_sobel(plot_var=mass_plot_var):
             ocean[t] = mdata[5] + mdata[6] + mdata[7] + mdata[8]
             ice[t] = mdata[9] + mdata[10]
 
-        ax[1].fill_between(years, np.zeros(nt), climate, color=category_col_dict[categories[0]], label=categories[0])
-        ax[1].fill_between(years, climate, climate + surface, color=category_col_dict[categories[1]], label=categories[1])
-        ax[1].fill_between(years, climate + surface, climate + surface + ocean, color=category_col_dict[categories[2]], label=categories[2])
-        ax[1].fill_between(years, climate + surface + ocean, climate + surface + ocean + ice, color=category_col_dict[categories[3]], label=categories[3])
+        ax[k].fill_between(years, np.zeros(nt), climate, color=category_col_dict[categories[0]], label=categories[0])
+        ax[k].fill_between(years, climate, climate + surface, color=category_col_dict[categories[1]], label=categories[1])
+        ax[k].fill_between(years, climate + surface, climate + surface + ocean, color=category_col_dict[categories[2]], label=categories[2])
+        ax[k].fill_between(years, climate + surface + ocean, climate + surface + ocean + ice, color=category_col_dict[categories[3]], label=categories[3])
 
-        if do_legend:
-            legend = ax[0].legend((l, ), ("{}".format(rcp_dict[rcp]), ), 
-                                  loc="upper left", edgecolor="0",
-            )
-            legend.get_frame().set_linewidth(0.0)
-            legend.get_frame().set_alpha(0.0)
-            legend = ax[1].legend(
-                ncol=4,
-                loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
-            )
-            legend.get_frame().set_linewidth(0.0)
-            legend.get_frame().set_alpha(0.0)
-            legend = ax[1].legend(
-                ncol=4,
-                loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
-            )
-            legend.get_frame().set_linewidth(0.0)
-            legend.get_frame().set_alpha(0.0)
-
-        ax[0].set_ylabel("$\Delta$(GMSL)\n(m)")
-        ax[1].set_ylabel("Variance (%)")
-        ax[1].set_xlabel("Year")
         
+        ax[k].set_ylim(0, 100)
         if time_bounds:
-            ax[1].set_xlim(time_bounds[0], time_bounds[1])
+            ax[k].set_xlim(time_bounds[0], time_bounds[1])
 
-        ax[0].set_ylim(-0, 7.3)
-        ax[1].set_ylim(0, 100)
 
         ymin, ymax = ax[1].get_ylim()
-        ax[1].yaxis.set_major_formatter(FormatStrFormatter("%1.0f"))
+        ax[k].yaxis.set_major_formatter(FormatStrFormatter("%1.0f"))
+        add_inner_title(ax[k], "{}".format(rcp_dict[rcp]), "upper left")
 
-        if rotate_xticks:
-            ticklabels = ax[1].get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(30)
-        else:
-            ticklabels = ax[1].get_xticklabels()
-            for tick in ticklabels:
-                tick.set_rotation(0)
+        
+    ax[1].set_ylabel("Variance (%)")
+    ax[-1].set_xlabel("Year")
+    if do_legend:
+        legend = ax[-1].legend(
+            ncol=4,
+            loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
+        )
+        legend.get_frame().set_linewidth(0.0)
+        legend.get_frame().set_alpha(0.0)
 
-        if title is not None:
-            plt.title(title)
 
-        # set_size(2.44, 0.86)
+    if rotate_xticks:
+        ticklabels = ax[1].get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(30)
+    else:
+        ticklabels = ax[1].get_xticklabels()
+        for tick in ticklabels:
+            tick.set_rotation(0)
 
-        for out_format in out_formats:
-            out_file = outfile + "_ts_{}.".format(rcp) + out_format
-            print("  - writing image %s ..." % out_file)
-            fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
+    if title is not None:
+        plt.title(title)
+
+
+    for out_format in out_formats:
+        out_file = outfile + "_ts." + out_format
+        print("  - writing image %s ..." % out_file)
+        fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
 
 def plot_random_flux(plot_var=flux_plot_var):
