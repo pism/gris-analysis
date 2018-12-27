@@ -170,6 +170,7 @@ mvars = [
     "surface_accumulation_rate",
     "surface_melt_rate",
     "surface_runoff_rate",
+    "sftgif",
 ]
 
 ds = fiona.open(shape_file, encoding="utf-8")
