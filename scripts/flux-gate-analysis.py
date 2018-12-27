@@ -18,6 +18,7 @@ from argparse import ArgumentParser
 import pandas as pa
 import statsmodels.api as sm
 from netCDF4 import Dataset as NC
+import re
 
 try:
     import pypismtools.pypismtools as ppt
@@ -35,15 +36,15 @@ parser.add_argument(
     "--colormap",
     dest="colormap",
     nargs=4,
-    help="""brewer2mpl colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Blues", "Sequential", 9, 0],
+    help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
+    default=["Blues", "Sequential", 12, 0],
 )
 parser.add_argument(
     "--label_params",
     dest="label_params",
     help='''comma-separated list of parameters that appear in the legend,
                   e.g. "sia_enhancement_factor"''',
-    default="surface.pdd.factor_ice",
+    default="basal_resistance.pseudo_plastic.q,basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden,stress_balance.sia.enhancement_factor,basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min,flow_law.gpbld.water_frac_observed_limit,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max",
 )
 parser.add_argument(
     "--normalize",
@@ -78,17 +79,6 @@ parser.add_argument(
 parser.add_argument("--o_dir", dest="odir", help="output directory. Default: current directory", default="foo")
 parser.add_argument(
     "--plot_title", dest="plot_title", action="store_true", help="Plots the flux gate name as title", default=False
-)
-parser.add_argument(
-    "--long_label", dest="long_label", action="store_true", help="Long label with parameters", default=False
-)
-parser.add_argument("--short_label", dest="short_label", action="store_true", help="Short label.", default=False)
-parser.add_argument(
-    "--regress_label",
-    dest="regress_label",
-    action="store_true",
-    help="Special label for grid resolution plots",
-    default=False,
 )
 parser.add_argument(
     "--simple_plot", dest="simple_plot", action="store_true", help="Make simple line plot", default=False
@@ -226,17 +216,71 @@ except:
     my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
 
 # Make this an option
-# my_colors = ['#deebf7', '#9ecae1', '#3182bd',
-#              '#efedf5', '#bcbddc', '#756bb1',
-#              '#fee0d2', '#fc9272', '#de2d26',
-#              '#e5f5e0', '#a1d99b', '#31a354',
-#              '#fee6ce', '#fdae6b', '#e6550d']
+my_colors = [
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+]
 
-# my_colors_light = ['#deebf7', '#9ecae1', '#3182bd',
-#              '#efedf5', '#bcbddc', '#756bb1',
-#              '#fee0d2', '#fc9272', '#de2d26',
-#              '#e5f5e0', '#a1d99b', '#31a354',
-#              '#fee6ce', '#fdae6b', '#e6550d']
+my_colors_light = [
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+]
 
 nc = len(my_colors)
 ns = nc - na
@@ -253,71 +297,23 @@ numpoints = 1
 legend_frame_width = 0.25
 markeredgewidth = 0.2
 
-params = (
-    "surface.pdd.factor_ice",
-    "surface.pdd.factor_snow",
-    "basal_resistance.pseudo_plastic.q",
-    "basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden",
-    "stress_balance.sia.enhancement_factor",
-    "energy.temperature_based",
-    "stress_balance.model",
-    "stress_balance.ssa.Glen_exponent",
-    "stress_balance.sia.Glen_exponent",
-    "grid_dx_meters",
-    "bed_data_set",
-    "basal_resistance.pseudo_plastic.u_threshold",
-    "ocean_forcing_type",
-    "eigen_calving_K",
-    "thickness_calving_threshold",
-    "stress_balance.ssa.enhancement_factor",
-    "bathymetry_type",
-    "fracture_density_softening_lower_limit",
-    "till_reference_void_ratio",
-)
-params_formatting = (
-    "{:1.0f}",
-    "{:1.0f}",
-    "{:1.2f}",
-    "{:1.4f}",
-    "{:1.2f}",
-    "{}",
-    "{}",
-    "{:1.2f}",
-    "{:1.2f}",
-    "{:.0f}",
-    "{}",
-    "{:3.0f}",
-    "{}",
-    "{:.0e}",
-    "{:.0f}",
-    "{:1.2f}",
-    "{}",
-    "{:1.2f}",
-    "{:1.2f}",
-)
-params_formatting_dict = dict(list(zip(params, params_formatting)))
-params_abbr = (
-    "$f_{\mathregular{ice}}$",
-    "$f_{\mathregular{snow}}$",
-    "$q$",
-    "$\\delta$",
-    "E$_{\mathregular{sia}}$",
-    "cold",
-    "SSA",
-    "$n_{\mathregular{ssa}}$",
-    "$n_{\mathregular{sia}}$",
-    "ds",
-    "bed",
-    "$u_{c}$",
-    "O",
-    "K",
-    "Hm",
-    "E$_{\mathregular{ssa}}$",
-    "B",
-    "f",
-    "$e_0$",
-)
-params_abbr_dict = dict(list(zip(params, params_abbr)))
+params_dict = {
+    "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
+    "surface.pdd.factor_snow": {"abbr": "$f_{\mathregular{s}}$", "format": "{:1.0f}"},
+    "basal_resistance.pseudo_plastic.q": {"abbr": "$q$", "format": "{:1.2f}"},
+    "basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden": {"abbr": "$\\delta$", "format": "{:1.4f}"},
+    "stress_balance.sia.enhancement_factor": {"abbr": "$E_{\mathregular{SIA}}$", "format": "{:1.2f}"},
+    "stress_balance.ssa.enhancement_factor": {"abbr": "$E_{\mathregular{SSA}}$", "format": "{:1.2f}"},
+    "stress_balance.ssa.Glen_exponent": {"abbr": "$n_{\mathregular{SSA}}$", "format": "{:1.2f}"},
+    "stress_balance.sia.Glen_exponent": {"abbr": "$n_{\mathregular{SIA}}$", "format": "{:1.2f}"},
+    "grid_dx_meters": {"abbr": "ds", "format": "{:.0f}"},
+    "flow_law.gpbld.water_frac_observed_limit": {"abbr": "$\omega$", "format": "{:1.2}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min": {"abbr": "$\phi_{\mathregular{min}}$", "format": "{:4.2f}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_max": {"abbr": "$\phi_{\mathregular{max}}$", "format": "{:4.2f}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min": {"abbr": "$z_{\mathregular{min}}$", "format": "{:1.0f}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max": {"abbr": "$z_{\mathregular{max}}$", "format": "{:1.0f}"},
+}
+
 
 var_long = (
     "velsurf_mag",
@@ -635,7 +631,7 @@ class FluxGate(object):
             config = exp.config
             my_exp_str = ", ".join(
                 [
-                    "=".join([params_abbr_dict.get(key), params_formatting_dict.get(key).format(config.get(key))])
+                    "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
                     for key in label_params
                 ]
             )
@@ -809,7 +805,7 @@ class FluxGate(object):
                 id = exp.id
                 exp_str = ", ".join(
                     [
-                        "=".join([params_abbr_dict[key], params_formatting_dict[key].format(config.get(key))])
+                        "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
                         for key in params
                     ]
                 )
@@ -827,8 +823,8 @@ class FluxGate(object):
                             [
                                 "=".join(
                                     [
-                                        params_abbr_dict[key],
-                                        params_formatting_dict[key].format(config.get(key) * ice_density),
+                                        params_dict[key]["abbr"],
+                                        params_dict[key]["format"].format(config.get(key) * ice_density),
                                     ]
                                 )
                                 for key in params
@@ -836,7 +832,9 @@ class FluxGate(object):
                         )
                         exp_str = ", ".join(
                             [
-                                "=".join([params_abbr_dict[key], params_formatting_dict[key].format(config.get(key))])
+                                "=".join(
+                                    [params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))]
+                                )
                                 for key in params
                             ]
                         )
@@ -921,7 +919,15 @@ class FluxGate(object):
                 ax.plot(profile_axis_out, obs_o_vals, dash_style, color="0.35", markeredgewidth=markeredgewidth)
         if plot_title:
             plt.title(gate_name, loc="left")
-        return fig
+
+        if normalize:
+            gate_name = "_".join([unidecode(gate.gate_name), varname, "normalized", "profile"])
+        else:
+            gate_name = "_".join([unidecode(gate.gate_name), varname, "profile"])
+        outname = ".".join([gate_name, "pdf"]).replace(" ", "_")
+        print(("Saving {0}".format(outname)))
+        fig.tight_layout()
+        fig.savefig(outname)
 
 
 class FluxGateExperiment(object):
@@ -1002,6 +1008,7 @@ class ExperimentDataset(Dataset):
     def __init__(self, id, *args, **kwargs):
         super(ExperimentDataset, self).__init__(*args, **kwargs)
 
+        print("Experiment {}".format(id))
         self.id = id
         pism_config = self.nc.variables["pism_config"]
         run_stats = self.nc.variables["run_stats"]
@@ -1163,7 +1170,7 @@ def export_latex_table_rmsd(filename, gate):
         my_flux = gate.experiment_fluxes[val]
         my_exp_str = ", ".join(
             [
-                "=".join([params_abbr_dict[key], params_formatting_dict[key].format(config.get(key))])
+                "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
                 for key in label_params
             ]
         )
@@ -1215,7 +1222,7 @@ def export_latex_table_corr(filename, gate):
         my_flux = gate.experiment_fluxes[val]
         my_exp_str = ", ".join(
             [
-                "=".join([params_abbr_dict[key], params_formatting_dict[key].format(config.get(key))])
+                "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
                 for key in label_params
             ]
         )
@@ -1343,6 +1350,23 @@ def export_gate_table_rmsd(filename, exp):
     f.close
 
 
+def export_gate_table_pearson_r(filename, corrs):
+    """
+    Creates a CSV file of flux gates id sorted by correlation coefficient.
+
+    Parameters
+    ----------
+    filename: string
+    coors: dict with gate id and correlations
+
+    """
+
+    ids = [x for x in corrs.keys()]
+    values = [x for x in corrs.values()]
+    data = np.vstack((ids, values))
+    np.savetxt(filename, np.transpose(data), fmt=["%i", "%4.2f"], delimiter=",", header="id,correlation")
+
+
 def write_experiment_table(outname):
     """
     Export a table with all experiments
@@ -1353,14 +1377,14 @@ def write_experiment_table(outname):
     tab_str = " ".join(["{l  c", r_str, "}"])
     f.write(" ".join(["\\begin{tabular}", tab_str, "\n"]))
     f.write("\\toprule \n")
-    exp_str = " & ".join([params_abbr_dict[key] for key in label_params])
+    exp_str = " & ".join([params_dict[key]["abbr"] for key in label_params])
     line_str = " & ".join(["Experiment", exp_str])
     f.write(" ".join([line_str, r"\\", "\n"]))
     f.write("\midrule \n")
     for exp in flux_gates[0].experiments:
         config = exp.config
         id = exp.id
-        param_str = " & ".join([params_formatting_dict[key].format(config.get(key)) for key in label_params])
+        param_str = " & ".join([params_dict[key]["format"].format(config.get(key)) for key in label_params])
         line_str = " ".join([" & ".join(["{:1.0f}".format(id), param_str]), "\\\ \n"])
         f.write(line_str)
     f.write("\\bottomrule \n")
@@ -1384,7 +1408,7 @@ def make_r2_figure(filename, exp):
 
     nocol = 5
     colormap = ["RdYlGn", "Diverging", nocol, 0]
-    my_ok_colors = brewer2mpl.get_map(*colormap).mpl_colors
+    my_ok_colors = colorbrewer.get_map(*colormap).mpl_colors
 
     r2s = {}
     for gate in flux_gates:
@@ -1447,17 +1471,19 @@ def make_correlation_figure(filename, exp):
     exp: FluxGateExperiment
 
     """
-
     corrs = {}
     for gate in flux_gates:
         id = gate.pos_id
-        corrs[id] = gate.corr[exp.id]
+        r = gate.corr[exp.id]
+        if not np.isnan(r):
+            corrs[id] = r
     sort_order = sorted(corrs, key=lambda x: corrs[x])
     corrs_sorted = [corrs[x] for x in sort_order]
     names_sorted = [flux_gates[x].gate_name for x in sort_order]
-    print(names_sorted)
+    gate_id_sorted = [flux_gates[x].gate_id for x in sort_order]
+    corrs_dict = dict(zip(gate_id_sorted, corrs_sorted))
     lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=1.2)
-    fig = plt.figure(figsize=[6.4, 24])
+    fig = plt.figure(figsize=[6.4, 6.4])
     ax = fig.add_subplot(111)
     height = 0.4
     y = np.arange(len(list(corrs.keys()))) + 1.25
@@ -1494,475 +1520,10 @@ def make_correlation_figure(filename, exp):
     print(("Saving {0}".format(filename)))
     fig.savefig(filename)
     plt.close("all")
-    return corrs
+    return corrs_dict
 
 
-def write_shapefile(filename, flux_gates):
-    """
-    Writes metrics to a ESRI shape file.
-
-    Paramters
-    ----------
-    filename: filename of ESRI shape file.
-    flux_gates: list of FluxGates
-
-    """
-
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    if os.path.exists(filename):
-        os.remove(filename)
-    ds = driver.CreateDataSource(filename)
-    # Create spatialReference, EPSG 4326 (lonlat)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    layer = ds.CreateLayer("Flux Gates", srs, ogr.wkbPoint)
-    g_name = ogr.FieldDefn("name", ogr.OFTString)
-    layer.CreateField(g_name)
-    g_id = ogr.FieldDefn("id", ogr.OFTInteger)
-    layer.CreateField(g_id)
-    obs_flux = ogr.FieldDefn("obs", ogr.OFTReal)
-    layer.CreateField(obs_flux)
-    obs_flux_error = ogr.FieldDefn("obs_e", ogr.OFTReal)
-    layer.CreateField(obs_flux_error)
-    obs_mean = ogr.FieldDefn("obs_mean", ogr.OFTReal)
-    layer.CreateField(obs_mean)
-    gtype = ogr.FieldDefn("gtype", ogr.OFTInteger)
-    layer.CreateField(gtype)
-    ftype = ogr.FieldDefn("ftype", ogr.OFTInteger)
-    layer.CreateField(ftype)
-    flightline = ogr.FieldDefn("flightline", ogr.OFTInteger)
-    layer.CreateField(flightline)
-    for cnt in range(flux_gates[0].exp_counter):
-        for var in ("skill", "r2", "r", "rmsd", "sigma", "exp"):
-            my_exp = "_".join([var, str(int(cnt))])
-            my_var = ogr.FieldDefn(my_exp, ogr.OFTReal)
-            layer.CreateField(my_var)
-
-    for svar in ("lin_trend", "lin_bias", "lin_r2", "lin_p"):
-        ogrvar = ogr.FieldDefn(svar, ogr.OFTReal)
-        layer.CreateField(ogrvar)
-
-    featureIndex = 0
-    layer_defn = layer.GetLayerDefn()
-    for gate in flux_gates:
-        # Create point
-        geometry = ogr.Geometry(ogr.wkbPoint)
-        geometry.SetPoint(0, float(gate.clon), float(gate.clat))
-        # Create feature
-        feature = ogr.Feature(layer_defn)
-        feature.SetGeometry(geometry)
-        feature.SetFID(featureIndex)
-        i = feature.GetFieldIndex("id")
-        feature.SetField(i, gate.gate_id)
-        i = feature.GetFieldIndex("name")
-        # This does not work though it should?
-        # feature.SetField(i, gate.gate_name.encode('utf-8'))
-        feature.SetField(i, unidecode(gate.gate_name))
-        if gate.observed_flux is not None:
-            i = feature.GetFieldIndex("obs")
-            feature.SetField(i, gate.observed_flux)
-        if gate.observed_flux_error is not None:
-            i = feature.GetFieldIndex("obs_e")
-            feature.SetField(i, gate.observed_flux_error)
-        if gate.observed_mean is not None:
-            i = feature.GetFieldIndex("obs_mean")
-            feature.SetField(i, float(gate.observed_mean))
-        # OGR doesn't like numpy.int8
-        if gate.glaciertype is not (None or ""):
-            i = feature.GetFieldIndex("gtype")
-            feature.SetField(i, int(gate.glaciertype))
-        if gate.flowtype is not (None or ""):
-            i = feature.GetFieldIndex("ftype")
-            feature.SetField(i, int(gate.flowtype))
-        if gate.flightline is not (None or ""):
-            i = feature.GetFieldIndex("flightline")
-            feature.SetField(i, int(gate.flightline))
-        if gate.linear_trend is not (None or ""):
-            i = feature.GetFieldIndex("lin_trend")
-            feature.SetField(i, gate.linear_trend)
-        if gate.linear_bias is not (None or ""):
-            i = feature.GetFieldIndex("lin_bias")
-            feature.SetField(i, gate.linear_bias)
-        if gate.linear_r2 is not (None or ""):
-            i = feature.GetFieldIndex("lin_r2")
-            feature.SetField(i, gate.linear_r2)
-        if gate.linear_p is not (None or ""):
-            i = feature.GetFieldIndex("lin_p")
-            feature.SetField(i, gate.linear_p)
-        for cnt in range(flux_gates[0].exp_counter):
-            flux_exp = "_".join(["exp", str(int(cnt))])
-            i = feature.GetFieldIndex(flux_exp)
-            exp_flux = gate.experiment_fluxes[cnt]
-            feature.SetField(i, exp_flux)
-            if gate.p_ols is not (None or ""):
-                r2_exp = "_".join(["r2", str(int(cnt))])
-                i = feature.GetFieldIndex(r2_exp)
-                feature.SetField(i, gate.p_ols[cnt].rsquared)
-                corr_exp = "_".join(["r", str(int(cnt))])
-                i = feature.GetFieldIndex(corr_exp)
-                feature.SetField(i, gate.corr[cnt])
-            rmsd_exp = "_".join(["rmsd", str(int(cnt))])
-            i = feature.GetFieldIndex(rmsd_exp)
-            if gate.rmsd is not (None or ""):
-                i_units_cf = cf_units.Unit(gate.rmsd_units)
-                o_units_cf = cf_units.Unit(v_o_units)
-                chi = i_units_cf.convert(gate.rmsd[cnt], o_units_cf)
-                feature.SetField(i, chi)
-            sigma_exp = "_".join(["sigma", str(int(cnt))])
-            i = feature.GetFieldIndex(sigma_exp)
-            if gate.sigma_obs is not (None or ""):
-                i_units_cf = cf_units.Unit(gate.varname_units)
-                o_units_cf = cf_units.Unit(v_o_units)
-                sigma_obs = i_units_cf.convert(gate.sigma_obs, o_units_cf)
-                feature.SetField(i, sigma_obs)
-        # Save feature
-        layer.CreateFeature(feature)
-        layer.SetFeature(feature)
-        # Cleanup
-        geometry = None
-        feature = None
-
-    ds = None
-
-
-# ##############################################################################
-# MAIN
-# ##############################################################################
-
-# Open first file
-filename = args[0]
-print(("  opening NetCDF file %s ..." % filename))
-try:
-    nc0 = NC(filename, "r")
-except:
-    print(("ERROR:  file '%s' not found or not NetCDF format ... ending ..." % filename))
-    import sys
-
-    sys.exit(1)
-
-# Get profiles from first file
-# All experiments have to contain the same profiles
-# Create flux gates
-profile_names = nc0.variables["profile_name"][:]
-flux_gates = []
-for pos_id, profile_name in enumerate(profile_names):
-    profile_axis = nc0.variables["profile"][pos_id]
-    profile_axis_units = nc0.variables["profile"].units
-    profile_axis_name = nc0.variables["profile"].long_name
-    profile_id = int(nc0.variables["profile_id"][pos_id])
-    try:
-        clon = nc0.variables["clon"][pos_id]
-    except:
-        clon = 0.0
-    try:
-        clat = nc0.variables["clat"][pos_id]
-    except:
-        clat = 0.0
-    try:
-        flightline = nc0.variables["flightline"][pos_id]
-    except:
-        flightline = 0
-    try:
-        glaciertype = nc0.variables["glaciertype"][pos_id]
-    except:
-        glaciertype = ""
-    try:
-        flowtype = nc0.variables["flowtype"][pos_id]
-    except:
-        flowtype = ""
-    flux_gate = FluxGate(
-        pos_id,
-        profile_name,
-        profile_id,
-        profile_axis,
-        profile_axis_units,
-        profile_axis_name,
-        clon,
-        clat,
-        flightline,
-        glaciertype,
-        flowtype,
-    )
-    flux_gates.append(flux_gate)
-nc0.close()
-
-# If observations are provided, load observations
-if obs_file:
-    obs = ObservationsDataset(obs_file, varname)
-    for flux_gate in flux_gates:
-        flux_gate.add_observations(obs)
-
-# Add experiments to flux gates
-for k, filename in enumerate(args):
-    id = k
-    experiment = ExperimentDataset(id, filename, varname)
-    for flux_gate in flux_gates:
-        flux_gate.add_experiment(experiment)
-
-
-# set the print mode
-lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=aspect_ratio)
-
-ne = len(flux_gates[0].experiments)
-ng = len(flux_gates)
-
-if table_file and obs_file:
-    export_latex_table_flux(table_file, flux_gates, label_params)
-
-# make figure for each flux gate
-for gate in flux_gates:
-    if make_figures:
-        fig = gate.make_line_plot(label_param_list=label_params)
-        if normalize:
-            gate_name = "_".join([unidecode(gate.gate_name), varname, "normalized", "profile"])
-        else:
-            gate_name = "_".join([unidecode(gate.gate_name), varname, "profile"])
-        outname = ".".join([gate_name, "pdf"]).replace(" ", "_")
-        print(("Saving {0}".format(outname)))
-        fig.tight_layout()
-        fig.savefig(outname)
-        plt.close("all")
-    else:
-        if not gate.has_fluxes:
-            gate.calculate_fluxes()
-        if gate.has_observations:
-            gate.calculate_stats()
-
-
-if obs_file:
-    # write rmsd and pearson r tables per gate
-    for gate in flux_gates:
-        gate_name = "_".join([unidecode(gate.gate_name), "rmsd", varname])
-        outname = ".".join([gate_name, "tex"]).replace(" ", "_")
-        # export_latex_table_rmsd(outname, gate)
-        gate_name = "_".join([unidecode(gate.gate_name), "pearson_r", varname])
-        outname = ".".join([gate_name, "tex"]).replace(" ", "_")
-        # export_latex_table_corr(outname, gate)
-    # write rmsd and person r figure per experiment
-    for exp in flux_gates[0].experiments:
-        exp_str = "_".join(["pearson_r_experiment", str(exp.id), varname])
-        outname = ".".join([exp_str, "pdf"])
-        corrs = make_correlation_figure(outname, exp)
-        exp_str = "_".join(["rmsd_experiment", str(exp.id), varname])
-        outname = ".".join([exp_str, "tex"])
-        export_gate_table_rmsd(outname, exp)
-
-    # ugly way to find out how many glaciers we have of each type
-    # this is needed because we have have an np.nan correlation
-    n_isbrae = 0
-    n_ice_stream = 0
-    n_undetermined = 0
-    for gate in flux_gates:
-        print(gate.flowtype)
-        if gate.flowtype == 0:
-            n_isbrae += 1
-        elif gate.flowtype == 1:
-            n_ice_stream += 1
-        else:
-            n_undetermined += 1
-    # print median correlation coefficients
-    corr_all = np.zeros((ng, ne))
-    corr_isbrae = np.zeros((n_isbrae, ne))
-    corr_ice_stream = np.zeros((n_ice_stream, ne))
-    corr_undetermined = np.zeros((n_undetermined, ne))
-    k, l, m, n = 0, 0, 0, 0
-    for gate in flux_gates:
-        corr_all[n, :] = list(gate.corr.values())
-        n += 1
-        if gate.flowtype == 0:
-            corr_isbrae[k, :] = list(gate.corr.values())
-            k += 1
-        elif gate.flowtype == 1:
-            corr_ice_stream[l, :] = list(gate.corr.values())
-            l += 1
-        else:
-            corr_undetermined[m, :] = list(gate.corr.values())
-            l += 1
-
-    print(corr_all)
-    print("median(pearson r(all))")
-    print(np.nanmedian(corr_all, axis=0)[0])
-    print("median(pearson r(isbrae))")
-    print(np.nanmedian(corr_isbrae, axis=0)[0])
-    print("median(pearson r(ice-stream))")
-    print(np.nanmedian(corr_ice_stream, axis=0)[0])
-    print("median(pearson r(undetermined))")
-    print(np.nanmedian(corr_undetermined, axis=0)[0])
-
-    # Calculate cumulative RMSD
-    observed_fluxes = np.array([x.observed_flux for x in flux_gates])
-    experiment_fluxes = np.zeros((ng, ne))
-    rmsd_cum = np.zeros((ne))
-    rmsd_isbrae_cum = np.zeros((ne))
-    rmsd_ice_stream_cum = np.zeros((ne))
-    rmsd_undetermined_cum = np.zeros((ne))
-    r2_cum = np.zeros((ne))
-    corr_cum = np.zeros((ne))
-    N_rmsd_tot = np.zeros((ne))
-    N_rmsd_isbrae_tot = np.zeros((ne))
-    N_rmsd_ice_stream_tot = np.zeros((ne))
-    N_rmsd_undetermined_tot = np.zeros((ne))
-    for n in gate.experiment_fluxes:
-        for m, my_gate in enumerate(flux_gates):
-            N_rmsd_tot[n] += my_gate.N_rmsd[n]
-            if my_gate.flowtype == 0:
-                N_rmsd_isbrae_tot[n] += my_gate.N_rmsd[n]
-            elif my_gate.flowtype == 1:
-                N_rmsd_ice_stream_tot[n] += my_gate.N_rmsd[n]
-            else:
-                N_rmsd_undetermined_tot[n] += my_gate.N_rmsd[n]
-    for m, my_gate in enumerate(flux_gates):
-        for n in gate.experiment_fluxes:
-            experiment_fluxes[m, n] = my_gate.experiment_fluxes[n]
-            rmsd_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-            r2_cum[n] += my_gate.r2[n] ** 2 * my_gate.N_rmsd[n]
-            corr_cum[n] += my_gate.corr[n] * my_gate.N_rmsd[n]
-            if my_gate.flowtype == 0:
-                rmsd_isbrae_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-            elif my_gate.flowtype == 1:
-                rmsd_ice_stream_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-            else:
-                rmsd_undetermined_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-
-    # Calculate cumulative values of rmsd, r2, and pearson r
-    rmsd_cum_dict = {}
-    rmsd_isbrae_cum_dict = {}
-    rmsd_ice_stream_cum_dict = {}
-    rmsd_undetermined_cum_dict = {}
-    r2_cum_dict = {}
-    corr_cum_dict = {}
-    for n in range(ne):
-        rmsd_cum_dict[n] = np.sqrt((1.0 / N_rmsd_tot[n]) * rmsd_cum[n])
-        rmsd_isbrae_cum_dict[n] = np.sqrt((1.0 / N_rmsd_isbrae_tot[n]) * rmsd_isbrae_cum[n])
-        rmsd_ice_stream_cum_dict[n] = np.sqrt((1.0 / N_rmsd_ice_stream_tot[n]) * rmsd_ice_stream_cum[n])
-        rmsd_undetermined_cum_dict[n] = np.sqrt((1.0 / N_rmsd_undetermined_tot[n]) * rmsd_undetermined_cum[n])
-        r2_cum_dict[n] = np.sqrt((1.0 / N_rmsd_tot[n]) * r2_cum[n])
-        corr_cum_dict[n] = (1.0 / N_rmsd_tot[n]) * corr_cum[n]
-
-    rmsd_cum_dict_sorted = sorted(iter(rmsd_cum_dict.items()), key=operator.itemgetter(1))
-    r2_cum_dict_sorted = sorted(iter(r2_cum_dict.items()), key=operator.itemgetter(1))
-    corr_cum_dict_sorted = sorted(iter(corr_cum_dict.items()), key=operator.itemgetter(1))
-
-    # Calculate error norm
-    gate_errors = np.array([x.sigma_obs for x in flux_gates])
-    gate_errors_N = np.array([x.sigma_obs_N for x in flux_gates])
-    N_error_tot = np.linalg.norm(gate_errors_N, 1)
-    error_sum = np.linalg.norm(gate_errors ** 2 * gate_errors_N, 1)
-    my_error = np.sqrt(1.0 / N_error_tot * error_sum)
-    i_units_cf = cf_units.Unit(gate.varname_units)
-    o_units_cf = cf_units.Unit(v_o_units)
-    total_error_norm = i_units_cf.convert(my_error, o_units_cf)
-
-    # RMSD table
-    outname = ".".join(["rmsd_cum_table", "tex"])
-    print(("Saving {0}".format(outname)))
-    f = codecs.open(outname, "w", "utf-8")
-    f.write("\\begin{tabular} {l l ccccccccc }\n")
-    f.write("\\toprule \n")
-    f.write(
-        "Exp.  & Parameters  & $\\tilde r_{\\textrm{ib}}$ & $\\tilde r_{\\textrm{is}}$  & $\\tilde r$ & $\chi_{\\textrm{ib}}$ & inc. & $\chi_{\\textrm{is}}$ & inc. & $\chi$ & inc.\\\ \n"
-    )
-    f.write(
-        "  & & (-) & (-) & (-)  & ({}) & (\%) & ({}) & (\%) & ({}) & (\%)\\\ \n".format(
-            v_o_units_str_tex, v_o_units_str_tex, v_o_units_str_tex
-        )
-    )
-    f.write("\midrule\n")
-    for k, exp in enumerate(rmsd_cum_dict_sorted):
-        id = exp[0]
-        rmsd_cum = exp[1]
-        rmsd_isbrae_cum = rmsd_isbrae_cum_dict[id]
-        rmsd_ice_stream_cum = rmsd_ice_stream_cum_dict[id]
-        my_exp = flux_gates[0].experiments[id]
-        config = my_exp.config
-        corr = []
-        corr_isbrae = []
-        corr_ice_stream = []
-        for gate in flux_gates:
-            corr.append(gate.corr[id])
-            if gate.flowtype == 0:
-                corr_isbrae.append(gate.corr[id])
-            if gate.flowtype == 1:
-                corr_ice_stream.append(gate.corr[id])
-        corr_median = np.nanmedian(corr)
-        corr_isbrae_median = np.nanmedian(corr_isbrae)
-        corr_ice_stream_median = np.nanmedian(corr_ice_stream)
-        my_exp_str = ", ".join(
-            [
-                "=".join([params_abbr_dict[key], params_formatting_dict[key].format(config.get(key))])
-                for key in label_params
-            ]
-        )
-        if k == 0:
-            rmsd_cum_0 = rmsd_cum
-            rmsd_isbrae_cum_0 = rmsd_isbrae_cum
-            rmsd_ice_stream_cum_0 = rmsd_ice_stream_cum
-        if k == 0:
-            f.write(
-                " {:2.0f} & {} & {:2.2f} & {:2.2f} & {:2.2f} & {:1.0f} & & {:1.0f} & & {:1.0f} & \\\ \n".format(
-                    id,
-                    my_exp_str,
-                    corr_isbrae_median,
-                    corr_ice_stream_median,
-                    corr_median,
-                    rmsd_isbrae_cum,
-                    rmsd_ice_stream_cum,
-                    rmsd_cum,
-                )
-            )
-        else:
-            pc_inc = (rmsd_cum - rmsd_cum_0) / rmsd_cum_0 * 100
-            pc_isbrae_inc = (rmsd_isbrae_cum - rmsd_isbrae_cum_0) / rmsd_isbrae_cum_0 * 100
-            pc_ice_stream_inc = (rmsd_ice_stream_cum - rmsd_ice_stream_cum_0) / rmsd_ice_stream_cum_0 * 100
-            f.write(
-                " {:2.0f} & {} & {:2.2f}  & {:2.2f} & {:2.2f} & {:1.0f} & +{:2.0f} & {:1.0f} & +{:2.0f}  & {:1.0f} & +{:2.0f} \\\ \n".format(
-                    id,
-                    my_exp_str,
-                    corr_isbrae_median,
-                    corr_ice_stream_median,
-                    corr_median,
-                    rmsd_isbrae_cum,
-                    pc_isbrae_inc,
-                    rmsd_ice_stream_cum,
-                    pc_ice_stream_inc,
-                    rmsd_cum,
-                    pc_inc,
-                )
-            )
-    f.write("\\bottomrule\n")
-    f.write("\end{tabular}\n")
-    f.close()
-
-    # R table
-    outname = ".".join(["pearson_r_cum_table", "tex"])
-    print(("Saving {0}".format(outname)))
-    f = codecs.open(outname, "w", "utf-8")
-    f.write("\\begin{tabular} {l l c }\n")
-    f.write("\\toprule \n")
-    f.write("  & Parameters & r \\\ \n")
-    f.write("  & & (1) \\\ \n")
-    f.write("\midrule\n")
-    for k, exp in reverse_enumerate(corr_cum_dict_sorted):
-        id = exp[0]
-        corr_cum = exp[1]
-        my_exp = flux_gates[0].experiments[id]
-        config = my_exp.config
-        my_exp_str = ", ".join(
-            [
-                "=".join([params_abbr_dict[key], params_formatting_dict[key].format(config.get(key))])
-                for key in label_params
-            ]
-        )
-        f.write("Experiment {} & {} & {:1.2f}\\\ \n".format(id, my_exp_str, corr_cum))
-    f.write("\\bottomrule\n")
-    f.write("\end{tabular}\n")
-    f.close()
-
-
-gate = flux_gates[0]
-# make a global regression figure
-if do_regress:
-
+def make_regression():
     grid_dx_meters = [x.config["grid_dx_meters"] for x in gate.experiments]
     for gate in flux_gates:
 
@@ -2358,6 +1919,462 @@ if do_regress:
     fig.savefig(outname)
     plt.close("all")
 
+
+def write_shapefile(filename, flux_gates):
+    """
+    Writes metrics to a ESRI shape file.
+
+    Paramters
+    ----------
+    filename: filename of ESRI shape file.
+    flux_gates: list of FluxGates
+
+    """
+
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    if os.path.exists(filename):
+        os.remove(filename)
+    ds = driver.CreateDataSource(filename)
+    # Create spatialReference, EPSG 4326 (lonlat)
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    layer = ds.CreateLayer("Flux Gates", srs, ogr.wkbPoint)
+    g_name = ogr.FieldDefn("name", ogr.OFTString)
+    layer.CreateField(g_name)
+    g_id = ogr.FieldDefn("id", ogr.OFTInteger)
+    layer.CreateField(g_id)
+    obs_flux = ogr.FieldDefn("obs", ogr.OFTReal)
+    layer.CreateField(obs_flux)
+    obs_flux_error = ogr.FieldDefn("obs_e", ogr.OFTReal)
+    layer.CreateField(obs_flux_error)
+    obs_mean = ogr.FieldDefn("obs_mean", ogr.OFTReal)
+    layer.CreateField(obs_mean)
+    gtype = ogr.FieldDefn("gtype", ogr.OFTInteger)
+    layer.CreateField(gtype)
+    ftype = ogr.FieldDefn("ftype", ogr.OFTInteger)
+    layer.CreateField(ftype)
+    flightline = ogr.FieldDefn("flightline", ogr.OFTInteger)
+    layer.CreateField(flightline)
+    for cnt in range(flux_gates[0].exp_counter):
+        for var in ("skill", "r2", "r", "rmsd", "sigma", "exp"):
+            my_exp = "_".join([var, str(int(cnt))])
+            my_var = ogr.FieldDefn(my_exp, ogr.OFTReal)
+            layer.CreateField(my_var)
+
+    for svar in ("lin_trend", "lin_bias", "lin_r2", "lin_p"):
+        ogrvar = ogr.FieldDefn(svar, ogr.OFTReal)
+        layer.CreateField(ogrvar)
+
+    featureIndex = 0
+    layer_defn = layer.GetLayerDefn()
+    for gate in flux_gates:
+        # Create point
+        geometry = ogr.Geometry(ogr.wkbPoint)
+        geometry.SetPoint(0, float(gate.clon), float(gate.clat))
+        # Create feature
+        feature = ogr.Feature(layer_defn)
+        feature.SetGeometry(geometry)
+        feature.SetFID(featureIndex)
+        i = feature.GetFieldIndex("id")
+        feature.SetField(i, gate.gate_id)
+        i = feature.GetFieldIndex("name")
+        # This does not work though it should?
+        # feature.SetField(i, gate.gate_name.encode('utf-8'))
+        feature.SetField(i, unidecode(gate.gate_name))
+        if gate.observed_flux is not None:
+            i = feature.GetFieldIndex("obs")
+            feature.SetField(i, gate.observed_flux)
+        if gate.observed_flux_error is not None:
+            i = feature.GetFieldIndex("obs_e")
+            feature.SetField(i, gate.observed_flux_error)
+        if gate.observed_mean is not None:
+            i = feature.GetFieldIndex("obs_mean")
+            feature.SetField(i, float(gate.observed_mean))
+        # OGR doesn't like numpy.int8
+        if gate.glaciertype is not (None or ""):
+            i = feature.GetFieldIndex("gtype")
+            feature.SetField(i, int(gate.glaciertype))
+        if gate.flowtype is not (None or ""):
+            i = feature.GetFieldIndex("ftype")
+            feature.SetField(i, int(gate.flowtype))
+        if gate.flightline is not (None or ""):
+            i = feature.GetFieldIndex("flightline")
+            feature.SetField(i, int(gate.flightline))
+        if gate.linear_trend is not (None or ""):
+            i = feature.GetFieldIndex("lin_trend")
+            feature.SetField(i, gate.linear_trend)
+        if gate.linear_bias is not (None or ""):
+            i = feature.GetFieldIndex("lin_bias")
+            feature.SetField(i, gate.linear_bias)
+        if gate.linear_r2 is not (None or ""):
+            i = feature.GetFieldIndex("lin_r2")
+            feature.SetField(i, gate.linear_r2)
+        if gate.linear_p is not (None or ""):
+            i = feature.GetFieldIndex("lin_p")
+            feature.SetField(i, gate.linear_p)
+        for cnt in range(flux_gates[0].exp_counter):
+            flux_exp = "_".join(["exp", str(int(cnt))])
+            i = feature.GetFieldIndex(flux_exp)
+            exp_flux = gate.experiment_fluxes[cnt]
+            feature.SetField(i, exp_flux)
+            if gate.p_ols is not (None or ""):
+                r2_exp = "_".join(["r2", str(int(cnt))])
+                i = feature.GetFieldIndex(r2_exp)
+                feature.SetField(i, gate.p_ols[cnt].rsquared)
+                corr_exp = "_".join(["r", str(int(cnt))])
+                i = feature.GetFieldIndex(corr_exp)
+                feature.SetField(i, gate.corr[cnt])
+            rmsd_exp = "_".join(["rmsd", str(int(cnt))])
+            i = feature.GetFieldIndex(rmsd_exp)
+            if gate.rmsd is not (None or ""):
+                i_units_cf = cf_units.Unit(gate.rmsd_units)
+                o_units_cf = cf_units.Unit(v_o_units)
+                chi = i_units_cf.convert(gate.rmsd[cnt], o_units_cf)
+                feature.SetField(i, chi)
+            sigma_exp = "_".join(["sigma", str(int(cnt))])
+            i = feature.GetFieldIndex(sigma_exp)
+            if gate.sigma_obs is not (None or ""):
+                i_units_cf = cf_units.Unit(gate.varname_units)
+                o_units_cf = cf_units.Unit(v_o_units)
+                sigma_obs = i_units_cf.convert(gate.sigma_obs, o_units_cf)
+                feature.SetField(i, sigma_obs)
+        # Save feature
+        layer.CreateFeature(feature)
+        layer.SetFeature(feature)
+        # Cleanup
+        geometry = None
+        feature = None
+
+    ds = None
+
+
+# ##############################################################################
+# MAIN
+# ##############################################################################
+
+# Open first file
+filename = args[0]
+print(("  opening NetCDF file %s ..." % filename))
+try:
+    nc0 = NC(filename, "r")
+except:
+    print(("ERROR:  file '%s' not found or not NetCDF format ... ending ..." % filename))
+    import sys
+
+    sys.exit(1)
+
+# Get profiles from first file
+# All experiments have to contain the same profiles
+# Create flux gates
+profile_names = nc0.variables["profile_name"][:]
+flux_gates = []
+for pos_id, profile_name in enumerate(profile_names):
+    profile_axis = nc0.variables["profile"][pos_id]
+    profile_axis_units = nc0.variables["profile"].units
+    profile_axis_name = nc0.variables["profile"].long_name
+    profile_id = int(nc0.variables["profile_id"][pos_id])
+    try:
+        clon = nc0.variables["clon"][pos_id]
+    except:
+        clon = 0.0
+    try:
+        clat = nc0.variables["clat"][pos_id]
+    except:
+        clat = 0.0
+    try:
+        flightline = nc0.variables["flightline"][pos_id]
+    except:
+        flightline = 0
+    try:
+        glaciertype = nc0.variables["glaciertype"][pos_id]
+    except:
+        glaciertype = ""
+    try:
+        flowtype = nc0.variables["flowtype"][pos_id]
+    except:
+        flowtype = ""
+    flux_gate = FluxGate(
+        pos_id,
+        profile_name,
+        profile_id,
+        profile_axis,
+        profile_axis_units,
+        profile_axis_name,
+        clon,
+        clat,
+        flightline,
+        glaciertype,
+        flowtype,
+    )
+    flux_gates.append(flux_gate)
+nc0.close()
+
+# If observations are provided, load observations
+if obs_file:
+    obs = ObservationsDataset(obs_file, varname)
+    for flux_gate in flux_gates:
+        flux_gate.add_observations(obs)
+
+# Add experiments to flux gates
+for k, filename in enumerate(args):
+    # id = re.search("id_(\b0*([1-9][0-9]*|0)\b)", filename).group(1)
+    id = int(filename.split("id_")[1].split("_")[0])
+    experiment = ExperimentDataset(id, filename, varname)
+    for flux_gate in flux_gates:
+        flux_gate.add_experiment(experiment)
+
+
+# set the print mode
+lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=aspect_ratio)
+
+ne = len(flux_gates[0].experiments)
+ng = len(flux_gates)
+
+if table_file and obs_file:
+    export_latex_table_flux(table_file, flux_gates, label_params)
+
+# make figure for each flux gate
+for gate in flux_gates:
+    if make_figures:
+        gate.make_line_plot(label_param_list=label_params)
+    else:
+        if not gate.has_fluxes:
+            gate.calculate_fluxes()
+        if gate.has_observations:
+            gate.calculate_stats()
+
+
+if obs_file:
+    # write rmsd and pearson r tables per gate
+    for gate in flux_gates:
+        gate_name = "_".join([unidecode(gate.gate_name), "rmsd", varname])
+        outname = ".".join([gate_name, "tex"]).replace(" ", "_")
+        # export_latex_table_rmsd(outname, gate)
+        gate_name = "_".join([unidecode(gate.gate_name), "pearson_r", varname])
+        outname = ".".join([gate_name, "tex"]).replace(" ", "_")
+        # export_latex_table_corr(outname, gate)
+    # write rmsd and person r figure per experiment
+    for exp in flux_gates[0].experiments:
+        exp_str = "_".join(["pearson_r_experiment", str(exp.id), varname])
+        outname = ".".join([exp_str, "pdf"])
+        corrs = make_correlation_figure(outname, exp)
+        exp_str = "_".join(["coors_experiment", str(exp.id), varname])
+        outname = ".".join([exp_str, "csv"])
+        export_gate_table_pearson_r(outname, corrs)
+        exp_str = "_".join(["rmsd_experiment", str(exp.id), varname])
+        outname = ".".join([exp_str, "tex"])
+        export_gate_table_rmsd(outname, exp)
+
+    # ugly way to find out how many glaciers we have of each type
+    # this is needed because we have have an np.nan correlation
+    n_isbrae = 0
+    n_ice_stream = 0
+    n_undetermined = 0
+    for gate in flux_gates:
+        if gate.flowtype == 0:
+            n_isbrae += 1
+        elif gate.flowtype == 1:
+            n_ice_stream += 1
+        else:
+            n_undetermined += 1
+    # print median correlation coefficients
+    corr_all = np.zeros((ng, ne))
+    corr_isbrae = np.zeros((n_isbrae, ne))
+    corr_ice_stream = np.zeros((n_ice_stream, ne))
+    corr_undetermined = np.zeros((n_undetermined, ne))
+    k, l, m, n = 0, 0, 0, 0
+    for gate in flux_gates:
+        corr_all[n, :] = list(gate.corr.values())
+        n += 1
+        if gate.flowtype == 0:
+            corr_isbrae[k, :] = list(gate.corr.values())
+            k += 1
+        elif gate.flowtype == 1:
+            corr_ice_stream[l, :] = list(gate.corr.values())
+            l += 1
+        else:
+            corr_undetermined[m, :] = list(gate.corr.values())
+            l += 1
+
+    print("median(pearson r(all): {}".format(np.nanmedian(corr_all, axis=0)[0]))
+    print("median(pearson r(isbrae): {}".format(np.nanmedian(corr_isbrae, axis=0)[0]))
+    print("median(pearson r(ice-stream): {}".format(np.nanmedian(corr_ice_stream, axis=0)[0]))
+    print("median(pearson r(undetermined): {}".format(np.nanmedian(corr_undetermined, axis=0)[0]))
+
+    # Calculate cumulative RMSD
+    observed_fluxes = np.array([x.observed_flux for x in flux_gates])
+    experiment_fluxes = np.zeros((ng, ne))
+    rmsd_cum = np.zeros((ne))
+    rmsd_isbrae_cum = np.zeros((ne))
+    rmsd_ice_stream_cum = np.zeros((ne))
+    rmsd_undetermined_cum = np.zeros((ne))
+    r2_cum = np.zeros((ne))
+    corr_cum = np.zeros((ne))
+    N_rmsd_tot = np.zeros((ne))
+    N_rmsd_isbrae_tot = np.zeros((ne))
+    N_rmsd_ice_stream_tot = np.zeros((ne))
+    N_rmsd_undetermined_tot = np.zeros((ne))
+    for n in gate.experiment_fluxes:
+        for m, my_gate in enumerate(flux_gates):
+            N_rmsd_tot[n] += my_gate.N_rmsd[n]
+            if my_gate.flowtype == 0:
+                N_rmsd_isbrae_tot[n] += my_gate.N_rmsd[n]
+            elif my_gate.flowtype == 1:
+                N_rmsd_ice_stream_tot[n] += my_gate.N_rmsd[n]
+            else:
+                N_rmsd_undetermined_tot[n] += my_gate.N_rmsd[n]
+    for m, my_gate in enumerate(flux_gates):
+        for n in gate.experiment_fluxes:
+            experiment_fluxes[m, n] = my_gate.experiment_fluxes[n]
+            rmsd_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
+            r2_cum[n] += my_gate.r2[n] ** 2 * my_gate.N_rmsd[n]
+            corr_cum[n] += my_gate.corr[n] * my_gate.N_rmsd[n]
+            if my_gate.flowtype == 0:
+                rmsd_isbrae_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
+            elif my_gate.flowtype == 1:
+                rmsd_ice_stream_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
+            else:
+                rmsd_undetermined_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
+
+    # Calculate cumulative values of rmsd, r2, and pearson r
+    rmsd_cum_dict = {}
+    rmsd_isbrae_cum_dict = {}
+    rmsd_ice_stream_cum_dict = {}
+    rmsd_undetermined_cum_dict = {}
+    r2_cum_dict = {}
+    corr_cum_dict = {}
+    for n in range(ne):
+        rmsd_cum_dict[n] = np.sqrt((1.0 / N_rmsd_tot[n]) * rmsd_cum[n])
+        rmsd_isbrae_cum_dict[n] = np.sqrt((1.0 / N_rmsd_isbrae_tot[n]) * rmsd_isbrae_cum[n])
+        rmsd_ice_stream_cum_dict[n] = np.sqrt((1.0 / N_rmsd_ice_stream_tot[n]) * rmsd_ice_stream_cum[n])
+        rmsd_undetermined_cum_dict[n] = np.sqrt((1.0 / N_rmsd_undetermined_tot[n]) * rmsd_undetermined_cum[n])
+        r2_cum_dict[n] = np.sqrt((1.0 / N_rmsd_tot[n]) * r2_cum[n])
+        corr_cum_dict[n] = (1.0 / N_rmsd_tot[n]) * corr_cum[n]
+
+    rmsd_cum_dict_sorted = sorted(iter(rmsd_cum_dict.items()), key=operator.itemgetter(1))
+    r2_cum_dict_sorted = sorted(iter(r2_cum_dict.items()), key=operator.itemgetter(1))
+    corr_cum_dict_sorted = sorted(iter(corr_cum_dict.items()), key=operator.itemgetter(1))
+
+    # Calculate error norm
+    gate_errors = np.array([x.sigma_obs for x in flux_gates])
+    gate_errors_N = np.array([x.sigma_obs_N for x in flux_gates])
+    N_error_tot = np.linalg.norm(gate_errors_N, 1)
+    error_sum = np.linalg.norm(gate_errors ** 2 * gate_errors_N, 1)
+    my_error = np.sqrt(1.0 / N_error_tot * error_sum)
+    i_units_cf = cf_units.Unit(gate.varname_units)
+    o_units_cf = cf_units.Unit(v_o_units)
+    total_error_norm = i_units_cf.convert(my_error, o_units_cf)
+
+    # RMSD table
+    outname = ".".join(["rmsd_cum_table", "tex"])
+    print(("Saving {0}".format(outname)))
+    f = codecs.open(outname, "w", "utf-8")
+    f.write("\\begin{tabular} {l l ccccccccc }\n")
+    f.write("\\toprule \n")
+    f.write(
+        "Exp.  & Parameters  & $\\tilde r_{\\textrm{ib}}$ & $\\tilde r_{\\textrm{is}}$  & $\\tilde r$ & $\chi_{\\textrm{ib}}$ & inc. & $\chi_{\\textrm{is}}$ & inc. & $\chi$ & inc.\\\ \n"
+    )
+    f.write(
+        "  & & (-) & (-) & (-)  & ({}) & (\%) & ({}) & (\%) & ({}) & (\%)\\\ \n".format(
+            v_o_units_str_tex, v_o_units_str_tex, v_o_units_str_tex
+        )
+    )
+    f.write("\midrule\n")
+    for k, exp in enumerate(rmsd_cum_dict_sorted):
+        id = exp[0]
+        rmsd_cum = exp[1]
+        rmsd_isbrae_cum = rmsd_isbrae_cum_dict[id]
+        rmsd_ice_stream_cum = rmsd_ice_stream_cum_dict[id]
+        my_exp = flux_gates[0].experiments[id]
+        config = my_exp.config
+        corr = []
+        corr_isbrae = []
+        corr_ice_stream = []
+        for gate in flux_gates:
+            corr.append(gate.corr[id])
+            if gate.flowtype == 0:
+                corr_isbrae.append(gate.corr[id])
+            if gate.flowtype == 1:
+                corr_ice_stream.append(gate.corr[id])
+        corr_median = np.nanmedian(corr)
+        corr_isbrae_median = np.nanmedian(corr_isbrae)
+        corr_ice_stream_median = np.nanmedian(corr_ice_stream)
+        my_exp_str = ", ".join(
+            [
+                "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
+                for key in label_params
+            ]
+        )
+        if k == 0:
+            rmsd_cum_0 = rmsd_cum
+            rmsd_isbrae_cum_0 = rmsd_isbrae_cum
+            rmsd_ice_stream_cum_0 = rmsd_ice_stream_cum
+        if k == 0:
+            f.write(
+                " {:2.0f} & {} & {:2.2f} & {:2.2f} & {:2.2f} & {:1.0f} & & {:1.0f} & & {:1.0f} & \\\ \n".format(
+                    id,
+                    my_exp_str,
+                    corr_isbrae_median,
+                    corr_ice_stream_median,
+                    corr_median,
+                    rmsd_isbrae_cum,
+                    rmsd_ice_stream_cum,
+                    rmsd_cum,
+                )
+            )
+        else:
+            pc_inc = (rmsd_cum - rmsd_cum_0) / rmsd_cum_0 * 100
+            pc_isbrae_inc = (rmsd_isbrae_cum - rmsd_isbrae_cum_0) / rmsd_isbrae_cum_0 * 100
+            pc_ice_stream_inc = (rmsd_ice_stream_cum - rmsd_ice_stream_cum_0) / rmsd_ice_stream_cum_0 * 100
+            f.write(
+                " {:2.0f} & {} & {:2.2f}  & {:2.2f} & {:2.2f} & {:1.0f} & +{:2.0f} & {:1.0f} & +{:2.0f}  & {:1.0f} & +{:2.0f} \\\ \n".format(
+                    id,
+                    my_exp_str,
+                    corr_isbrae_median,
+                    corr_ice_stream_median,
+                    corr_median,
+                    rmsd_isbrae_cum,
+                    pc_isbrae_inc,
+                    rmsd_ice_stream_cum,
+                    pc_ice_stream_inc,
+                    rmsd_cum,
+                    pc_inc,
+                )
+            )
+    f.write("\\bottomrule\n")
+    f.write("\end{tabular}\n")
+    f.close()
+
+    # R table
+    outname = ".".join(["pearson_r_cum_table", "tex"])
+    print(("Saving {0}".format(outname)))
+    f = codecs.open(outname, "w", "utf-8")
+    f.write("\\begin{tabular} {l l c }\n")
+    f.write("\\toprule \n")
+    f.write("  & Parameters & r \\\ \n")
+    f.write("  & & (1) \\\ \n")
+    f.write("\midrule\n")
+    for k, exp in reverse_enumerate(corr_cum_dict_sorted):
+        id = exp[0]
+        corr_cum = exp[1]
+        my_exp = flux_gates[0].experiments[id]
+        config = my_exp.config
+        my_exp_str = ", ".join(
+            [
+                "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
+                for key in label_params
+            ]
+        )
+        f.write("Experiment {} & {} & {:1.2f}\\\ \n".format(id, my_exp_str, corr_cum))
+    f.write("\\bottomrule\n")
+    f.write("\end{tabular}\n")
+    f.close()
+
+
+gate = flux_gates[0]
+# make a global regression figure
+if do_regress:
+    make_regression()
 
 # Write results to shape file
 outname = "statistics.shp"
