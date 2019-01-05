@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2014-2015 Andy Aschwanden
+# Copyright (C) 2014-2019 Andy Aschwanden
 
 import ogr
 import osr
@@ -26,321 +26,6 @@ except:
     import pypismtools as ppt
 
 import cf_units
-
-# Set up the option parser
-parser = ArgumentParser()
-parser.description = "Analyze flux gates. Used for 'Complex Greenland Outlet Glacier Flow Captured'."
-parser.add_argument("FILE", nargs="*")
-parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float, help='''Plot aspect ratio"''', default=0.8)
-parser.add_argument(
-    "--colormap",
-    dest="colormap",
-    nargs=4,
-    help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Blues", "Sequential", 12, 0],
-)
-parser.add_argument(
-    "--label_params",
-    dest="label_params",
-    help='''comma-separated list of parameters that appear in the legend,
-                  e.g. "sia_enhancement_factor"''',
-    default="basal_resistance.pseudo_plastic.q,basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden,stress_balance.sia.enhancement_factor,basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min,flow_law.gpbld.water_frac_observed_limit,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max",
-)
-parser.add_argument(
-    "--normalize",
-    dest="normalize",
-    action="store_true",
-    help="Normalize experiments by muliplying with max(obs)/max(experiment)",
-    default=False,
-)
-parser.add_argument(
-    "--obs_file", dest="obs_file", help="""Profile file with observations. Default is None""", default=None
-)
-parser.add_argument(
-    "--export_table_file",
-    dest="table_file",
-    help="""If given, fluxes are exported to latex table. Default is None""",
-    default=None,
-)
-parser.add_argument(
-    "--no_figures", dest="make_figures", action="store_false", help="Do not make profile figures", default=True
-)
-parser.add_argument(
-    "--do_regress", dest="do_regress", action="store_true", help="Make grid resolution regression plots", default=False
-)
-parser.add_argument(
-    "--legend",
-    dest="legend",
-    choices=["default", "none", "long", "short", "regress", "exp"],
-    help="Controls the legend, options are: \
-                    'default' (default), 'none, 'short', long', 'regress'",
-    default="default",
-)
-parser.add_argument("--o_dir", dest="odir", help="output directory. Default: current directory", default="foo")
-parser.add_argument(
-    "--plot_title", dest="plot_title", action="store_true", help="Plots the flux gate name as title", default=False
-)
-parser.add_argument(
-    "--simple_plot", dest="simple_plot", action="store_true", help="Make simple line plot", default=False
-)
-parser.add_argument("--no_legend", dest="plot_legend", action="store_false", help="Don't plot a legend", default=True)
-parser.add_argument(
-    "-p",
-    "--print_size",
-    dest="print_mode",
-    choices=["onecol", "medium", "twocol", "height", "presentation", "small_font", "large_font", "50mm", "72mm"],
-    help="sets figure size and font size, available options are: \
-                    'onecol','medium','twocol','presentation'",
-    default="medium",
-)
-parser.add_argument(
-    "-r",
-    "--output_resolution",
-    dest="out_res",
-    help="""
-                  Graphics resolution in dots per inch (DPI), default
-                  = 300""",
-    default=300,
-)
-parser.add_argument("--y_lim", dest="y_lim", nargs=2, help="""Y lims""", default=[None, None])
-parser.add_argument(
-    "-v", "--variable", dest="varname", help="""Variable to plot, default = 'velsurf_mag'.""", default="velsurf_mag"
-)
-
-options = parser.parse_args()
-args = options.FILE
-
-np.seterr(all="warn")
-aspect_ratio = options.aspect_ratio
-tol = 1e-6
-normalize = options.normalize
-print_mode = options.print_mode
-obs_file = options.obs_file
-out_res = int(options.out_res)
-varname = options.varname
-table_file = options.table_file
-label_params = list(options.label_params.split(","))
-plot_title = options.plot_title
-legend = options.legend
-do_regress = options.do_regress
-make_figures = options.make_figures
-odir = options.odir
-simple_plot = options.simple_plot
-y_lim_min, y_lim_max = options.y_lim
-ice_density = 910.0
-ice_density_units = "910 kg m-3"
-vol_to_mass = False
-profile_axis_out_units = "km"
-
-if y_lim_min is not None:
-    y_lim_min = np.float(y_lim_min)
-if y_lim_max is not None:
-    y_lim_max = np.float(y_lim_max)
-
-
-if varname in ("velsurf_mag", "velbase_mag", "velsurf_normal"):
-    flux_type = "line flux"
-    v_o_units = "m yr-1"
-    v_o_units_str = "m yr$^\mathregular{{-1}}$"
-    v_o_units_str_tex = "m\,yr$^{-1}$"
-    v_flux_o_units = "km2 yr-1"
-    v_flux_o_units_str = "km$^\mathregular{2}$ yr$^\mathregular{{-1}}$"
-    v_flux_o_units_str_tex = "km$^2$\,yr$^{-1}$"
-elif varname in ("flux_mag", "flux_normal"):
-    flux_type = "mass flux"
-    v_o_units = "km2 yr-1"
-    v_o_units_str = "km$^\mathregular{2}$ yr$^\mathregular{{-1}}$"
-    v_o_units_str_tex = "km$^2$\,yr$^{-1}$"
-    vol_to_mass = True
-    v_flux_o_units = "Gt yr-1"
-    v_flux_o_units_str = "Gt yr$^\mathregular{{-1}}$"
-    v_flux_o_units_str_tex = "Gt\,yr$^{-1}$"
-elif varname in ("thk", "thickness", "land_ice_thickness"):
-    flux_type = "area"
-    v_o_units = "m"
-    v_o_units_str = "m"
-    v_o_units_str_tex = "m"
-    vol_to_mass = False
-    v_flux_o_units = "km2"
-    v_flux_o_units_str = "km$^\mathregular{2}$"
-    v_flux_o_units_str_tex = "km$^2$"
-elif varname in ("usurf", "surface", "surface_altitude"):
-    flux_type = "area"
-    v_o_units = "m"
-    v_o_units_str = "m"
-    v_o_units_str_tex = "m"
-    vol_to_mass = False
-    v_flux_o_units = "km2"
-    v_flux_o_units_str = "km$^\mathregular{2}$"
-    v_flux_o_units_str_tex = "km$^2$"
-else:
-    print(("variable {} not supported".format(varname)))
-
-na = len(args)
-shade = 0.15
-colormap = options.colormap
-# Convert str to int, or the bool to reverse will fail
-colormap[2] = int(colormap[2])
-colormap[3] = int(colormap[3])
-try:
-    from palettable import colorbrewer
-
-    my_colors = colorbrewer.get_map(*colormap).mpl_colors
-    nc = len(my_colors)
-    # Fall back: create as many colors as needed from colormap
-    if nc < na:
-        try:
-            cdict = plt.cm.datad[colormap[0]]
-        except:
-            # import and convert colormap
-            cdict = ppt.gmtColormap(colormap[0])
-        cmap = mpl.colors.LinearSegmentedColormap("my_colormap", cdict)
-        cNorm = mpl.colors.Normalize(vmin=0, vmax=na)
-        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
-        my_colors = []
-        for k in range(na):
-            my_color = scalarMap.to_rgba(k)
-            my_colors.append(tuple(my_color))
-    cc = mpl.colors.ColorConverter()
-    m, n = np.asarray(my_colors).shape
-    my_colors_light = []
-    for rgb in my_colors:
-        h, l, s = rgb_to_hls(*rgb[0:3])
-        l *= 1 + shade
-        l = min(0.9, l)
-        l = max(0, l)
-        my_colors_light.append(hls_to_rgb(h, l, s))
-except:
-    # This is a fall back if brewer2mpl is not installed
-    my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
-    my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
-
-# Make this an option
-my_colors = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
-
-my_colors_light = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
-
-nc = len(my_colors)
-ns = nc - na
-my_colors = my_colors[ns::]
-mcc = my_colors
-# mpl.rcParams['axes.color_cycle'] = my_colors
-
-# my_colors = my_colors[ns::]
-# my_colors_light = my_colors_light[ns::]
-
-alpha = 0.75
-dash_style = "o"
-numpoints = 1
-legend_frame_width = 0.25
-markeredgewidth = 0.2
-
-params_dict = {
-    "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
-    "surface.pdd.factor_snow": {"abbr": "$f_{\mathregular{s}}$", "format": "{:1.0f}"},
-    "basal_resistance.pseudo_plastic.q": {"abbr": "$q$", "format": "{:1.2f}"},
-    "basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden": {"abbr": "$\\delta$", "format": "{:1.4f}"},
-    "stress_balance.sia.enhancement_factor": {"abbr": "$E_{\mathregular{SIA}}$", "format": "{:1.2f}"},
-    "stress_balance.ssa.enhancement_factor": {"abbr": "$E_{\mathregular{SSA}}$", "format": "{:1.2f}"},
-    "stress_balance.ssa.Glen_exponent": {"abbr": "$n_{\mathregular{SSA}}$", "format": "{:1.2f}"},
-    "stress_balance.sia.Glen_exponent": {"abbr": "$n_{\mathregular{SIA}}$", "format": "{:1.2f}"},
-    "grid_dx_meters": {"abbr": "ds", "format": "{:.0f}"},
-    "flow_law.gpbld.water_frac_observed_limit": {"abbr": "$\omega$", "format": "{:1.2}"},
-    "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min": {"abbr": "$\phi_{\mathregular{min}}$", "format": "{:4.2f}"},
-    "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_max": {"abbr": "$\phi_{\mathregular{max}}$", "format": "{:4.2f}"},
-    "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min": {"abbr": "$z_{\mathregular{min}}$", "format": "{:1.0f}"},
-    "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max": {"abbr": "$z_{\mathregular{max}}$", "format": "{:1.0f}"},
-}
-
-
-var_long = (
-    "velsurf_mag",
-    "velbase_mag",
-    "velsurf_normal",
-    "flux_mag",
-    "flux_normal",
-    "surface",
-    "usurf",
-    "surface_altitude" "thk",
-    "thickness",
-    "land_ice_thickness",
-)
-var_short = (
-    "speed",
-    "sliding speed",
-    "speed",
-    "flux",
-    "flux",
-    "altitude",
-    "altitude",
-    "altitude",
-    "ice thickness",
-    "ice thickness",
-    "ice thickness",
-)
-var_name_dict = dict(list(zip(var_long, var_short)))
 
 
 def reverse_enumerate(iterable):
@@ -438,6 +123,7 @@ class FluxGate(object):
         self.linear_bias = None
         self.linear_r2 = None
         self.linear_p = None
+        self.N_corr = None
         self.N_rmsd = None
         self.observed_flux = None
         self.observed_flux_units = None
@@ -487,7 +173,7 @@ class FluxGate(object):
         fg_obs = FluxGateObservations(data, pos_id)
         self.observations = fg_obs
         if self.has_observations is not None:
-            print(("Flux gate {0} already has observations, overriding".format(self.gate_name)))
+            print(("Flux gate {0} already has observations, overriding".format(self.gate_name.encode("utf-8"))))
         self.has_observations = True
 
     def calculate_fluxes(self):
@@ -509,11 +195,12 @@ class FluxGate(object):
         if not self.has_fluxes:
             self.calculate_fluxes()
         corr = {}
-        p_ols = {}
-        rmsd = {}
+        N_corr = {}
         N_rmsd = {}
-        S = {}
+        p_ols = {}
         r2 = {}
+        rmsd = {}
+        S = {}
         for exp in self.experiments:
             id = exp.id
             x = np.squeeze(self.profile_axis)
@@ -524,8 +211,6 @@ class FluxGate(object):
             if isinstance(obs_vals, np.ma.MaskedArray):
                 obs_vals = obs_vals.filled(0)
             exp_vals = np.squeeze(self.experiments[id].values)
-            if isinstance(exp_vals, np.ma.MaskedArray):
-                exp_vals = exp_vals.filled(0)
             # Calculate root mean square difference (RMSD), convert units
             my_rmsd, my_N_rmsd = get_rmsd(exp_vals, obs_vals)
             i_units = self.varname_units
@@ -536,10 +221,7 @@ class FluxGate(object):
             N_rmsd[id] = my_N_rmsd
             obsS = pa.Series(data=obs_vals, index=x)
             expS = pa.Series(data=exp_vals, index=x)
-            # Perform Ordinary Least Squares regression analysis with
-            # p_ols[id] = pa.ols(x=obsS, y=expS)
-            # r2[id] = p_ols[id].r2
-            p_ols[id] = sm.OLS(expS, sm.add_constant(obsS)).fit()
+            p_ols[id] = sm.OLS(expS, sm.add_constant(obsS), missing="drop").fit()
             r2[id] = p_ols[id].rsquared
             corr[id] = obsS.corr(expS)
         best_rmsd_exp_id = sorted(p_ols, key=lambda x: rmsd[x], reverse=False)[0]
@@ -928,6 +610,7 @@ class FluxGate(object):
         print(("Saving {0}".format(outname)))
         fig.tight_layout()
         fig.savefig(outname)
+        plt.close(fig)
 
 
 class FluxGateExperiment(object):
@@ -959,7 +642,7 @@ class Dataset(object):
     """
     A base class for Experiments or Observations.
 
-    Constructor opens netCDF file, attached pointer to nc instance.
+    Constructor opens netCDF file, attaches pointer to nc instance.
 
     """
 
@@ -1100,23 +783,8 @@ def export_latex_table_flux(filename, flux_gates, params):
         i_units_cf = cf_units.Unit(profile_axis_units)
         o_units_cf = cf_units.Unit(profile_axis_out_units)
         profile_length = i_units_cf.convert(length, o_units_cf)
-        if gate.glaciertype == 0:
-            glaciertype = "ffmt"
-        elif gate.glaciertype == 1:
-            glaciertype = "lvmt"
-        elif gate.glaciertype == 2:
-            glaciertype = "ist"
-        elif gate.glaciertype == 3:
-            glaciertype = "lt"
-
-        if gate.flowtype == 0:
-            flowtype = "isbr{\\ae}"
-        elif gate.flowtype == 1:
-            flowtype = "ice-stream"
-        else:
-            flowtype = "undefined"
-
-        # line_str = ''.join([unidecode(gate.return_gate_flux_str_short()), '& {:2.1f} '.format(profile_length), '& {} '.format(glaciertype), '& {} '.format(flowtype), '\\\ \n'])
+        glaciertype = glacier_types[gate.glaciertype]
+        flowtype = flow_types[gate.flowtype]
         line_str = "".join(
             [
                 gate.return_gate_flux_str_short(),
@@ -1238,62 +906,6 @@ def export_latex_table_corr(filename, gate):
     f.close()
 
 
-def export_gate_table_relative_skill(filename, exp):
-    """
-    Creates a latex table of flux gates sorted by relative skill.
-
-    Parameters
-    ----------
-    filename: string
-    exp: FluxGateExperiment
-
-    """
-
-    errors = {}
-    rmsds = {}
-    chi_rels = {}
-    for gate in flux_gates:
-        id = gate.pos_id
-        # Get uncertainty and convert units
-        i_units_cf = cf_units.Unit(gate.sigma_obs_units)
-        o_units_cf = cf_units.Unit(v_o_units)
-        error = i_units_cf.convert(gate.sigma_obs, o_units_cf)
-        errors[id] = error
-        # Get RMSD and convert units
-        i_units_cf = cf_units.Unit(gate.rmsd_units)
-        o_units_cf = cf_units.Unit(v_o_units)
-        rmsd = i_units_cf.convert(gate.rmsd[exp.id], o_units_cf)
-        rmsds[id] = rmsd
-        chi_rel = (rmsd - error) / error
-        chi_rels[id] = chi_rel
-
-    chi_rels_sorted = sorted(chi_rels, key=lambda x: chi_rels[x])
-
-    f = codecs.open(filename, "w", "utf-8")
-    tab_str = " ".join(["{l ccc }"])
-    f.write(" ".join(["\\begin{tabular}", tab_str, "\n"]))
-    f.write("\\toprule \n")
-    f.write("Glacier & $\sigma$ & $\chi_{\\textrm{{g}}}}$ & $\\tilde \chi$ \\\ \n")
-    f.write(" & ({}) & ({}) & (-) \\\ \n".format(v_o_units_str_tex, v_o_units_str_tex))
-    f.write("\midrule \n")
-
-    for k in chi_rels_sorted:
-        gate = flux_gates[k]
-        line_str = " & ".join(
-            [
-                unidecode(gate.gate_name),
-                "{:1.2f}".format(errors[k]),
-                "{:1.2f}".format(rmsds[k]),
-                "{:1.2f} \\\ \n".format(chi_rels[k]),
-            ]
-        )
-
-        f.write(line_str)
-    f.write("\\bottomrule \n")
-    f.write("\\end{tabular} \n")
-    f.close
-
-
 def export_gate_table_rmsd(filename, exp):
     """
     Creates a latex table of flux gates sorted by rmsd.
@@ -1350,21 +962,21 @@ def export_gate_table_rmsd(filename, exp):
     f.close
 
 
-def export_gate_table_pearson_r(filename, corrs):
+def export_csv_from_dict(filename, mdict, header=None, fmt=["%i", "%4.2f"]):
     """
-    Creates a CSV file of flux gates id sorted by correlation coefficient.
+    Creates a CSV file from a dictionary.
 
     Parameters
     ----------
     filename: string
-    coors: dict with gate id and correlations
+    mdict: dictionary with id and data
 
     """
 
-    ids = [x for x in corrs.keys()]
-    values = [x for x in corrs.values()]
+    ids = [x for x in mdict.keys()]
+    values = [x for x in mdict.values()]
     data = np.vstack((ids, values))
-    np.savetxt(filename, np.transpose(data), fmt=["%i", "%4.2f"], delimiter=",", header="id,correlation")
+    np.savetxt(filename, np.transpose(data), fmt=["%i", "%4.2f"], delimiter=",", header=header)
 
 
 def write_experiment_table(outname):
@@ -1390,72 +1002,6 @@ def write_experiment_table(outname):
     f.write("\\bottomrule \n")
     f.write("\\end{tabular} \n")
     f.close()
-
-
-def make_r2_figure(filename, exp):
-    """
-    Create a r2 plot.
-
-    Create a r2 plot for a given experiment, sorted by
-    decreasing r2.
-
-    Parameters
-    ----------
-    filename: string
-    exp: FluxGateExperiment
-
-    """
-
-    nocol = 5
-    colormap = ["RdYlGn", "Diverging", nocol, 0]
-    my_ok_colors = colorbrewer.get_map(*colormap).mpl_colors
-
-    r2s = {}
-    for gate in flux_gates:
-        id = gate.pos_id
-        r2s[id] = gate.p_ols[exp.id].rsquared
-    sort_order = sorted(r2s, key=lambda x: r2s[x])
-    r2s_sorted = [r2s[x] for x in sort_order]
-
-    lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=1.2)
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    height = 0.4
-    y = np.arange(len(list(r2s.keys()))) + 2
-    for k, r2 in enumerate(r2s_sorted):
-        if r2 < 0.1:
-            colorVal = my_ok_colors[0]
-        elif (r2 >= 0.1) and (r2 < 0.5):
-            colorVal = my_ok_colors[1]
-        elif (r2 >= 0.5) and (r2 < 0.7):
-            colorVal = my_ok_colors[2]
-        elif (r2 >= 0.7) and (r2 < 0.9):
-            colorVal = my_ok_colors[3]
-        else:
-            colorVal = my_ok_colors[4]
-        ax.plot(r2, y[k], "o", markersize=3, color=colorVal)
-    plt.yticks(y, [flux_gates[x].gate_name for x in sort_order])
-    ax.set_xlabel("r$^2$ (-)")
-    ax.set_xlim(-0.2, 1.1)
-    ax.set_ylim(0, y[-1] + 1)
-    ticks = [0, 0.1, 0.5, 0.7, 0.9, 1]
-    ax.set_xticks(ticks)
-    ax.set_xticklabels(ticks)
-    # Only draw spine between the y-ticks
-    ax.spines["left"].set_bounds(y[0], y[-1])
-    ax.spines["bottom"].set_bounds(0, 1)
-    # Hide the right and top spines
-    ax.spines["right"].set_visible(False)
-    ax.spines["top"].set_visible(False)
-    # Only show ticks on the left and bottom spines
-    ax.yaxis.set_ticks_position("left")
-    ax.xaxis.set_ticks_position("bottom")
-    fig.tight_layout()
-    print(("Saving {0}".format(filename)))
-    fig.savefig(filename)
-    plt.close("all")
-
-    return r2s
 
 
 def make_correlation_figure(filename, exp):
@@ -1490,7 +1036,7 @@ def make_correlation_figure(filename, exp):
     for k, corr in enumerate(corrs_sorted):
         if corr < 0.5:
             colorVal = "#d7191c"
-        elif (corr >= 0.5) and (corr < 0.85):
+        elif (corr >= pearson_r_threshold_low) and (corr < pearson_r_threshold_high):
             colorVal = "#ff7f00"
         else:
             colorVal = "#33a02c"
@@ -1499,7 +1045,7 @@ def make_correlation_figure(filename, exp):
 
     corr_median = np.nanmedian(list(corrs.values()))
     ax.vlines(corr_median, 0, y[-1], linestyle="dotted", color="0.5")
-    print(("median correlaction: {}".format(corr_median)))
+    print(("median correlation: {:1.2f}".format(corr_median)))
     plt.yticks(y, ["{} ({})".format(flux_gates[x].gate_name, flux_gates[x].gate_id) for x in sort_order])
     ax.set_xlabel("r (-)", labelpad=0.2)
     ax.set_xlim(-1, 1.1)
@@ -1771,17 +1317,6 @@ def make_regression():
     print(("Global regression r2 = {:2.2f}".format(r2_global)))
 
     legend_labels = ["JIB", "good", "median", "poor", "isbr\u00E6", "ice-stream", "all"]
-    # lg = ax.legend(legend_handles, legend_labels,
-    #                loc="upper left",
-    #                shadow=True, numpoints=numpoints,
-    #                bbox_to_anchor=(0, 0, 1, 1),
-    #                bbox_transform=plt.gcf().transFigure)
-    # fr = lg.get_frame()
-    # fr.set_lw(legend_frame_width)
-
-    # print statistics
-    # ax.text(0.05, 0.85,
-    #         'r$^\mathregular{{2}}$= {:1.2f}\np = {:.1e}'.format(r2_global, p_global), transform=ax.transAxes)
     ax.set_xticks(grid_dx_meters)
     ax.set_xlabel("grid resolution (m)")
     ax.set_ylabel("$\chi$ ({})".format(v_o_units_str))
@@ -1883,7 +1418,7 @@ def make_regression():
         corr_data = list(gate.corr.values())
         corrS = pa.Series(data=corr_data, index=list(gate.corr.keys()))
         gridS = pa.Series(data=grid_dx_meters, index=list(gate.corr.keys()))
-        d = {"grid_resolution": gridS, "CORR": corrS}
+        d = {"grid_resolution": gridS, "correlation": corrS}
         df = pa.DataFrame(d)
         model = pa.ols(x=gridS, y=corrS)
         # Calculate PISM trends and biases (intercepts)
@@ -2048,9 +1583,417 @@ def write_shapefile(filename, flux_gates):
     ds = None
 
 
+def export_rmsd_latex_table():
+    """
+    Used for "Complex Greenland Outlet Glacier Flow Captured
+    """
+
+    # RMSD LaTeX table
+    outname = ".".join(["rmsd_cum_table", "tex"])
+    print(("Saving {0}".format(outname)))
+    with codecs.open(outname, "w", "utf-8") as f:
+        f.write("\\begin{tabular} {l l ccccccccc }\n")
+        f.write("\\toprule \n")
+        f.write(
+            "Exp.  & Parameters  & $\\tilde r_{\\textrm{ib}}$ & $\\tilde r_{\\textrm{is}}$  & $\\tilde r$ & $\chi_{\\textrm{ib}}$ & inc. & $\chi_{\\textrm{is}}$ & inc. & $\chi$ & inc.\\\ \n"
+        )
+        f.write(
+            "  & & (-) & (-) & (-)  & ({}) & (\%) & ({}) & (\%) & ({}) & (\%)\\\ \n".format(
+                v_o_units_str_tex, v_o_units_str_tex, v_o_units_str_tex
+            )
+        )
+        f.write("\midrule\n")
+        for k, exp in enumerate(rmsd_cum_dict_sorted):
+            id = exp[0]
+            rmsd_cum = exp[1]
+            rmsd_isbrae_cum = rmsd_isbrae_cum_dict[id]
+            rmsd_ice_stream_cum = rmsd_ice_stream_cum_dict[id]
+            my_exp = flux_gates[0].experiments[id]
+            config = my_exp.config
+            corr = []
+            corr_isbrae = []
+            corr_ice_stream = []
+            for gate in flux_gates:
+                corr.append(gate.corr[id])
+                if gate.flowtype == 0:
+                    corr_isbrae.append(gate.corr[id])
+                if gate.flowtype == 1:
+                    corr_ice_stream.append(gate.corr[id])
+            corr_median = np.nanmedian(corr)
+            corr_isbrae_median = np.nanmedian(corr_isbrae)
+            corr_ice_stream_median = np.nanmedian(corr_ice_stream)
+            my_exp_str = ", ".join(
+                [
+                    "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
+                    for key in label_params
+                ]
+            )
+            if k == 0:
+                rmsd_cum_0 = rmsd_cum
+                rmsd_isbrae_cum_0 = rmsd_isbrae_cum
+                rmsd_ice_stream_cum_0 = rmsd_ice_stream_cum
+            if k == 0:
+                f.write(
+                    " {:2.0f} & {} & {:2.2f} & {:2.2f} & {:2.2f} & {:1.0f} & & {:1.0f} & & {:1.0f} & \\\ \n".format(
+                        id,
+                        my_exp_str,
+                        corr_isbrae_median,
+                        corr_ice_stream_median,
+                        corr_median,
+                        rmsd_isbrae_cum,
+                        rmsd_ice_stream_cum,
+                        rmsd_cum,
+                    )
+                )
+            else:
+                pc_inc = (rmsd_cum - rmsd_cum_0) / rmsd_cum_0 * 100
+                pc_isbrae_inc = (rmsd_isbrae_cum - rmsd_isbrae_cum_0) / rmsd_isbrae_cum_0 * 100
+                pc_ice_stream_inc = (rmsd_ice_stream_cum - rmsd_ice_stream_cum_0) / rmsd_ice_stream_cum_0 * 100
+                f.write(
+                    " {:2.0f} & {} & {:2.2f}  & {:2.2f} & {:2.2f} & {:1.0f} & +{:2.0f} & {:1.0f} & +{:2.0f}  & {:1.0f} & +{:2.0f} \\\ \n".format(
+                        id,
+                        my_exp_str,
+                        corr_isbrae_median,
+                        corr_ice_stream_median,
+                        corr_median,
+                        rmsd_isbrae_cum,
+                        pc_isbrae_inc,
+                        rmsd_ice_stream_cum,
+                        pc_ice_stream_inc,
+                        rmsd_cum,
+                        pc_inc,
+                    )
+                )
+        f.write("\\bottomrule\n")
+        f.write("\end{tabular}\n")
+        f.close()
+
+
 # ##############################################################################
 # MAIN
 # ##############################################################################
+
+# Set up the option parser
+parser = ArgumentParser()
+parser.description = "Analyze flux gates. Used for 'Complex Greenland Outlet Glacier Flow Captured'."
+parser.add_argument("FILE", nargs="*")
+parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float, help='''Plot aspect ratio"''', default=0.8)
+parser.add_argument(
+    "--colormap",
+    dest="colormap",
+    nargs=4,
+    help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
+    default=["Blues", "Sequential", 12, 0],
+)
+parser.add_argument(
+    "--label_params",
+    dest="label_params",
+    help='''comma-separated list of parameters that appear in the legend,
+                  e.g. "sia_enhancement_factor"''',
+    default="basal_resistance.pseudo_plastic.q,basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden,stress_balance.sia.enhancement_factor,basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min,flow_law.gpbld.water_frac_observed_limit,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max",
+)
+parser.add_argument(
+    "--normalize",
+    dest="normalize",
+    action="store_true",
+    help="Normalize experiments by muliplying with max(obs)/max(experiment)",
+    default=False,
+)
+parser.add_argument(
+    "--obs_file", dest="obs_file", help="""Profile file with observations. Default is None""", default=None
+)
+parser.add_argument(
+    "--export_table_file",
+    dest="table_file",
+    help="""If given, fluxes are exported to latex table. Default is None""",
+    default=None,
+)
+parser.add_argument(
+    "--no_figures", dest="make_figures", action="store_false", help="Do not make profile figures", default=True
+)
+parser.add_argument(
+    "--do_regress", dest="do_regress", action="store_true", help="Make grid resolution regression plots", default=False
+)
+parser.add_argument(
+    "--legend",
+    dest="legend",
+    choices=["default", "none", "long", "short", "regress", "exp"],
+    help="Controls the legend, options are: \
+                    'default' (default), 'none, 'short', long', 'regress'",
+    default="default",
+)
+parser.add_argument("--o_dir", dest="odir", help="output directory. Default: current directory", default="foo")
+parser.add_argument(
+    "--plot_title", dest="plot_title", action="store_true", help="Plots the flux gate name as title", default=False
+)
+parser.add_argument(
+    "--simple_plot", dest="simple_plot", action="store_true", help="Make simple line plot", default=False
+)
+parser.add_argument("--no_legend", dest="plot_legend", action="store_false", help="Don't plot a legend", default=True)
+parser.add_argument(
+    "-p",
+    "--print_size",
+    dest="print_mode",
+    choices=["onecol", "medium", "twocol", "height", "presentation", "small_font", "large_font", "50mm", "72mm"],
+    help="sets figure size and font size, available options are: \
+                    'onecol','medium','twocol','presentation'",
+    default="medium",
+)
+parser.add_argument(
+    "-r",
+    "--output_resolution",
+    dest="out_res",
+    help="""
+                  Graphics resolution in dots per inch (DPI), default
+                  = 300""",
+    default=300,
+)
+parser.add_argument("--y_lim", dest="y_lim", nargs=2, help="""Y lims""", default=[None, None])
+parser.add_argument(
+    "-v", "--variable", dest="varname", help="""Variable to plot, default = 'velsurf_mag'.""", default="velsurf_mag"
+)
+
+options = parser.parse_args()
+args = options.FILE
+
+np.seterr(all="warn")
+aspect_ratio = options.aspect_ratio
+tol = 1e-6
+normalize = options.normalize
+print_mode = options.print_mode
+obs_file = options.obs_file
+out_res = int(options.out_res)
+varname = options.varname
+table_file = options.table_file
+label_params = list(options.label_params.split(","))
+plot_title = options.plot_title
+legend = options.legend
+do_regress = options.do_regress
+make_figures = options.make_figures
+odir = options.odir
+simple_plot = options.simple_plot
+y_lim_min, y_lim_max = options.y_lim
+ice_density = 910.0
+ice_density_units = "910 kg m-3"
+vol_to_mass = False
+profile_axis_out_units = "km"
+pearson_r_threshold_high = 0.85
+pearson_r_threshold_low = 0.50
+
+if y_lim_min is not None:
+    y_lim_min = np.float(y_lim_min)
+if y_lim_max is not None:
+    y_lim_max = np.float(y_lim_max)
+
+
+if varname in ("velsurf_mag", "velbase_mag", "velsurf_normal"):
+    flux_type = "line flux"
+    v_o_units = "m yr-1"
+    v_o_units_str = "m yr$^\mathregular{{-1}}$"
+    v_o_units_str_tex = "m\,yr$^{-1}$"
+    v_flux_o_units = "km2 yr-1"
+    v_flux_o_units_str = "km$^\mathregular{2}$ yr$^\mathregular{{-1}}$"
+    v_flux_o_units_str_tex = "km$^2$\,yr$^{-1}$"
+elif varname in ("flux_mag", "flux_normal"):
+    flux_type = "mass flux"
+    v_o_units = "km2 yr-1"
+    v_o_units_str = "km$^\mathregular{2}$ yr$^\mathregular{{-1}}$"
+    v_o_units_str_tex = "km$^2$\,yr$^{-1}$"
+    vol_to_mass = True
+    v_flux_o_units = "Gt yr-1"
+    v_flux_o_units_str = "Gt yr$^\mathregular{{-1}}$"
+    v_flux_o_units_str_tex = "Gt\,yr$^{-1}$"
+elif varname in ("thk", "thickness", "land_ice_thickness"):
+    flux_type = "area"
+    v_o_units = "m"
+    v_o_units_str = "m"
+    v_o_units_str_tex = "m"
+    vol_to_mass = False
+    v_flux_o_units = "km2"
+    v_flux_o_units_str = "km$^\mathregular{2}$"
+    v_flux_o_units_str_tex = "km$^2$"
+elif varname in ("usurf", "surface", "surface_altitude"):
+    flux_type = "area"
+    v_o_units = "m"
+    v_o_units_str = "m"
+    v_o_units_str_tex = "m"
+    vol_to_mass = False
+    v_flux_o_units = "km2"
+    v_flux_o_units_str = "km$^\mathregular{2}$"
+    v_flux_o_units_str_tex = "km$^2$"
+else:
+    print(("variable {} not supported".format(varname)))
+
+
+na = len(args)
+shade = 0.15
+colormap = options.colormap
+# Convert str to int, or the bool to reverse will fail
+colormap[2] = int(colormap[2])
+colormap[3] = int(colormap[3])
+try:
+    from palettable import colorbrewer
+
+    my_colors = colorbrewer.get_map(*colormap).mpl_colors
+    nc = len(my_colors)
+    # Fall back: create as many colors as needed from colormap
+    if nc < na:
+        try:
+            cdict = plt.cm.datad[colormap[0]]
+        except:
+            # import and convert colormap
+            cdict = ppt.gmtColormap(colormap[0])
+        cmap = mpl.colors.LinearSegmentedColormap("my_colormap", cdict)
+        cNorm = mpl.colors.Normalize(vmin=0, vmax=na)
+        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
+        my_colors = []
+        for k in range(na):
+            my_color = scalarMap.to_rgba(k)
+            my_colors.append(tuple(my_color))
+    cc = mpl.colors.ColorConverter()
+    m, n = np.asarray(my_colors).shape
+    my_colors_light = []
+    for rgb in my_colors:
+        h, l, s = rgb_to_hls(*rgb[0:3])
+        l *= 1 + shade
+        l = min(0.9, l)
+        l = max(0, l)
+        my_colors_light.append(hls_to_rgb(h, l, s))
+except:
+    # This is a fall back if brewer2mpl is not installed
+    my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
+    my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
+
+# Make this an option
+my_colors = [
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+]
+
+my_colors_light = [
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+]
+
+nc = len(my_colors)
+ns = nc - na
+my_colors = my_colors[ns::]
+mcc = my_colors
+# mpl.rcParams['axes.color_cycle'] = my_colors
+
+# my_colors = my_colors[ns::]
+# my_colors_light = my_colors_light[ns::]
+
+alpha = 0.75
+dash_style = "o"
+numpoints = 1
+legend_frame_width = 0.25
+markeredgewidth = 0.2
+
+params_dict = {
+    "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
+    "surface.pdd.factor_snow": {"abbr": "$f_{\mathregular{s}}$", "format": "{:1.0f}"},
+    "basal_resistance.pseudo_plastic.q": {"abbr": "$q$", "format": "{:1.2f}"},
+    "basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden": {"abbr": "$\\delta$", "format": "{:1.4f}"},
+    "stress_balance.sia.enhancement_factor": {"abbr": "$E_{\mathregular{SIA}}$", "format": "{:1.2f}"},
+    "stress_balance.ssa.enhancement_factor": {"abbr": "$E_{\mathregular{SSA}}$", "format": "{:1.2f}"},
+    "stress_balance.ssa.Glen_exponent": {"abbr": "$n_{\mathregular{SSA}}$", "format": "{:1.2f}"},
+    "stress_balance.sia.Glen_exponent": {"abbr": "$n_{\mathregular{SIA}}$", "format": "{:1.2f}"},
+    "grid_dx_meters": {"abbr": "ds", "format": "{:.0f}"},
+    "flow_law.gpbld.water_frac_observed_limit": {"abbr": "$\omega$", "format": "{:1.2}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min": {"abbr": "$\phi_{\mathregular{min}}$", "format": "{:4.2f}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_max": {"abbr": "$\phi_{\mathregular{max}}$", "format": "{:4.2f}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min": {"abbr": "$z_{\mathregular{min}}$", "format": "{:1.0f}"},
+    "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max": {"abbr": "$z_{\mathregular{max}}$", "format": "{:1.0f}"},
+}
+
+
+var_long = (
+    "velsurf_mag",
+    "velbase_mag",
+    "velsurf_normal",
+    "flux_mag",
+    "flux_normal",
+    "surface",
+    "usurf",
+    "surface_altitude" "thk",
+    "thickness",
+    "land_ice_thickness",
+)
+var_short = (
+    "speed",
+    "sliding speed",
+    "speed",
+    "flux",
+    "flux",
+    "altitude",
+    "altitude",
+    "altitude",
+    "ice thickness",
+    "ice thickness",
+    "ice thickness",
+)
+var_name_dict = dict(list(zip(var_long, var_short)))
+
+flow_types = {0: "isbr{\\ae}", 1: "ice-stream", 2: "undefined"}
+glacier_types = {0: "ffmt", 1: "lvmt", 2: "ist", 3: "lt"}
+
 
 # Open first file
 filename = args[0]
@@ -2118,10 +2061,12 @@ if obs_file:
 # Add experiments to flux gates
 for k, filename in enumerate(args):
     # id = re.search("id_(\b0*([1-9][0-9]*|0)\b)", filename).group(1)
-    id = int(filename.split("id_")[1].split("_")[0])
+    # pid = int(filename.split("id_")[1].split("_")[0])
+    id = k
     experiment = ExperimentDataset(id, filename, varname)
     for flux_gate in flux_gates:
         flux_gate.add_experiment(experiment)
+    # snapshots.append(tracemalloc.take_snapshot())
 
 
 # set the print mode
@@ -2149,9 +2094,14 @@ if obs_file:
     for gate in flux_gates:
         gate_name = "_".join([unidecode(gate.gate_name), "rmsd", varname])
         outname = ".".join([gate_name, "tex"]).replace(" ", "_")
-        # export_latex_table_rmsd(outname, gate)
+        export_latex_table_rmsd(outname, gate)
         gate_name = "_".join([unidecode(gate.gate_name), "pearson_r", varname])
-        outname = ".".join([gate_name, "tex"]).replace(" ", "_")
+        outname = ".".join([gate_name, "csv"]).replace(" ", "_")
+        ids = sorted(gate.p_ols, key=lambda x: gate.corr[x], reverse=True)
+        corrs = [gate.corr[x] for x in ids]
+        corrs_dict = dict(zip(ids, corrs))
+        export_csv_from_dict(outname, corrs_dict, header="id,correlation")
+        # outname = ".".join([gate_name, "tex"]).replace(" ", "_")
         # export_latex_table_corr(outname, gate)
     # write rmsd and person r figure per experiment
     for exp in flux_gates[0].experiments:
@@ -2160,215 +2110,103 @@ if obs_file:
         corrs = make_correlation_figure(outname, exp)
         exp_str = "_".join(["coors_experiment", str(exp.id), varname])
         outname = ".".join([exp_str, "csv"])
-        export_gate_table_pearson_r(outname, corrs)
+        export_csv_from_dict(outname, corrs, header="id,correlation")
         exp_str = "_".join(["rmsd_experiment", str(exp.id), varname])
         outname = ".".join([exp_str, "tex"])
         export_gate_table_rmsd(outname, exp)
 
-    # ugly way to find out how many glaciers we have of each type
-    # this is needed because we have have an np.nan correlation
-    n_isbrae = 0
-    n_ice_stream = 0
-    n_undetermined = 0
-    for gate in flux_gates:
-        if gate.flowtype == 0:
-            n_isbrae += 1
-        elif gate.flowtype == 1:
-            n_ice_stream += 1
-        else:
-            n_undetermined += 1
-    # print median correlation coefficients
-    corr_all = np.zeros((ng, ne))
-    corr_isbrae = np.zeros((n_isbrae, ne))
-    corr_ice_stream = np.zeros((n_ice_stream, ne))
-    corr_undetermined = np.zeros((n_undetermined, ne))
-    k, l, m, n = 0, 0, 0, 0
-    for gate in flux_gates:
-        corr_all[n, :] = list(gate.corr.values())
-        n += 1
-        if gate.flowtype == 0:
-            corr_isbrae[k, :] = list(gate.corr.values())
-            k += 1
-        elif gate.flowtype == 1:
-            corr_ice_stream[l, :] = list(gate.corr.values())
-            l += 1
-        else:
-            corr_undetermined[m, :] = list(gate.corr.values())
-            l += 1
+    experiments_df = []
+    experiments_isbrae_df = []
+    experiments_ice_stream_df = []
+    experiments_undetermined_df = []
+    for exp in range(ne):
+        names = [gate.gate_name for gate in flux_gates]
+        corrs = [gate.corr[exp] for gate in flux_gates]
+        rmsds = [gate.rmsd[exp] for gate in flux_gates]
+        Ns = [gate.N_rmsd[exp] for gate in flux_gates]
+        gl_types = [int(gate.glaciertype) for gate in flux_gates]
+        fl_types = [int(gate.flowtype) for gate in flux_gates]
+        d = {
+            "name": names,
+            "correlation": corrs,
+            "rmsd": rmsds,
+            "N": Ns,
+            "glacier_type": gl_types,
+            "flow_type": fl_types,
+        }
+        df = pa.DataFrame(d)
+        # Select glaciers with correlation above threshold
+        # df = df[df["correlation"] > pearson_r_threshold_high]
+        exp_rmsd_cum = np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+        experiments_df.append(df)
+        # It would be nice to select for flow types later, with something like:
+        #  [
+        # np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+        # for df in experiments_df if df[df["flow_type"] == 0]
+        # ]
+        #
+        experiments_isbrae_df.append(df[df["flow_type"] == 0])
+        experiments_ice_stream_df.append(df[df["flow_type"] == 1])
+        experiments_undetermined_df.append(df[df["flow_type"] == 2])
 
-    print("median(pearson r(all): {}".format(np.nanmedian(corr_all, axis=0)[0]))
-    print("median(pearson r(isbrae): {}".format(np.nanmedian(corr_isbrae, axis=0)[0]))
-    print("median(pearson r(ice-stream): {}".format(np.nanmedian(corr_ice_stream, axis=0)[0]))
-    print("median(pearson r(undetermined): {}".format(np.nanmedian(corr_undetermined, axis=0)[0]))
+        print("Experiment {}".format(exp))
+        print(
+            "  Number of glaciers with r(all) > {}: {}".format(
+                pearson_r_threshold_high, len(df[df["correlation"] > pearson_r_threshold_high])
+            )
+        )
+        print(
+            "  RMS difference {:4.0f}".format(
+                np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+            )
+        )
+        print("  median(pearson r(all): {:1.2f}".format(df["correlation"].median()))
+        print("  median(pearson r(isbrae): {:1.2f}".format(df[df["flow_type"] == 0]["correlation"].median()))
+        print("  median(pearson r(ice-stream): {:1.2f}".format(df[df["flow_type"] == 1]["correlation"].median()))
+        print("  median(pearson r(undetermined): {:1.2f}".format(df[df["flow_type"] == 2]["correlation"].median()))
 
-    # Calculate cumulative RMSD
-    observed_fluxes = np.array([x.observed_flux for x in flux_gates])
-    experiment_fluxes = np.zeros((ng, ne))
-    rmsd_cum = np.zeros((ne))
-    rmsd_isbrae_cum = np.zeros((ne))
-    rmsd_ice_stream_cum = np.zeros((ne))
-    rmsd_undetermined_cum = np.zeros((ne))
-    r2_cum = np.zeros((ne))
-    corr_cum = np.zeros((ne))
-    N_rmsd_tot = np.zeros((ne))
-    N_rmsd_isbrae_tot = np.zeros((ne))
-    N_rmsd_ice_stream_tot = np.zeros((ne))
-    N_rmsd_undetermined_tot = np.zeros((ne))
-    for n in gate.experiment_fluxes:
-        for m, my_gate in enumerate(flux_gates):
-            N_rmsd_tot[n] += my_gate.N_rmsd[n]
-            if my_gate.flowtype == 0:
-                N_rmsd_isbrae_tot[n] += my_gate.N_rmsd[n]
-            elif my_gate.flowtype == 1:
-                N_rmsd_ice_stream_tot[n] += my_gate.N_rmsd[n]
-            else:
-                N_rmsd_undetermined_tot[n] += my_gate.N_rmsd[n]
-    for m, my_gate in enumerate(flux_gates):
-        for n in gate.experiment_fluxes:
-            experiment_fluxes[m, n] = my_gate.experiment_fluxes[n]
-            rmsd_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-            r2_cum[n] += my_gate.r2[n] ** 2 * my_gate.N_rmsd[n]
-            corr_cum[n] += my_gate.corr[n] * my_gate.N_rmsd[n]
-            if my_gate.flowtype == 0:
-                rmsd_isbrae_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-            elif my_gate.flowtype == 1:
-                rmsd_ice_stream_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-            else:
-                rmsd_undetermined_cum[n] += my_gate.rmsd[n] ** 2 * my_gate.N_rmsd[n]
-
-    # Calculate cumulative values of rmsd, r2, and pearson r
+    # Calculate cumulative values of rms differences of all glaciers together
     rmsd_cum_dict = {}
     rmsd_isbrae_cum_dict = {}
     rmsd_ice_stream_cum_dict = {}
     rmsd_undetermined_cum_dict = {}
-    r2_cum_dict = {}
-    corr_cum_dict = {}
-    for n in range(ne):
-        rmsd_cum_dict[n] = np.sqrt((1.0 / N_rmsd_tot[n]) * rmsd_cum[n])
-        rmsd_isbrae_cum_dict[n] = np.sqrt((1.0 / N_rmsd_isbrae_tot[n]) * rmsd_isbrae_cum[n])
-        rmsd_ice_stream_cum_dict[n] = np.sqrt((1.0 / N_rmsd_ice_stream_tot[n]) * rmsd_ice_stream_cum[n])
-        rmsd_undetermined_cum_dict[n] = np.sqrt((1.0 / N_rmsd_undetermined_tot[n]) * rmsd_undetermined_cum[n])
-        r2_cum_dict[n] = np.sqrt((1.0 / N_rmsd_tot[n]) * r2_cum[n])
-        corr_cum_dict[n] = (1.0 / N_rmsd_tot[n]) * corr_cum[n]
+    keys = range(ne)
+    rmsd_cum = [
+        np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+        for df in experiments_df
+    ]
+    rmsd_cum_dict = dict(zip(keys, rmsd_cum))
 
+    rmsd_isbrae_cum = [
+        np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+        for df in experiments_isbrae_df
+    ]
+    rmsd_isbrae_cum_dict = dict(zip(keys, rmsd_isbrae_cum))
+
+    rmsd_ice_stream_cum = [
+        np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+        for df in experiments_isbrae_df
+    ]
+    rmsd_ice_stream_cum_dict = dict(zip(keys, rmsd_isbrae_cum))
+
+    rmsd_undetermined_cum = [
+        np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
+        for df in experiments_isbrae_df
+    ]
+    rmsd_undetermined_cum_dict = dict(zip(keys, rmsd_isbrae_cum))
     rmsd_cum_dict_sorted = sorted(iter(rmsd_cum_dict.items()), key=operator.itemgetter(1))
-    r2_cum_dict_sorted = sorted(iter(r2_cum_dict.items()), key=operator.itemgetter(1))
-    corr_cum_dict_sorted = sorted(iter(corr_cum_dict.items()), key=operator.itemgetter(1))
 
-    # Calculate error norm
-    gate_errors = np.array([x.sigma_obs for x in flux_gates])
-    gate_errors_N = np.array([x.sigma_obs_N for x in flux_gates])
-    N_error_tot = np.linalg.norm(gate_errors_N, 1)
-    error_sum = np.linalg.norm(gate_errors ** 2 * gate_errors_N, 1)
-    my_error = np.sqrt(1.0 / N_error_tot * error_sum)
-    i_units_cf = cf_units.Unit(gate.varname_units)
-    o_units_cf = cf_units.Unit(v_o_units)
-    total_error_norm = i_units_cf.convert(my_error, o_units_cf)
+    outname = ".".join(["rmsd_sorted", "csv"])
+    print(("  - saving {0}".format(outname)))
+    export_csv_from_dict(outname, dict(rmsd_cum_dict_sorted), header="id,rmsd")
 
-    # RMSD table
-    outname = ".".join(["rmsd_cum_table", "tex"])
-    print(("Saving {0}".format(outname)))
-    f = codecs.open(outname, "w", "utf-8")
-    f.write("\\begin{tabular} {l l ccccccccc }\n")
-    f.write("\\toprule \n")
-    f.write(
-        "Exp.  & Parameters  & $\\tilde r_{\\textrm{ib}}$ & $\\tilde r_{\\textrm{is}}$  & $\\tilde r$ & $\chi_{\\textrm{ib}}$ & inc. & $\chi_{\\textrm{is}}$ & inc. & $\chi$ & inc.\\\ \n"
-    )
-    f.write(
-        "  & & (-) & (-) & (-)  & ({}) & (\%) & ({}) & (\%) & ({}) & (\%)\\\ \n".format(
-            v_o_units_str_tex, v_o_units_str_tex, v_o_units_str_tex
-        )
-    )
-    f.write("\midrule\n")
-    for k, exp in enumerate(rmsd_cum_dict_sorted):
-        id = exp[0]
-        rmsd_cum = exp[1]
-        rmsd_isbrae_cum = rmsd_isbrae_cum_dict[id]
-        rmsd_ice_stream_cum = rmsd_ice_stream_cum_dict[id]
-        my_exp = flux_gates[0].experiments[id]
-        config = my_exp.config
-        corr = []
-        corr_isbrae = []
-        corr_ice_stream = []
-        for gate in flux_gates:
-            corr.append(gate.corr[id])
-            if gate.flowtype == 0:
-                corr_isbrae.append(gate.corr[id])
-            if gate.flowtype == 1:
-                corr_ice_stream.append(gate.corr[id])
-        corr_median = np.nanmedian(corr)
-        corr_isbrae_median = np.nanmedian(corr_isbrae)
-        corr_ice_stream_median = np.nanmedian(corr_ice_stream)
-        my_exp_str = ", ".join(
-            [
-                "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
-                for key in label_params
-            ]
-        )
-        if k == 0:
-            rmsd_cum_0 = rmsd_cum
-            rmsd_isbrae_cum_0 = rmsd_isbrae_cum
-            rmsd_ice_stream_cum_0 = rmsd_ice_stream_cum
-        if k == 0:
-            f.write(
-                " {:2.0f} & {} & {:2.2f} & {:2.2f} & {:2.2f} & {:1.0f} & & {:1.0f} & & {:1.0f} & \\\ \n".format(
-                    id,
-                    my_exp_str,
-                    corr_isbrae_median,
-                    corr_ice_stream_median,
-                    corr_median,
-                    rmsd_isbrae_cum,
-                    rmsd_ice_stream_cum,
-                    rmsd_cum,
-                )
-            )
-        else:
-            pc_inc = (rmsd_cum - rmsd_cum_0) / rmsd_cum_0 * 100
-            pc_isbrae_inc = (rmsd_isbrae_cum - rmsd_isbrae_cum_0) / rmsd_isbrae_cum_0 * 100
-            pc_ice_stream_inc = (rmsd_ice_stream_cum - rmsd_ice_stream_cum_0) / rmsd_ice_stream_cum_0 * 100
-            f.write(
-                " {:2.0f} & {} & {:2.2f}  & {:2.2f} & {:2.2f} & {:1.0f} & +{:2.0f} & {:1.0f} & +{:2.0f}  & {:1.0f} & +{:2.0f} \\\ \n".format(
-                    id,
-                    my_exp_str,
-                    corr_isbrae_median,
-                    corr_ice_stream_median,
-                    corr_median,
-                    rmsd_isbrae_cum,
-                    pc_isbrae_inc,
-                    rmsd_ice_stream_cum,
-                    pc_ice_stream_inc,
-                    rmsd_cum,
-                    pc_inc,
-                )
-            )
-    f.write("\\bottomrule\n")
-    f.write("\end{tabular}\n")
-    f.close()
+    corr = [df["correlation"].median() for df in experiments_df]
+    corr_dict = dict(zip(keys, corr))
+    corr_dict_sorted = sorted(iter(corr_dict.items()), key=operator.itemgetter(1), reverse=True)
 
-    # R table
-    outname = ".".join(["pearson_r_cum_table", "tex"])
-    print(("Saving {0}".format(outname)))
-    f = codecs.open(outname, "w", "utf-8")
-    f.write("\\begin{tabular} {l l c }\n")
-    f.write("\\toprule \n")
-    f.write("  & Parameters & r \\\ \n")
-    f.write("  & & (1) \\\ \n")
-    f.write("\midrule\n")
-    for k, exp in reverse_enumerate(corr_cum_dict_sorted):
-        id = exp[0]
-        corr_cum = exp[1]
-        my_exp = flux_gates[0].experiments[id]
-        config = my_exp.config
-        my_exp_str = ", ".join(
-            [
-                "=".join([params_dict[key]["abbr"], params_dict[key]["format"].format(config.get(key))])
-                for key in label_params
-            ]
-        )
-        f.write("Experiment {} & {} & {:1.2f}\\\ \n".format(id, my_exp_str, corr_cum))
-    f.write("\\bottomrule\n")
-    f.write("\end{tabular}\n")
-    f.close()
+    outname = ".".join(["pearson_r_sorted", "csv"])
+    print(("  - saving {0}".format(outname)))
+    export_csv_from_dict(outname, dict(corr_dict_sorted), header="id,correlation")
 
 
 gate = flux_gates[0]
