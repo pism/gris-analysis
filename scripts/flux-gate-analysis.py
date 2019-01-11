@@ -395,7 +395,7 @@ class FluxGate(object):
                 Definite integral as approximated by trapezoidal rule.
         """
 
-        # Due to the variable lenght of profiles, we have masked arrays, with
+        # Due to the variable length of profiles, we have masked arrays, with
         # masked values at the profile end. We can assume zero error here,
         # since it's not used for the computation
 
@@ -2119,6 +2119,8 @@ if obs_file:
     experiments_isbrae_df = []
     experiments_ice_stream_df = []
     experiments_undetermined_df = []
+    glaciers_above_threshold = []
+    lengths = [gate.length() for gate in flux_gates]
     for exp in range(ne):
         names = [gate.gate_name for gate in flux_gates]
         corrs = [gate.corr[exp] for gate in flux_gates]
@@ -2133,6 +2135,7 @@ if obs_file:
             "N": Ns,
             "glacier_type": gl_types,
             "flow_type": fl_types,
+            "length": lengths,
         }
         df = pa.DataFrame(d)
         # Select glaciers with correlation above threshold
@@ -2149,12 +2152,13 @@ if obs_file:
         experiments_ice_stream_df.append(df[df["flow_type"] == 1])
         experiments_undetermined_df.append(df[df["flow_type"] == 2])
 
+        no_glaciers_above_threshold = len(df[df["correlation"] > pearson_r_threshold_high])
+
         print("Experiment {}".format(exp))
         print(
-            "  Number of glaciers with r(all) > {}: {}".format(
-                pearson_r_threshold_high, len(df[df["correlation"] > pearson_r_threshold_high])
-            )
+            "  Number of glaciers with r(all) > {}: {}".format(pearson_r_threshold_high, no_glaciers_above_threshold)
         )
+        glaciers_above_threshold.append(no_glaciers_above_threshold)
         print(
             "  RMS difference {:4.0f}".format(
                 np.sqrt(np.sum(df["rmsd"].values ** 2 * df["N"].values) * (1.0 / df["N"].values.sum()))
@@ -2208,6 +2212,12 @@ if obs_file:
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(corr_dict_sorted), header="id,correlation")
 
+    glaciers_dict = dict(zip(keys, glaciers_above_threshold))
+    glaciers_dict_sorted = sorted(iter(glaciers_dict.items()), key=operator.itemgetter(1), reverse=True)
+
+    outname = ".".join(["glaciers_above_threshold", "csv"])
+    print(("  - saving {0}".format(outname)))
+    export_csv_from_dict(outname, dict(glaciers_dict_sorted), header="id,no_glaciers", fmt=["%i", "%i"])
 
 gate = flux_gates[0]
 # make a global regression figure
