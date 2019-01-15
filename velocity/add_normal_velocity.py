@@ -15,8 +15,6 @@ nc = NC(infile, "a")
 
 u = nc.variables["uvelsurf"]
 v = nc.variables["vvelsurf"]
-ex = nc.variables["uvelsurf_error"]
-ey = nc.variables["vvelsurf_error"]
 nx = nc.variables["nx"]
 ny = nc.variables["ny"]
 
@@ -26,12 +24,17 @@ if var not in nc.variables:
 else:
     v_n = nc.variables[var]
 v_n[:] = u[:] * nx[:] + v[:] * ny[:]
-var = "velsurf_normal_error"
-if var not in nc.variables:
-    v_n = nc.createVariable(var, "d", dimensions=u.dimensions, fill_value=-2.0e9)
-else:
-    v_n = nc.variables[var]
 
-v_n[:] = ex[:] * nx[:] + ey[:] * ny[:]
+if ('uvelsurf_error') and ('vvelsurf_error') in nc.variables:
+    ex = nc.variables["uvelsurf_error"]
+    ey = nc.variables["vvelsurf_error"]
+
+    var = "velsurf_normal_error"
+    if var not in nc.variables:
+        e_n = nc.createVariable(var, "d", dimensions=u.dimensions, fill_value=-2.0e9)
+    else:
+        e_n = nc.variables[var]
+
+    e_n[:] = ex[:] * nx[:] + ey[:] * ny[:]
 
 nc.close()
