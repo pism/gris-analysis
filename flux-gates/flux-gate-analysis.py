@@ -1683,7 +1683,7 @@ parser.add_argument(
     dest="colormap",
     nargs=4,
     help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Blues", "Sequential", 12, 0],
+    default=["Purples", "Sequential", 4, 0],
 )
 parser.add_argument(
     "--label_params",
@@ -1835,9 +1835,9 @@ try:
     from palettable import colorbrewer
 
     my_colors = colorbrewer.get_map(*colormap).mpl_colors
-    nc = len(my_colors)
+    ncol = len(my_colors)
     # Fall back: create as many colors as needed from colormap
-    if nc < na:
+    if ncol < na:
         try:
             cdict = plt.cm.datad[colormap[0]]
         except:
@@ -1864,72 +1864,72 @@ except:
     my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
     my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
 
-# Make this an option
-my_colors = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
+# # Make this an option
+# my_colors = [
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+# ]
 
-my_colors_light = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
+# my_colors_light = [
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+# ]
 
 nc = len(my_colors)
 ns = nc - na
@@ -2012,9 +2012,9 @@ except:
 profile_names = nc0.variables["profile_name"][:]
 flux_gates = []
 for pos_id, profile_name in enumerate(profile_names):
-    profile_axis = nc0.variables["profile"][pos_id]
-    profile_axis_units = nc0.variables["profile"].units
-    profile_axis_name = nc0.variables["profile"].long_name
+    profile_axis = nc0.variables["profile_axis"][pos_id]
+    profile_axis_units = nc0.variables["profile_axis"].units
+    profile_axis_name = nc0.variables["profile_axis"].long_name
     profile_id = int(nc0.variables["profile_id"][pos_id])
     try:
         clon = nc0.variables["clon"][pos_id]
