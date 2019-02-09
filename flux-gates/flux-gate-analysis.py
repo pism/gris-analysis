@@ -1683,7 +1683,7 @@ parser.add_argument(
     dest="colormap",
     nargs=4,
     help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Purples", "Sequential", 4, 0],
+    default=["Greens_6", "Sequential", 6, 0],
 )
 parser.add_argument(
     "--label_params",
@@ -1865,71 +1865,71 @@ except:
     my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
 
 # # Make this an option
-# my_colors = [
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-# ]
+my_colors = [
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+]
 
-# my_colors_light = [
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-# ]
+my_colors_light = [
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+    "#deebf7",
+    "#9ecae1",
+    "#3182bd",
+    "#efedf5",
+    "#bcbddc",
+    "#756bb1",
+    "#fee0d2",
+    "#fc9272",
+    "#de2d26",
+    "#e5f5e0",
+    "#a1d99b",
+    "#31a354",
+    "#fee6ce",
+    "#fdae6b",
+    "#e6550d",
+]
 
 nc = len(my_colors)
 ns = nc - na
@@ -2200,7 +2200,7 @@ if obs_file:
     rmsd_undetermined_cum_dict = dict(zip(keys, rmsd_isbrae_cum))
     rmsd_cum_dict_sorted = sorted(iter(rmsd_cum_dict.items()), key=operator.itemgetter(1))
 
-    outname = ".".join(["rmsd_sorted", "csv"])
+    outname = ".".join(["rmsd_sorted_{}".format(varname), "csv"])
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(rmsd_cum_dict_sorted), header="id,rmsd")
 
@@ -2208,14 +2208,14 @@ if obs_file:
     corr_dict = dict(zip(keys, corr))
     corr_dict_sorted = sorted(iter(corr_dict.items()), key=operator.itemgetter(1), reverse=True)
 
-    outname = ".".join(["pearson_r_sorted", "csv"])
+    outname = ".".join(["pearson_r_sorted_{}".format(varname), "csv"])
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(corr_dict_sorted), header="id,correlation")
 
     glaciers_dict = dict(zip(keys, glaciers_above_threshold))
     glaciers_dict_sorted = sorted(iter(glaciers_dict.items()), key=operator.itemgetter(1), reverse=True)
 
-    outname = ".".join(["glaciers_above_threshold", "csv"])
+    outname = ".".join(["glaciers_above_threshold_{}".format(varname), "csv"])
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(glaciers_dict_sorted), header="id,no_glaciers", fmt=["%i", "%i"])
 
