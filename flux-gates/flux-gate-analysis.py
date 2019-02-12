@@ -465,8 +465,9 @@ class FluxGate(object):
                     profile_axis_out,
                     obs_o_vals,
                     dash_style,
-                    color="0.35",
+                    color=obscolor,
                     markeredgewidth=markeredgewidth,
+                    markeredgecolor=markeredgecolor,
                     label=label,
                 )
 
@@ -546,6 +547,7 @@ class FluxGate(object):
                     dash_style,
                     color=my_color,
                     markeredgewidth=markeredgewidth,
+                    markeredgecolor=markeredgecolor,
                     label=label,
                 )
             labels.append(label)
@@ -598,7 +600,8 @@ class FluxGate(object):
                 ax.plot(profile_axis_out, obs_o_vals, "-", color="0.35")
             else:
                 ax.plot(profile_axis_out, obs_o_vals, "-", color="0.5")
-                ax.plot(profile_axis_out, obs_o_vals, dash_style, color="0.35", markeredgewidth=markeredgewidth)
+                ax.plot(profile_axis_out, obs_o_vals, dash_style, color=obscolor, markeredgewidth=markeredgewidth, markeredgecolor=markeredgecolor,
+)
         if plot_title:
             plt.title(gate_name, loc="left")
 
@@ -1683,7 +1686,7 @@ parser.add_argument(
     dest="colormap",
     nargs=4,
     help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Greens_6", "Sequential", 6, 0],
+    default=["Set1", "Qualitative", 6, 0],
 )
 parser.add_argument(
     "--label_params",
@@ -1864,72 +1867,72 @@ except:
     my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
     my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
 
-# # Make this an option
-my_colors = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
+# # # Make this an option
+# my_colors = [
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+# ]
 
-my_colors_light = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
+# my_colors_light = [
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+#     "#deebf7",
+#     "#9ecae1",
+#     "#3182bd",
+#     "#efedf5",
+#     "#bcbddc",
+#     "#756bb1",
+#     "#fee0d2",
+#     "#fc9272",
+#     "#de2d26",
+#     "#e5f5e0",
+#     "#a1d99b",
+#     "#31a354",
+#     "#fee6ce",
+#     "#fdae6b",
+#     "#e6550d",
+# ]
 
 nc = len(my_colors)
 ns = nc - na
@@ -1945,6 +1948,8 @@ dash_style = "o"
 numpoints = 1
 legend_frame_width = 0.25
 markeredgewidth = 0.2
+markeredgecolor = 'k'
+obscolor = "0.4"
 
 params_dict = {
     "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
