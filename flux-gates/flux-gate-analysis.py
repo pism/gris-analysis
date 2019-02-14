@@ -502,17 +502,18 @@ class FluxGate(object):
                         )
                         # label = ', '.join(['{:6.1f}'.format(self.experiment_fluxes[id]), '='.join(['r', '{:1.2f}'.format(self.corr[id])])])
                     elif legend == "exp":
-                        exp_str = ", ".join(
-                            [
-                                "=".join(
-                                    [
-                                        params_dict[key]["abbr"],
-                                        params_dict[key]["format"].format(config.get(key) * ice_density),
-                                    ]
-                                )
-                                for key in params
-                            ]
-                        )
+                        # # Use this 
+                        # exp_str = ", ".join(
+                        #     [
+                        #         "=".join(
+                        #             [
+                        #                 params_dict[key]["abbr"],
+                        #                 params_dict[key]["format"].format(config.get(key) * ice_density),
+                        #             ]
+                        #         )
+                        #         for key in params
+                        #     ]
+                        # )
                         exp_str = ", ".join(
                             [
                                 "=".join(
@@ -1867,73 +1868,6 @@ except:
     my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
     my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
 
-# # # Make this an option
-# my_colors = [
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-# ]
-
-# my_colors_light = [
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-#     "#deebf7",
-#     "#9ecae1",
-#     "#3182bd",
-#     "#efedf5",
-#     "#bcbddc",
-#     "#756bb1",
-#     "#fee0d2",
-#     "#fc9272",
-#     "#de2d26",
-#     "#e5f5e0",
-#     "#a1d99b",
-#     "#31a354",
-#     "#fee6ce",
-#     "#fdae6b",
-#     "#e6550d",
-# ]
-
 nc = len(my_colors)
 ns = nc - na
 my_colors = my_colors[ns::]
@@ -1952,6 +1886,7 @@ markeredgecolor = 'k'
 obscolor = "0.4"
 
 params_dict = {
+    "bed": {"abbr": "bed", "format": "{}"},
     "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
     "surface.pdd.factor_snow": {"abbr": "$f_{\mathregular{s}}$", "format": "{:1.0f}"},
     "basal_resistance.pseudo_plastic.q": {"abbr": "$q$", "format": "{:1.2f}"},
