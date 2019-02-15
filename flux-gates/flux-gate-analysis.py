@@ -16,6 +16,7 @@ import matplotlib.cm as cmx
 import matplotlib.colors as mplcolors
 from argparse import ArgumentParser
 import pandas as pa
+from palettable import colorbrewer
 import statsmodels.api as sm
 from netCDF4 import Dataset as NC
 import re
@@ -1033,7 +1034,7 @@ def make_correlation_figure(filename, exp):
     gate_id_sorted = [flux_gates[x].gate_id for x in sort_order]
     corrs_dict = dict(zip(gate_id_sorted, corrs_sorted))
     lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=1.2)
-    fig = plt.figure(figsize=[6.4, 6.4])
+    fig = plt.figure(figsize=[6.4, 12])
     ax = fig.add_subplot(111)
     height = 0.4
     y = np.arange(len(list(corrs.keys()))) + 1.25
@@ -1685,9 +1686,9 @@ parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float, help='''P
 parser.add_argument(
     "--colormap",
     dest="colormap",
-    nargs=4,
-    help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Set1", "Qualitative", 6, 0],
+    nargs=1,
+    help="""Name of matplotlib colormap""",
+    default="tab20c"
 )
 parser.add_argument(
     "--label_params",
@@ -1832,51 +1833,17 @@ else:
 na = len(args)
 shade = 0.15
 colormap = options.colormap
-# Convert str to int, or the bool to reverse will fail
-colormap[2] = int(colormap[2])
-colormap[3] = int(colormap[3])
-try:
-    from palettable import colorbrewer
-
-    my_colors = colorbrewer.get_map(*colormap).mpl_colors
-    ncol = len(my_colors)
-    # Fall back: create as many colors as needed from colormap
-    if ncol < na:
-        try:
-            cdict = plt.cm.datad[colormap[0]]
-        except:
-            # import and convert colormap
-            cdict = ppt.gmtColormap(colormap[0])
-        cmap = mpl.colors.LinearSegmentedColormap("my_colormap", cdict)
-        cNorm = mpl.colors.Normalize(vmin=0, vmax=na)
-        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
-        my_colors = []
-        for k in range(na):
-            my_color = scalarMap.to_rgba(k)
-            my_colors.append(tuple(my_color))
-    cc = mpl.colors.ColorConverter()
-    m, n = np.asarray(my_colors).shape
-    my_colors_light = []
-    for rgb in my_colors:
-        h, l, s = rgb_to_hls(*rgb[0:3])
-        l *= 1 + shade
-        l = min(0.9, l)
-        l = max(0, l)
-        my_colors_light.append(hls_to_rgb(h, l, s))
-except:
-    # This is a fall back if brewer2mpl is not installed
-    my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
-    my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
-
-nc = len(my_colors)
-ns = nc - na
-my_colors = my_colors[ns::]
-mcc = my_colors
-# mpl.rcParams['axes.color_cycle'] = my_colors
-
-# my_colors = my_colors[ns::]
-# my_colors_light = my_colors_light[ns::]
-
+# FIXME: make option
+cstride = 2
+my_colors = plt.get_cmap(colormap).colors[::cstride]
+my_colors_light = []
+for rgb in my_colors:
+    h, l, s = rgb_to_hls(*rgb[0:3])
+    l *= 1 + shade
+    l = min(0.9, l)
+    l = max(0, l)
+    my_colors_light.append(hls_to_rgb(h, l, s))
+    
 alpha = 0.75
 dash_style = "o"
 numpoints = 1
