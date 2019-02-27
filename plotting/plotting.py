@@ -28,7 +28,8 @@ except:
     from pypismtools.pypismtools import unit_converter
 
 prefix = "les_gcm"
-    
+
+
 def input_filename(prefix, rcp, year):
     return "2018_09_les/les_results/{prefix}_rcp{rcp}_{year}_sobel.txt".format(prefix=prefix, rcp=rcp, year=year)
 
@@ -37,6 +38,7 @@ def read_sobel_file(filename):
     print(filename)
     data = np.loadtxt(filename, usecols=(1,))
     return data
+
 
 def set_size(w, h, ax=None):
     """ w, h: width, height in inches """
@@ -248,8 +250,9 @@ parser.add_argument(
         "ctrl_mass_anim",
         "d_contrib_anim",
         "grid_res",
+        "pdfs",
         "random_flux",
-        "sobel", 
+        "sobel",
     ],
     default="les",
 )
@@ -559,6 +562,7 @@ def plot_profile_ts_combined():
 
     nc.close()
 
+
 def plot_profile_ts_animation():
 
     try:
@@ -611,8 +615,8 @@ def plot_profile_ts_animation():
             usurf_mask = usurf_vals < 100
             usurf_mask = np.logical_or((usurf_vals < topg_vals), thk_mask)
             usurf_vals = np.ma.array(usurf_vals, mask=usurf_mask)
-            ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color='0.5', linewidth=0.1)
-            ax[1].plot(profile_vals, speed_vals, color='0.5', linewidth=0.1)
+            ax[0].plot(profile_vals, speed_vals * thk_vals / 1e6, color="0.5", linewidth=0.1)
+            ax[1].plot(profile_vals, speed_vals, color="0.5", linewidth=0.1)
 
         colorVal = scalarMap.to_rgba(date[t])
         speed_vals = nc.variables["velsurf_mag"][k, t, :]
@@ -632,7 +636,9 @@ def plot_profile_ts_animation():
             ax[2].plot(profile_vals, usurf_vals, color="k", linewidth=0.3)
             bottom_vals = np.maximum(usurf_vals - thk_vals, topg_vals)
             ax[2].plot(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), color="k", linewidth=0.3)
-            ax[2].fill_between(profile_vals, np.ma.array(bottom_vals, mask=thk_mask), usurf_vals, color="#d9d9d9", linewidth=0.3)
+            ax[2].fill_between(
+                profile_vals, np.ma.array(bottom_vals, mask=thk_mask), usurf_vals, color="#d9d9d9", linewidth=0.3
+            )
             ax[2].fill_between(profile_vals, bottom_vals, usurf_vals, color="#bdbdbd", linewidth=0.3)
         except:
             pass
@@ -698,7 +704,7 @@ def plot_profile_ts_animation():
 
     nc.close()
 
-    
+
 def plot_ctrl_mass_anim(plot_var=mass_plot_var):
 
     rcp_26_file = [f for f in ifiles if "rcp_{}".format(26) in f][0]
@@ -816,7 +822,9 @@ def plot_d_contrib_anim(plot_var=mass_plot_var):
             ax.fill_between(date, enspctl84_vals, enspctl16_vals, color=rcp_col_dict[rcp], linewidth=lw, alpha=0.1)
             ax.plot(date[:frame], enspctl16_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw)
             ax.plot(date[:frame], enspctl84_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw)
-            ax.fill_between(date[:frame], enspctl84_vals[:frame], enspctl16_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw)
+            ax.fill_between(
+                date[:frame], enspctl84_vals[:frame], enspctl16_vals[:frame], color=rcp_col_dict[rcp], linewidth=lw
+            )
 
             ax.set_xlabel("Year")
             ax.set_ylabel("$\dot D_{\%}$ (%)")
@@ -1373,21 +1381,18 @@ def plot_forcing_mass(plot_var=mass_plot_var):
         fig2.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
 
-
-
 def plot_mass_contrib_d(plot_var=mass_plot_var):
 
     end_years = [992, 992, 992]
-
 
     for k, rcp in enumerate(rcp_list[::-1]):
 
         fig, ax = plt.subplots(2, 1, sharex="col", sharey="row", figsize=[3, 2])
         fig.subplots_adjust(hspace=0.05, wspace=0.30)
-        
+
         print("Cumulative Mass")
         plot_var = "limnsw"
-        
+
         print(("Reading RCP {} files".format(rcp)))
         rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and not ("tas" in f)]
 
@@ -1480,7 +1485,7 @@ def plot_mass_contrib_d(plot_var=mass_plot_var):
 
             ctrl_vals = cdf_ctrl.variables[plot_var][:]
             ax[1].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
-            
+
         if do_legend:
             legend = ax[1].legend(
                 loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
@@ -1519,16 +1524,13 @@ def plot_mass_contrib_d(plot_var=mass_plot_var):
             print("  - writing image %s ..." % out_file)
             fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
+
 def plot_sobel(plot_var=mass_plot_var):
 
     end_years = [992, 992, 992]
 
     categories = ["Climate", "Surface", "Ocean", "Ice Dynamics"]
-    category_col_dict = {"Climate": "#81c77f",
-                         "Surface": "#886c62",
-                         "Ocean": "#beaed4",
-                         "Ice Dynamics": "#dcd588"}
-
+    category_col_dict = {"Climate": "#81c77f", "Surface": "#886c62", "Ocean": "#beaed4", "Ice Dynamics": "#dcd588"}
 
     fig, ax = plt.subplots(len(rcp_list), 1, sharex="col", sharey="row", figsize=[3, 2])
     fig.subplots_adjust(hspace=0.2, wspace=0.30)
@@ -1552,31 +1554,44 @@ def plot_sobel(plot_var=mass_plot_var):
             ice[t] = mdata[9] + mdata[10]
 
         ax[k].fill_between(years, np.zeros(nt), climate, color=category_col_dict[categories[0]], label=categories[0])
-        ax[k].fill_between(years, climate, climate + surface, color=category_col_dict[categories[1]], label=categories[1])
-        ax[k].fill_between(years, climate + surface, climate + surface + ocean, color=category_col_dict[categories[2]], label=categories[2])
-        ax[k].fill_between(years, climate + surface + ocean, climate + surface + ocean + ice, color=category_col_dict[categories[3]], label=categories[3])
+        ax[k].fill_between(
+            years, climate, climate + surface, color=category_col_dict[categories[1]], label=categories[1]
+        )
+        ax[k].fill_between(
+            years,
+            climate + surface,
+            climate + surface + ocean,
+            color=category_col_dict[categories[2]],
+            label=categories[2],
+        )
+        ax[k].fill_between(
+            years,
+            climate + surface + ocean,
+            climate + surface + ocean + ice,
+            color=category_col_dict[categories[3]],
+            label=categories[3],
+        )
 
-        
         ax[k].set_ylim(0, 100)
         if time_bounds:
             ax[k].set_xlim(time_bounds[0], time_bounds[1])
-
 
         ymin, ymax = ax[1].get_ylim()
         ax[k].yaxis.set_major_formatter(FormatStrFormatter("%1.0f"))
         add_inner_title(ax[k], "{}".format(rcp_dict[rcp]), "upper left")
 
-        
     ax[1].set_ylabel("Variance (%)")
     ax[-1].set_xlabel("Year")
     if do_legend:
         legend = ax[-1].legend(
             ncol=4,
-            loc="upper left", edgecolor="0", bbox_to_anchor=(0.0, 0.0, 0, 0), bbox_transform=plt.gcf().transFigure
+            loc="upper left",
+            edgecolor="0",
+            bbox_to_anchor=(0.0, 0.0, 0, 0),
+            bbox_transform=plt.gcf().transFigure,
         )
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)
-
 
     if rotate_xticks:
         ticklabels = ax[1].get_xticklabels()
@@ -1589,7 +1604,6 @@ def plot_sobel(plot_var=mass_plot_var):
 
     if title is not None:
         plt.title(title)
-
 
     for out_format in out_formats:
         out_file = outfile + "_ts." + out_format
@@ -2110,6 +2124,43 @@ def plot_ctrl_mass(plot_var="limnsw"):
         fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
 
+def plot_pdfs():
+
+    years = [2100, 2200, 2300]
+    ranges_max = [55, 250, 450]
+    range_min = -1
+    for year, range_max in zip(years, ranges_max):
+
+        nbins = range_max - range_min
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        title = "Year {}".format(year)
+
+        for rcp in rcp_list:
+            sle = np.loadtxt("les_gcm_rcp{rcp}_{year}.csv".format(year=year, rcp=rcp), delimiter=",")[:, 1]
+            ax.hist(
+                sle, bins=nbins, range=[range_min, range_max], color=rcp_col_dict[rcp], label=rcp_dict[rcp], alpha=0.5
+            )
+
+        if do_legend:
+            legend = ax.legend(
+                loc="center right", edgecolor="0", bbox_to_anchor=(0.91, 0.63), bbox_transform=plt.gcf().transFigure
+            )
+            legend.get_frame().set_linewidth(0.0)
+            legend.get_frame().set_alpha(0.0)
+
+        ax.set_ylabel("Density")
+        ax.set_xlabel("$\Delta$(GMSL) (m)")
+        plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + "_pdf_" + str(year) + "." + out_format
+            print("  - writing image %s ..." % out_file)
+            fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
+
+
 if plot == "les":
     plot_les()
 elif plot == "forcing_mass":
@@ -2134,6 +2185,8 @@ elif plot == "grid_res":
     plot_grid_res()
 elif plot == "random_flux":
     plot_random_flux(plot_var="tendency_of_ice_mass_due_to_discharge")
+elif plot == "pdfs":
+    plot_pdfs()
 elif plot == "profile":
     plot_profile_ts_combined()
 elif plot == "profile_anim":
