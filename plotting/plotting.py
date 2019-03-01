@@ -250,6 +250,7 @@ parser.add_argument(
         "ctrl_mass_anim",
         "d_contrib_anim",
         "grid_res",
+        "pdfs",
         "random_flux",
         "sobel",
     ],
@@ -2146,6 +2147,43 @@ def plot_ctrl_mass(plot_var="limnsw"):
         fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
 
+def plot_pdfs():
+
+    years = [2100, 2200, 2300]
+    ranges_max = [55, 250, 450]
+    range_min = -1
+    for year, range_max in zip(years, ranges_max):
+
+        nbins = range_max - range_min
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        title = "Year {}".format(year)
+
+        for rcp in rcp_list:
+            sle = np.loadtxt("les_gcm_rcp{rcp}_{year}.csv".format(year=year, rcp=rcp), delimiter=",")[:, 1]
+            ax.hist(
+                sle, bins=nbins, range=[range_min, range_max], color=rcp_col_dict[rcp], label=rcp_dict[rcp], alpha=0.5
+            )
+
+        if do_legend:
+            legend = ax.legend(
+                loc="center right", edgecolor="0", bbox_to_anchor=(0.91, 0.63), bbox_transform=plt.gcf().transFigure
+            )
+            legend.get_frame().set_linewidth(0.0)
+            legend.get_frame().set_alpha(0.0)
+
+        ax.set_ylabel("Density")
+        ax.set_xlabel("$\Delta$(GMSL) (m)")
+        plt.title(title)
+
+        for out_format in out_formats:
+            out_file = outfile + "_pdf_" + str(year) + "." + out_format
+            print("  - writing image %s ..." % out_file)
+            fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
+
+
 if plot == "les":
     plot_les()
 elif plot == "forcing_mass":
@@ -2170,6 +2208,8 @@ elif plot == "grid_res":
     plot_grid_res()
 elif plot == "random_flux":
     plot_random_flux(plot_var="tendency_of_ice_mass_due_to_discharge")
+elif plot == "pdfs":
+    plot_pdfs()
 elif plot == "profile":
     plot_profile_ts_combined()
 elif plot == "profile_anim":
