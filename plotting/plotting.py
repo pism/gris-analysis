@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2017-18 Andy Aschwanden
+# Copyright (C) 2017-19 Andy Aschwanden
 
 from argparse import ArgumentParser
 import re
@@ -401,7 +401,7 @@ def plot_cmip5_rcp(plot_var="delta_T"):
             gcm_vals = np.squeeze(gcm_cdf.variables[plot_var][:])
             ax[k].plot(gcm_date, gcm_vals, label=gcm, color=line_colors[m], linewidth=0.4)
 
-        ensmean_file = [f for f in rcp_files if ("r1i1p1" in f) and ("ENSMEAN" in f)][0]
+        ensmean_file = [f for f in rcp_files if ("r1i1p1" in f) and ("ENSMEAN_" in f)][0]
         ensmean_cdf = cdo.readCdf(ensmean_file)
         t = ensmean_cdf.variables["time"][:]
         ensmean_date = np.arange(start_year + step, start_year + (len(t[:]) + 1) * step, step)
@@ -423,9 +423,13 @@ def plot_cmip5_rcp(plot_var="delta_T"):
     ax[2].set_xlabel("Year")
     ax[1].set_ylabel("T-anomaly (K)")
 
+    add_inner_title(ax[0], "A", "upper left")
+    add_inner_title(ax[1], "B", "upper left")
+    add_inner_title(ax[2], "C", "upper left")
+
     if do_legend:
         legend = ax[2].legend(
-            loc="lower left", edgecolor="0", bbox_to_anchor=(0.13, 0.16, 0, 0), bbox_transform=plt.gcf().transFigure
+            loc="lower left", edgecolor="0", bbox_to_anchor=(0.14, 0.16, 0, 0), bbox_transform=plt.gcf().transFigure
         )
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)
@@ -953,9 +957,9 @@ def plot_les(plot_var=mass_plot_var):
 
         rcp_files = [f for f in ifiles if "rcp{}".format(rcp) in f]
 
-        ensmin_file = [f for f in rcp_files if ("ENSMIN" in f) and ("tas" in f)][0]
-        ensmax_file = [f for f in rcp_files if ("ENSMAX" in f) and ("tas" in f)][0]
-        ensmean_file = [f for f in rcp_files if ("ENSMEAN" in f) and ("tas" in f)][0]
+        ensmin_file = [f for f in rcp_files if ("ENSMIN_" in f) and ("tas" in f)][0]
+        ensmax_file = [f for f in rcp_files if ("ENSMAX_" in f) and ("tas" in f)][0]
+        ensmean_file = [f for f in rcp_files if ("ENSMEAN_" in f) and ("tas" in f)][0]
         ensmin_cdf = cdo.readCdf(ensmin_file)
         ensmax_cdf = cdo.readCdf(ensmax_file)
         ensmean_cdf = cdo.readCdf(ensmean_file)
@@ -1252,9 +1256,9 @@ def plot_forcing_mass(plot_var=mass_plot_var):
 
         rcp_files = [f for f in ifiles if "rcp{}".format(rcp) in f]
 
-        ensmin_file = [f for f in rcp_files if ("ENSMIN" in f) and ("tas" in f)][0]
-        ensmax_file = [f for f in rcp_files if ("ENSMAX" in f) and ("tas" in f)][0]
-        ensmean_file = [f for f in rcp_files if ("ENSMEAN" in f) and ("tas" in f)][0]
+        ensmin_file = [f for f in rcp_files if ("ENSMIN_" in f) and ("tas" in f)][0]
+        ensmax_file = [f for f in rcp_files if ("ENSMAX_" in f) and ("tas" in f)][0]
+        ensmean_file = [f for f in rcp_files if ("ENSMEAN_" in f) and ("tas" in f)][0]
         ensmin_cdf = cdo.readCdf(ensmin_file)
         ensmax_cdf = cdo.readCdf(ensmax_file)
         ensmean_cdf = cdo.readCdf(ensmean_file)
@@ -1665,7 +1669,10 @@ def plot_flux_partitioning():
         area_vals = cdf.variables[area_var][:]
         area_iunits = cdf[area_var].units
 
-        mask = 1 - (area_vals[0] - area_vals) / area_vals[0] < 0.10
+        area_ntrl_vals = cdf_ntrl.variables[area_var][:]
+        area_ntrl_iunits = cdf_ntrl[area_var].units
+
+        mask = 1 - (area_vals[0] - area_vals) / area_vals[0] < 0.0  # set to zero
 
         tom_var = "dMdt"
         tom_vals = np.squeeze(cdf.variables[tom_var][:])
@@ -1689,7 +1696,7 @@ def plot_flux_partitioning():
         ru_vals = np.squeeze(cdf.variables[ru_var][:])
         ru_ntrl_vals = np.squeeze(cdf_ntrl.variables[ru_var][:])
         ru_s_vals = ru_vals / area_vals
-        ru_ntrl_s_vals = ru_ntrl_vals / area_vals
+        ru_ntrl_s_vals = ru_ntrl_vals / area_ntrl_vals
         ru_iunits = cdf[ru_var].units
         ru_vals = -unit_converter(ru_vals, ru_iunits, flux_ounits)
         ru_ntrl_iunits = cdf_ntrl[ru_var].units
@@ -1719,11 +1726,11 @@ def plot_flux_partitioning():
         b_s_ma_vals = np.ma.array(b_s_vals, mask=mask)
 
         la, = axa[0, m].plot(date, area_vals / 1e12, color="#084594", label="area")
-        axa[0, m].set_aspect(200, anchor="S", adjustable="box-forced")
+        axa[0, m].set_aspect(200, anchor="S")
         axa[0, m].set_title("{}".format(rcp_dict[rcp]))
 
         # Don't plot basal mass balance
-        b_vals = b_s_vals = 0
+        b_vals = b_s_vals = b_s_ma_vals = 0
 
         axa[1, m].fill_between(date, 0, snow_vals, color="#6baed6", label="accumulation", linewidth=0, alpha=alpha)
         lsn = axa[1, m].fill_between(date, 0, snow_vals, color="#6baed6", label="accumulation", linewidth=0)
@@ -1749,34 +1756,50 @@ def plot_flux_partitioning():
         axa[1, m].plot(date, b_vals + np.minimum(ru_vals, ru_ntrl_vals) + d_vals, color="#238b45", linewidth=0.3)
         lmb, = axa[1, m].plot(date, tom_vals, color="k", label="mass balance", linewidth=0.6)
 
-        axa[2, m].fill_between(date, 0, snow_s_vals, color="#6baed6", label="accumulation", linewidth=0, alpha=alpha)
+        # axa[2, m].fill_between(date, 0, snow_s_vals, color="#6baed6", label="accumulation", linewidth=0, alpha=alpha)
+        # lsn = axa[2, m].fill_between(date, 0, snow_s_ma_vals, color="#6baed6", label="accumulation", linewidth=0)
+        # axa[2, m].fill_between(
+        #     date, b_s_vals, b_s_vals + ru_s_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0, alpha=alpha
+        # )
+        # lruw = axa[2, m].fill_between(
+        #     date, b_s_vals, b_s_ma_vals + ru_s_ma_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0
+        # )
+        # axa[2, m].fill_between(
+        #     date,
+        #     b_s_vals,
+        #     b_s_vals + ru_ntrl_s_vals,
+        #     color="#fdae6b",
+        #     label="runoff (climate)",
+        #     linewidth=0,
+        #     alpha=alpha,
+        # )
+        # lrul = axa[2, m].fill_between(
+        #     date, b_s_ma_vals, b_s_ma_vals + ru_ntrl_s_ma_vals, color="#fdae6b", label="runoff (climate)", linewidth=0
+        # )
+        # axa[2, m].fill_between(
+        #     date,
+        #     b_s_vals + np.minimum(ru_s_vals, ru_ntrl_s_vals),
+        #     b_s_vals + np.minimum(ru_s_vals, ru_ntrl_s_vals) + d_s_vals,
+        #     color="#74c476",
+        #     label="discharge",
+        #     linewidth=0,
+        #     alpha=alpha,
+        # )
+        # ld = axa[2, m].fill_between(
+        #     date,
+        #     b_s_ma_vals + np.minimum(ru_s_ma_vals, ru_ntrl_s_ma_vals),
+        #     b_s_ma_vals + np.minimum(ru_s_ma_vals, ru_ntrl_s_ma_vals) + d_s_ma_vals,
+        #     color="#74c476",
+        #     label="discharge",
+        #     linewidth=0,
+        # )
+
         lsn = axa[2, m].fill_between(date, 0, snow_s_ma_vals, color="#6baed6", label="accumulation", linewidth=0)
-        axa[2, m].fill_between(
-            date, b_s_vals, b_s_vals + ru_s_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0, alpha=alpha
-        )
         lruw = axa[2, m].fill_between(
             date, b_s_vals, b_s_ma_vals + ru_s_ma_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0
         )
-        axa[2, m].fill_between(
-            date,
-            b_s_vals,
-            b_s_vals + ru_ntrl_s_vals,
-            color="#fdae6b",
-            label="runoff (climate)",
-            linewidth=0,
-            alpha=alpha,
-        )
         lrul = axa[2, m].fill_between(
             date, b_s_ma_vals, b_s_ma_vals + ru_ntrl_s_ma_vals, color="#fdae6b", label="runoff (climate)", linewidth=0
-        )
-        axa[2, m].fill_between(
-            date,
-            b_s_vals + np.minimum(ru_s_vals, ru_ntrl_s_vals),
-            b_s_vals + np.minimum(ru_s_vals, ru_ntrl_s_vals) + d_s_vals,
-            color="#74c476",
-            label="discharge",
-            linewidth=0,
-            alpha=alpha,
         )
         ld = axa[2, m].fill_between(
             date,
