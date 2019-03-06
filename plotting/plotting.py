@@ -991,9 +991,11 @@ def plot_les(plot_var=mass_plot_var):
         rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and not ("tas" in f)]
 
         pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
+        pctl50_file = [f for f in rcp_files if "enspctl50" in f][0]
         pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
 
         cdf_enspctl16 = cdo.readCdf(pctl16_file)
+        cdf_enspctl50 = cdo.readCdf(pctl50_file)
         cdf_enspctl84 = cdo.readCdf(pctl84_file)
         t = cdf_enspctl16.variables["time"][:]
 
@@ -1001,6 +1003,11 @@ def plot_les(plot_var=mass_plot_var):
         enspctl16_vals = cdf_enspctl16.variables[plot_var][:] - cdf_enspctl16.variables[plot_var][0]
         iunits = cdf_enspctl16[plot_var].units
         enspctl16_vals = -unit_converter(enspctl16_vals, iunits, mass_ounits) * gt2mSLE
+
+        enspctl50 = cdf_enspctl50.variables[plot_var][:]
+        enspctl50_vals = cdf_enspctl50.variables[plot_var][:] - cdf_enspctl16.variables[plot_var][0]
+        iunits = cdf_enspctl50[plot_var].units
+        enspctl50_vals = -unit_converter(enspctl50_vals, iunits, mass_ounits) * gt2mSLE
 
         enspctl84 = cdf_enspctl84.variables[plot_var][:]
         enspctl84_vals = cdf_enspctl84.variables[plot_var][:] - cdf_enspctl84.variables[plot_var][0]
@@ -1014,6 +1021,8 @@ def plot_les(plot_var=mass_plot_var):
 
         ax[1].plot(date[:], enspctl16_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
 
+        ax[1].plot(date[:], enspctl50_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+
         ax[1].plot(date[:], enspctl84_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
 
         if ctrl_file is not None:
@@ -1026,7 +1035,7 @@ def plot_les(plot_var=mass_plot_var):
             ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
             iunits = cdf_ctrl[plot_var].units
             ctrl_vals = -unit_converter(ctrl_vals, iunits, mass_ounits) * gt2mSLE
-            ax[1].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+            ax[1].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="dashed", linewidth=0.25)
 
     print("Mass Loss Rate")
     plot_var = "tendency_of_ice_mass_glacierized"
@@ -1036,19 +1045,34 @@ def plot_les(plot_var=mass_plot_var):
         rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and not ("tas" in f)]
 
         pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
+        pctl50_file = [f for f in rcp_files if "enspctl50" in f][0]
         pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
 
         cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
+        cdf_enspctl50 = cdo.runmean(runmean_window, input=pctl50_file, returnCdf=True, options=pthreads)
         cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
+
+        # cdf_enspctl16 = cdo.readCdf(pctl16_file)
+        # cdf_enspctl50 = cdo.readCdf(pctl50_file)
+        # cdf_enspctl84 = cdo.readCdf(pctl84_file)
+
         t = cdf_enspctl16.variables["time"][:]
 
         enspctl16 = cdf_enspctl16.variables[plot_var][:]
         enspctl16_vals = cdf_enspctl16.variables[plot_var][:] - cdf_enspctl16.variables[plot_var][0]
+        enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
         iunits = cdf_enspctl16[plot_var].units
         enspctl16_vals = -unit_converter(enspctl16_vals, iunits, flux_ounits) * gt2mmSLE
 
+        enspctl50 = cdf_enspctl50.variables[plot_var][:]
+        enspctl50_vals = cdf_enspctl50.variables[plot_var][:] - cdf_enspctl50.variables[plot_var][0]
+        enspctl50_vals = cdf_enspctl50.variables[plot_var][:]
+        iunits = cdf_enspctl50[plot_var].units
+        enspctl50_vals = -unit_converter(enspctl50_vals, iunits, flux_ounits) * gt2mmSLE
+
         enspctl84 = cdf_enspctl84.variables[plot_var][:]
         enspctl84_vals = cdf_enspctl84.variables[plot_var][:] - cdf_enspctl84.variables[plot_var][0]
+        enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
         iunits = cdf_enspctl84[plot_var].units
         enspctl84_vals = -unit_converter(enspctl84_vals, iunits, flux_ounits) * gt2mmSLE
 
@@ -1059,6 +1083,8 @@ def plot_les(plot_var=mass_plot_var):
 
         ax[2].plot(date[:], enspctl16_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
 
+        ax[2].plot(date[:], enspctl50_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+
         ax[2].plot(date[:], enspctl84_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.20)
 
         if ctrl_file is not None:
@@ -1068,10 +1094,10 @@ def plot_les(plot_var=mass_plot_var):
             ctrl_t = cdf_ctrl.variables["time"][:]
             cdf_date = np.arange(start_year + step, start_year + (len(ctrl_t[:]) + 1), step)
 
-            ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
+            ctrl_vals = cdf_ctrl.variables[plot_var][:]
             iunits = cdf_ctrl[plot_var].units
             ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
-            ax[2].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+            ax[2].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="dashed", linewidth=0.25)
 
     print("Discharge Contribution Absolute")
     plot_var = "discharge_contrib"
@@ -1081,15 +1107,24 @@ def plot_les(plot_var=mass_plot_var):
         rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and ("flux_absolute" in f)]
 
         pctl16_file = [f for f in rcp_files if ("enspctl16" in f)][0]
+        pctl50_file = [f for f in rcp_files if ("enspctl50" in f)][0]
         pctl84_file = [f for f in rcp_files if ("enspctl84" in f)][0]
 
         cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
+        cdf_enspctl50 = cdo.runmean(runmean_window, input=pctl50_file, returnCdf=True, options=pthreads)
         cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
+
         t = cdf_enspctl16.variables["time"][:]
+
         enspctl16 = cdf_enspctl16.variables[plot_var][:]
         enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
         iunits = cdf_enspctl16[plot_var].units
         enspctl16_vals = -unit_converter(enspctl16_vals, iunits, flux_ounits) * gt2mmSLE
+
+        enspctl50 = cdf_enspctl50.variables[plot_var][:]
+        enspctl50_vals = cdf_enspctl50.variables[plot_var][:]
+        iunits = cdf_enspctl50[plot_var].units
+        enspctl50_vals = -unit_converter(enspctl50_vals, iunits, flux_ounits) * gt2mmSLE
 
         enspctl84 = cdf_enspctl84.variables[plot_var][:]
         enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
@@ -1117,6 +1152,15 @@ def plot_les(plot_var=mass_plot_var):
 
         ax[3].plot(
             date[: end_years[k]],
+            enspctl50_vals[: end_years[k]],
+            color=rcp_col_dict[rcp],
+            label=rcp_dict[rcp],
+            linestyle="solid",
+            linewidth=lw,
+        )
+
+        ax[3].plot(
+            date[: end_years[k]],
             enspctl84_vals[: end_years[k]],
             color=rcp_col_dict[rcp],
             linestyle="solid",
@@ -1136,9 +1180,7 @@ def plot_les(plot_var=mass_plot_var):
             iunits = cdf_ctrl[plot_var].units
             ctrl_vals = -unit_converter(ctrl_vals, iunits, flux_ounits) * gt2mmSLE
 
-            ax[3].plot(
-                ctrl_date[:], ctrl_vals, color=rcp_col_dict[rcp], label=rcp_dict[rcp], linestyle="solid", linewidth=lw
-            )
+            ax[3].plot(ctrl_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="dashed", linewidth=0.25)
 
     print("Discharge Contribution Relative")
     plot_var = "discharge_contrib"
@@ -1146,14 +1188,19 @@ def plot_les(plot_var=mass_plot_var):
 
         rcp_files = [f for f in ifiles if ("rcp_{}".format(rcp) in f) and ("flux_percent" in f)]
         pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
+        pctl50_file = [f for f in rcp_files if "enspctl50" in f][0]
         pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
 
         cdf_enspctl16 = cdo.runmean(runmean_window, input=pctl16_file, returnCdf=True, options=pthreads)
+        cdf_enspctl50 = cdo.runmean(runmean_window, input=pctl50_file, returnCdf=True, options=pthreads)
         cdf_enspctl84 = cdo.runmean(runmean_window, input=pctl84_file, returnCdf=True, options=pthreads)
         t = cdf_enspctl16.variables["time"][:]
 
         enspctl16 = cdf_enspctl16.variables[plot_var][:]
         enspctl16_vals = cdf_enspctl16.variables[plot_var][:]
+
+        enspctl50 = cdf_enspctl50.variables[plot_var][:]
+        enspctl50_vals = cdf_enspctl50.variables[plot_var][:]
 
         enspctl84 = cdf_enspctl84.variables[plot_var][:]
         enspctl84_vals = cdf_enspctl84.variables[plot_var][:]
@@ -1178,6 +1225,14 @@ def plot_les(plot_var=mass_plot_var):
 
         ax[4].plot(
             date[: end_years[k]],
+            enspctl50_vals[: end_years[k]],
+            color=rcp_col_dict[rcp],
+            linestyle="solid",
+            linewidth=lw,
+        )
+
+        ax[4].plot(
+            date[: end_years[k]],
             enspctl84_vals[: end_years[k]],
             color=rcp_col_dict[rcp],
             linestyle="solid",
@@ -1191,7 +1246,7 @@ def plot_les(plot_var=mass_plot_var):
             cdf_date = np.arange(start_year + step, start_year + (len(ctrl_t[:]) + 1), step)
 
             ctrl_vals = cdf_ctrl.variables[plot_var][:]
-            ax[4].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+            ax[4].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="dashed", linewidth=0.25)
     if do_legend:
         legend = ax[3].legend(
             loc="upper right", edgecolor="0", bbox_to_anchor=(0, 0, 0.92, 0.58), bbox_transform=plt.gcf().transFigure
