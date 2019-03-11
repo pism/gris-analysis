@@ -1886,11 +1886,13 @@ def plot_flux_partitioning():
     axa[2, 0].set_ylabel("Rate\n(kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)")
     axa[3, 0].set_ylabel("Ratio\n(%)")
 
-    axa[2, 0].set_ylim(-12000, 4000)
+    # axa[3, 0].set_yscale("log")
+
+    axa[2, 0].set_ylim(-11200, 3000)
     axm = axa[2, 2].twinx()
     ymi, yma = axa[2, 2].get_ylim()
     axm.set_ylim(ymi / 910.0, yma / 910.0)
-    axm.set_yticks([-10, -6, -4, -2, 0, 2, 4])
+    axm.set_yticks([-10, -5, 0, 2])
     axm.set_ylabel("(m yr$^{\mathregular{-1}}$ ice equiv.)")
 
     legend = axa[0, 0].legend(
