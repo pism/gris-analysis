@@ -357,7 +357,7 @@ flux_plot_var = "tendendy_of_ice_mass_due_to_discharge"
 runmean_window = 11
 
 
-def add_inner_title(ax, title, loc, size=None, **kwargs):
+def add_inner_title(ax, title, loc, size=9, **kwargs):
     """
     Adds an inner title to a given axis, with location loc.
 
@@ -366,7 +366,7 @@ def add_inner_title(ax, title, loc, size=None, **kwargs):
     from matplotlib.offsetbox import AnchoredText
     from matplotlib.patheffects import withStroke
 
-    prop = dict(size=plt.rcParams["legend.fontsize"], weight="bold")
+    prop = dict(size=size, weight="bold")
     at = AnchoredText(title, loc=loc, prop=prop, pad=0.0, borderpad=0.5, frameon=False, **kwargs)
     ax.add_artist(at)
     return at
@@ -374,7 +374,7 @@ def add_inner_title(ax, title, loc, size=None, **kwargs):
 
 def plot_cmip5_rcp(plot_var="delta_T"):
 
-    fig, ax = plt.subplots(3, 1, sharex="col", figsize=[6, 4])
+    fig, ax = plt.subplots(3, 1, sharex="col", figsize=[4.75, 3.5])
     fig.subplots_adjust(hspace=0.25, wspace=0.05)
 
     for k, rcp in enumerate(rcp_list[:]):
@@ -867,7 +867,7 @@ def plot_grid_res(plot_var="tendency_of_ice_mass_due_to_discharge"):
 
     for k, rcp in enumerate(["45"]):
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=[4.25, 1.75])
         offset = transforms.ScaledTranslation(dx, dy, fig.dpi_scale_trans)
         ax = fig.add_subplot(111)
 
@@ -886,7 +886,7 @@ def plot_grid_res(plot_var="tendency_of_ice_mass_due_to_discharge"):
 
             date = np.arange(start_year + step, start_year + (len(t[:]) + 1), step)
 
-            ax.plot(date[:], vals, color=res_col_dict[dr], alpha=0.5, linewidth=0.3)
+            ax.plot(date[:], vals, color=res_col_dict[dr], alpha=0.5, linewidth=0.35)
 
         for m_file in rcp_files:
             dr = re.search("gris_g(.+?)m", m_file).group(1)
@@ -948,7 +948,7 @@ def plot_grid_res(plot_var="tendency_of_ice_mass_due_to_discharge"):
 
 def plot_les(plot_var=mass_plot_var):
 
-    fig, ax = plt.subplots(5, 1, sharex="col", sharey="row", figsize=[3, 4])
+    fig, ax = plt.subplots(5, 1, sharex="col", sharey="row", figsize=[4.75, 5.25])
     fig.subplots_adjust(hspace=0.05, wspace=0.30)
 
     print("Forcing")
@@ -1249,7 +1249,7 @@ def plot_les(plot_var=mass_plot_var):
             ax[4].plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="dashed", linewidth=0.25)
     if do_legend:
         legend = ax[3].legend(
-            loc="upper right", edgecolor="0", bbox_to_anchor=(0, 0, 0.92, 0.58), bbox_transform=plt.gcf().transFigure
+            loc="upper right", edgecolor="0", bbox_to_anchor=(0, 0, 0.88, 0.57), bbox_transform=plt.gcf().transFigure
         )
         legend.get_frame().set_linewidth(0.0)
         legend.get_frame().set_alpha(0.0)
@@ -1289,7 +1289,8 @@ def plot_les(plot_var=mass_plot_var):
     if title is not None:
         plt.title(title)
 
-    # set_size(2.44, 0.86)
+    # 1 column
+    # set_size(2.25, 4.25)
 
     for out_format in out_formats:
         out_file = outfile + "_rcp_les." + out_format
@@ -1700,8 +1701,8 @@ def plot_random_flux(plot_var=flux_plot_var):
 
 def plot_flux_partitioning():
 
-    fig, axa = plt.subplots(4, 3, sharex="col", sharey="row", figsize=[6, 4])
-    fig.subplots_adjust(hspace=0.05, wspace=0.05)
+    fig, axa = plt.subplots(3, 3, sharex="col", sharey="row", figsize=[4.25, 3.75])
+    fig.subplots_adjust(hspace=0.04, wspace=0.04)
 
     for k, rcp in enumerate(rcp_list):
         if rcp == "26":
@@ -1811,44 +1812,6 @@ def plot_flux_partitioning():
         axa[1, m].plot(date, b_vals + np.minimum(ru_vals, ru_ntrl_vals) + d_vals, color="#238b45", linewidth=0.3)
         lmb, = axa[1, m].plot(date, tom_vals, color="k", label="mass balance", linewidth=0.6)
 
-        # axa[2, m].fill_between(date, 0, snow_s_vals, color="#6baed6", label="accumulation", linewidth=0, alpha=alpha)
-        # lsn = axa[2, m].fill_between(date, 0, snow_s_ma_vals, color="#6baed6", label="accumulation", linewidth=0)
-        # axa[2, m].fill_between(
-        #     date, b_s_vals, b_s_vals + ru_s_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0, alpha=alpha
-        # )
-        # lruw = axa[2, m].fill_between(
-        #     date, b_s_vals, b_s_ma_vals + ru_s_ma_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0
-        # )
-        # axa[2, m].fill_between(
-        #     date,
-        #     b_s_vals,
-        #     b_s_vals + ru_ntrl_s_vals,
-        #     color="#fdae6b",
-        #     label="runoff (climate)",
-        #     linewidth=0,
-        #     alpha=alpha,
-        # )
-        # lrul = axa[2, m].fill_between(
-        #     date, b_s_ma_vals, b_s_ma_vals + ru_ntrl_s_ma_vals, color="#fdae6b", label="runoff (climate)", linewidth=0
-        # )
-        # axa[2, m].fill_between(
-        #     date,
-        #     b_s_vals + np.minimum(ru_s_vals, ru_ntrl_s_vals),
-        #     b_s_vals + np.minimum(ru_s_vals, ru_ntrl_s_vals) + d_s_vals,
-        #     color="#74c476",
-        #     label="discharge",
-        #     linewidth=0,
-        #     alpha=alpha,
-        # )
-        # ld = axa[2, m].fill_between(
-        #     date,
-        #     b_s_ma_vals + np.minimum(ru_s_ma_vals, ru_ntrl_s_ma_vals),
-        #     b_s_ma_vals + np.minimum(ru_s_ma_vals, ru_ntrl_s_ma_vals) + d_s_ma_vals,
-        #     color="#74c476",
-        #     label="discharge",
-        #     linewidth=0,
-        # )
-
         lsn = axa[2, m].fill_between(date, 0, snow_s_ma_vals, color="#6baed6", label="accumulation", linewidth=0)
         lruw = axa[2, m].fill_between(
             date, b_s_vals, b_s_ma_vals + ru_s_ma_vals, color="#fb6a4a", label="runoff (elevation)", linewidth=0
@@ -1874,19 +1837,11 @@ def plot_flux_partitioning():
         )
         lmb, = axa[2, m].plot(date, tom_s_vals, color="k", label="mass balance", linewidth=0.6)
 
-        axa[3, m].axhline(100, color="k", linestyle="dotted")
-        axa[3, m].plot(date, -ru_vals / snow_vals * 100, color="#cb181d", label="runoff (total)", linewidth=0.4)
-        axa[3, m].plot(date, -d_vals / snow_vals * 100, color="#238b45", label="discharge", linewidth=0.4)
-        axa[3, m].plot(date, -tom_vals / snow_vals * 100, color="#000000", label="mass balance", linewidth=0.6)
-
-        axa[3, m].set_xlabel("Year")
+        axa[2, m].set_xlabel("Year")
 
     axa[0, 0].set_ylabel("Area\n(10$^{6}$ km$^{\mathregular{2}}$)")
     axa[1, 0].set_ylabel("Rate\n(Gt yr$^{\mathregular{-1}}$)")
-    axa[2, 0].set_ylabel("Rate\n(kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)")
-    axa[3, 0].set_ylabel("Ratio\n(%)")
-
-    # axa[3, 0].set_yscale("log")
+    axa[2, 0].set_ylabel("Rate per Unit Area\n(kg m$^{\mathregular{-2}}$ yr$^{\mathregular{-1}}$)")
 
     axa[2, 0].set_ylim(-11200, 3000)
     axm = axa[2, 2].twinx()
@@ -1894,20 +1849,6 @@ def plot_flux_partitioning():
     axm.set_ylim(ymi / 910.0, yma / 910.0)
     axm.set_yticks([-10, -5, 0, 2])
     axm.set_ylabel("(m yr$^{\mathregular{-1}}$ ice equiv.)")
-
-    legend = axa[0, 0].legend(
-        handles=[la],
-        loc="lower left",
-        ncol=1,
-        labelspacing=0.01,
-        handlelength=1.5,
-        columnspacing=1,
-        edgecolor="0",
-        bbox_to_anchor=(0.205, 0.72, 0, 0),
-        bbox_transform=plt.gcf().transFigure,
-    )
-    legend.get_frame().set_linewidth(0.0)
-    legend.get_frame().set_alpha(0.0)
 
     legend = axa[2, 0].legend(
         handles=[lsn, lrul, lruw, ld, lmb],
@@ -1917,27 +1858,14 @@ def plot_flux_partitioning():
         handlelength=1.5,
         columnspacing=1,
         edgecolor="0",
-        bbox_to_anchor=(0.205, 0.48, 0, 0),
-        bbox_transform=plt.gcf().transFigure,
-    )
-    legend.get_frame().set_linewidth(0.0)
-    legend.get_frame().set_alpha(0.0)
-
-    legend = axa[3, 0].legend(
-        loc="lower left",
-        ncol=1,
-        labelspacing=0.1,
-        handlelength=1.5,
-        columnspacing=1,
-        edgecolor="0",
-        bbox_to_anchor=(0.205, 0.18, 0, 0),
+        bbox_to_anchor=(0.13, 0.15, 0, 0),
         bbox_transform=plt.gcf().transFigure,
     )
     legend.get_frame().set_linewidth(0.0)
     legend.get_frame().set_alpha(0.0)
 
     if time_bounds:
-        for o in range(0, 3):
+        for o in range(0, 2):
             for p in range(0, 3):
                 axa[o, p].set_xlim(time_bounds[0], time_bounds[1])
 
@@ -1952,9 +1880,6 @@ def plot_flux_partitioning():
     add_inner_title(axa[2, 0], "G", "lower left")
     add_inner_title(axa[2, 1], "H", "lower left")
     add_inner_title(axa[2, 2], "I", "lower left")
-    add_inner_title(axa[3, 0], "J", "upper left")
-    add_inner_title(axa[3, 1], "K", "upper left")
-    add_inner_title(axa[3, 2], "L", "upper left")
 
     if rotate_xticks:
         for o, p in list(range(0, 2)), list(range(0, 2)):
