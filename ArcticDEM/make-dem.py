@@ -1,23 +1,24 @@
 #!/usr/bin/env python
-# (c) 2018, Andy Aschwanden
+# (c) 2018-19 Andy Aschwanden
 
 
-import numpy as np
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import csv
 import gdal
 from glob import glob
 import multiprocessing as mp
-import tarfile
-import wget
+import numpy as np
 from os.path import basename, join, realpath, dirname, exists, split, splitext, isfile
 from os import mkdir
+import re
+import tarfile
+import wget
 script_path = dirname(realpath(__file__))
 
 
 def dem_files(members):
     for tarinfo in members:
-        if tarinfo.name.find('reg_dem.tif') != -1:
+        if tarinfo.name.find('_dem.tif') != -1:
             yield tarinfo
 
 
@@ -26,9 +27,8 @@ def extract_tar(file, dem_dir=None):
     Extract DEM files from archive
     '''
     print("Extracting DEM from file {}".format(file))
-    tar = tarfile.open(file)
-    tar.extractall(path=dem_dir, members=dem_files(tar))
-    tar.close()
+    with tarfile.open(file) as tar:
+        tar.extractall(path=dem_dir, members=dem_files(tar))
 
 
 def process_file(tasks, dem_files, dem_hs_files, process_name, options_dict, zf, multiDirectional, tile_pyramid_levels, tar_dir, dem_dir):
@@ -45,27 +45,35 @@ def process_file(tasks, dem_files, dem_hs_files, process_name, options_dict, zf,
             break
         else:
             out_file = join(tar_dir, wget.filename_from_url(url))
-            if options_dict['download']:
-                print('Processing file {}'.format(url))
-                out_file = wget.download(url, out=tar_dir)
-            if options_dict['extract']:
-                extract_tar(out_file, dem_dir=dem_dir)
             m_file = basename(out_file)
             root, ext = splitext(m_file)
             if ext == '.gz':
                 root, ext = splitext(root)
             m_file = join(dem_dir, root + '_reg_dem.tif')
+            m_ovr_file = join(m_file, ".ovr")
             m_hs_file = join(dem_dir, root + '_reg_dem_hs.tif')
+            m_hs_ovr_file = join(m_hs_file, ".ovr")
+            if options_dict['download']:
+                if not exists(out_file) or overwrite:
+                    print('Processing file {}'.format(url))
+                    out_file = wget.download(url, out=tar_dir)
+            if options_dict['extract']:
+                # Only extract if DEM file does not exists
+                # FIXME this extracts all files??
+                extract_tar(out_file, dem_dir=dem_dir)
             if options_dict['build_tile_overviews']:
-                calc_stats_and_overviews(m_file, tile_pyramid_levels)
+                if not exists(m_ovr_file) or overwrite:
+                    calc_stats_and_overviews(m_file, tile_pyramid_levels)
             if options_dict['build_tile_hillshade']:
-                create_hillshade(m_file, m_hs_file, zf, multiDirectional)
+                if not exists(m_hs_file) or overwrite:
+                    create_hillshade(m_file, m_hs_file, zf, multiDirectional)
             if options_dict['build_tile_hillshade_overviews']:
-                calc_stats_and_overviews(m_hs_file, tile_pyramid_levels)
+                if not exists(m_hs_ovr_file) or overwrite:
+                    calc_stats_and_overviews(m_hs_file, tile_pyramid_levels)
             dem_files.put(m_file)
             dem_hs_files.put(m_hs_file)
     return
-
+    
 
 def get_fileurls(file):
     '''
@@ -73,8 +81,7 @@ def get_fileurls(file):
     '''
     with open(file) as f:
         reader = csv.DictReader(f)
-        data = [row for row in reader]
-    fileurls = [x['fileurl'] for x in data]
+        fileurls = [row["fileurl"] for row in reader]
     return fileurls
 
 
@@ -166,7 +173,7 @@ def create_hillshade(srcDS, destName, zf, multiDirectional):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.description = "Create Virtual Raster DEM from ArcticDEM tiles."
+    parser.description = "Create Virtual Raster DEM from ArcticDEM tiles or stripes."
     parser.add_argument("-l",  "--levels", dest="vrt_levels",
                         help="Comma seperated list of overview levels used for the Virtual Raster. Default: 16,32,64,128,256,512,1024",
                         default='16,32,64,128,256,512,1024')
@@ -196,8 +203,11 @@ if __name__ == "__main__":
                                  'build_vrt_hillshade',
                                  'build_vrt_hillshade_overviews',
                                  'none'])
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing files",
+                        default=False)
     parser.add_argument("-o", "--outname_prefix", dest="outname_prefix",
-                        help="Prefix of the output Virtual Raster file {outname}-{resolution}m.vrt. Default='gris-dem'",
+                        help="Prefix of the output Virtual Raster file {outname}.vrt. Default='gris-dem'",
                         default='gris-dem')
     parser.add_argument("--tar_dir", dest="tar_dir",
                         help="Directory to store the tar files. Default='tar_files'",
@@ -230,6 +240,7 @@ if __name__ == "__main__":
     zf = options.zf
     multiDirectional = options.multiDirectional
     process_options = options.process_options
+    overwrite = options.overwrite
 
     if process_options == 'all':
         for k in options_dict:

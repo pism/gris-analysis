@@ -16,6 +16,7 @@ import matplotlib.cm as cmx
 import matplotlib.colors as mplcolors
 from argparse import ArgumentParser
 import pandas as pa
+from palettable import colorbrewer
 import statsmodels.api as sm
 from netCDF4 import Dataset as NC
 import re
@@ -465,8 +466,9 @@ class FluxGate(object):
                     profile_axis_out,
                     obs_o_vals,
                     dash_style,
-                    color="0.35",
+                    color=obscolor,
                     markeredgewidth=markeredgewidth,
+                    markeredgecolor=markeredgecolor,
                     label=label,
                 )
 
@@ -501,17 +503,18 @@ class FluxGate(object):
                         )
                         # label = ', '.join(['{:6.1f}'.format(self.experiment_fluxes[id]), '='.join(['r', '{:1.2f}'.format(self.corr[id])])])
                     elif legend == "exp":
-                        exp_str = ", ".join(
-                            [
-                                "=".join(
-                                    [
-                                        params_dict[key]["abbr"],
-                                        params_dict[key]["format"].format(config.get(key) * ice_density),
-                                    ]
-                                )
-                                for key in params
-                            ]
-                        )
+                        # # Use this 
+                        # exp_str = ", ".join(
+                        #     [
+                        #         "=".join(
+                        #             [
+                        #                 params_dict[key]["abbr"],
+                        #                 params_dict[key]["format"].format(config.get(key) * ice_density),
+                        #             ]
+                        #         )
+                        #         for key in params
+                        #     ]
+                        # )
                         exp_str = ", ".join(
                             [
                                 "=".join(
@@ -546,6 +549,7 @@ class FluxGate(object):
                     dash_style,
                     color=my_color,
                     markeredgewidth=markeredgewidth,
+                    markeredgecolor=markeredgecolor,
                     label=label,
                 )
             labels.append(label)
@@ -598,7 +602,8 @@ class FluxGate(object):
                 ax.plot(profile_axis_out, obs_o_vals, "-", color="0.35")
             else:
                 ax.plot(profile_axis_out, obs_o_vals, "-", color="0.5")
-                ax.plot(profile_axis_out, obs_o_vals, dash_style, color="0.35", markeredgewidth=markeredgewidth)
+                ax.plot(profile_axis_out, obs_o_vals, dash_style, color=obscolor, markeredgewidth=markeredgewidth, markeredgecolor=markeredgecolor,
+)
         if plot_title:
             plt.title(gate_name, loc="left")
 
@@ -1029,7 +1034,7 @@ def make_correlation_figure(filename, exp):
     gate_id_sorted = [flux_gates[x].gate_id for x in sort_order]
     corrs_dict = dict(zip(gate_id_sorted, corrs_sorted))
     lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=1.2)
-    fig = plt.figure(figsize=[6.4, 6.4])
+    fig = plt.figure(figsize=[6.4, 12])
     ax = fig.add_subplot(111)
     height = 0.4
     y = np.arange(len(list(corrs.keys()))) + 1.25
@@ -1681,9 +1686,9 @@ parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float, help='''P
 parser.add_argument(
     "--colormap",
     dest="colormap",
-    nargs=4,
-    help="""palettable colormap with 4 arguments: name, map_type (in {'Sequential', 'Diverging', 'Qualitative'}), number (number of defined colors in color map), reverse = (bool)""",
-    default=["Blues", "Sequential", 12, 0],
+    nargs=1,
+    help="""Name of matplotlib colormap""",
+    default="tab20c"
 )
 parser.add_argument(
     "--label_params",
@@ -1828,125 +1833,27 @@ else:
 na = len(args)
 shade = 0.15
 colormap = options.colormap
-# Convert str to int, or the bool to reverse will fail
-colormap[2] = int(colormap[2])
-colormap[3] = int(colormap[3])
-try:
-    from palettable import colorbrewer
-
-    my_colors = colorbrewer.get_map(*colormap).mpl_colors
-    nc = len(my_colors)
-    # Fall back: create as many colors as needed from colormap
-    if nc < na:
-        try:
-            cdict = plt.cm.datad[colormap[0]]
-        except:
-            # import and convert colormap
-            cdict = ppt.gmtColormap(colormap[0])
-        cmap = mpl.colors.LinearSegmentedColormap("my_colormap", cdict)
-        cNorm = mpl.colors.Normalize(vmin=0, vmax=na)
-        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
-        my_colors = []
-        for k in range(na):
-            my_color = scalarMap.to_rgba(k)
-            my_colors.append(tuple(my_color))
-    cc = mpl.colors.ColorConverter()
-    m, n = np.asarray(my_colors).shape
-    my_colors_light = []
-    for rgb in my_colors:
-        h, l, s = rgb_to_hls(*rgb[0:3])
-        l *= 1 + shade
-        l = min(0.9, l)
-        l = max(0, l)
-        my_colors_light.append(hls_to_rgb(h, l, s))
-except:
-    # This is a fall back if brewer2mpl is not installed
-    my_colors = ["0.9", "0.7", "0.5", "0.3", "0.1"]
-    my_colors_light = ["0.8", "0.6", "0.4", "0.2", "0"]
-
-# Make this an option
-my_colors = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
-
-my_colors_light = [
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-    "#deebf7",
-    "#9ecae1",
-    "#3182bd",
-    "#efedf5",
-    "#bcbddc",
-    "#756bb1",
-    "#fee0d2",
-    "#fc9272",
-    "#de2d26",
-    "#e5f5e0",
-    "#a1d99b",
-    "#31a354",
-    "#fee6ce",
-    "#fdae6b",
-    "#e6550d",
-]
-
-nc = len(my_colors)
-ns = nc - na
-my_colors = my_colors[ns::]
-mcc = my_colors
-# mpl.rcParams['axes.color_cycle'] = my_colors
-
-# my_colors = my_colors[ns::]
-# my_colors_light = my_colors_light[ns::]
-
+# FIXME: make option
+cstride = 2
+my_colors = plt.get_cmap(colormap).colors[::cstride]
+my_colors_light = []
+for rgb in my_colors:
+    h, l, s = rgb_to_hls(*rgb[0:3])
+    l *= 1 + shade
+    l = min(0.9, l)
+    l = max(0, l)
+    my_colors_light.append(hls_to_rgb(h, l, s))
+    
 alpha = 0.75
 dash_style = "o"
 numpoints = 1
 legend_frame_width = 0.25
 markeredgewidth = 0.2
+markeredgecolor = 'k'
+obscolor = "0.4"
 
 params_dict = {
+    "bed": {"abbr": "bed", "format": "{}"},
     "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
     "surface.pdd.factor_snow": {"abbr": "$f_{\mathregular{s}}$", "format": "{:1.0f}"},
     "basal_resistance.pseudo_plastic.q": {"abbr": "$q$", "format": "{:1.2f}"},
@@ -2012,9 +1919,9 @@ except:
 profile_names = nc0.variables["profile_name"][:]
 flux_gates = []
 for pos_id, profile_name in enumerate(profile_names):
-    profile_axis = nc0.variables["profile"][pos_id]
-    profile_axis_units = nc0.variables["profile"].units
-    profile_axis_name = nc0.variables["profile"].long_name
+    profile_axis = nc0.variables["profile_axis"][pos_id]
+    profile_axis_units = nc0.variables["profile_axis"].units
+    profile_axis_name = nc0.variables["profile_axis"].long_name
     profile_id = int(nc0.variables["profile_id"][pos_id])
     try:
         clon = nc0.variables["clon"][pos_id]
@@ -2200,7 +2107,7 @@ if obs_file:
     rmsd_undetermined_cum_dict = dict(zip(keys, rmsd_isbrae_cum))
     rmsd_cum_dict_sorted = sorted(iter(rmsd_cum_dict.items()), key=operator.itemgetter(1))
 
-    outname = ".".join(["rmsd_sorted", "csv"])
+    outname = ".".join(["rmsd_sorted_{}".format(varname), "csv"])
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(rmsd_cum_dict_sorted), header="id,rmsd")
 
@@ -2208,14 +2115,14 @@ if obs_file:
     corr_dict = dict(zip(keys, corr))
     corr_dict_sorted = sorted(iter(corr_dict.items()), key=operator.itemgetter(1), reverse=True)
 
-    outname = ".".join(["pearson_r_sorted", "csv"])
+    outname = ".".join(["pearson_r_sorted_{}".format(varname), "csv"])
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(corr_dict_sorted), header="id,correlation")
 
     glaciers_dict = dict(zip(keys, glaciers_above_threshold))
     glaciers_dict_sorted = sorted(iter(glaciers_dict.items()), key=operator.itemgetter(1), reverse=True)
 
-    outname = ".".join(["glaciers_above_threshold", "csv"])
+    outname = ".".join(["glaciers_above_threshold_{}".format(varname), "csv"])
     print(("  - saving {0}".format(outname)))
     export_csv_from_dict(outname, dict(glaciers_dict_sorted), header="id,no_glaciers", fmt=["%i", "%i"])
 
