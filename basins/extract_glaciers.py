@@ -189,7 +189,7 @@ for item in ds.items():
 
 cvars = ["pism_config"]
 basins = ("CW", "NE", "NO", "NW", "SE", "SW")
-variable = mvars
+# variable = mvars
 
 for k, gl_id in enumerate(glacier_ids):
     gl_basin = glacier_basins[k]
