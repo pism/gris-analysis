@@ -1,6 +1,7 @@
 # Copyright (C) 2016-18 Andy Aschwanden
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from cdo import Cdo
 from datetime import datetime
 import fiona
 from functools import partial
@@ -11,6 +12,7 @@ import ocgis
 import os
 from unidecode import unidecode
 
+cdo = Cdo()
 mp.set_start_method("forkserver", force=True)
 
 # create logger
@@ -57,9 +59,6 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
             "UGID"
         ]
     ]
-    ## this argument must always come in as a list
-    # print(select_geom)
-    # select_ugid = [select_geom[0]["properties"]["UGID"]]
     ## parameterize the operations to be performed on the target dataset
     ops = ocgis.OcgOperations(
         dataset=rd,
@@ -67,6 +66,8 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
         geom=shape_file,
         aggregate=False,
         snippet=False,
+        calc=[{"func": "mean", "name": "mean"}],
+        calc_grouping=["all"],
         select_ugid=select_ugid,
         output_format=output_format,
         output_format_options=output_format_options,
@@ -76,24 +77,29 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
     ret = ops.execute()
 
 
-def calculate_fieldsum(infile, outfile):
+def calculate_field(cdo_operator, infile, outfile):
 
     """
     Calculate scalar time series with CDO
     """
 
-    from cdo import Cdo
+    logger.info("Calculating field sum and saving to \n {}".format(outfile))
+    cdo_operator(input="-setctomiss,0 {}".format(infile), output=outfile, overwrite=True, options="-O -b F32")
 
-    cdo = Cdo()
+
+def calculate_field_timmean(cdo_operator, infile, outfile):
+
+    """
+    Calculate scalar time series with CDO
+    """
 
     logger.info("Calculating field sum and saving to \n {}".format(outfile))
-    cdo.fldsum(input=infile, output=outfile, overwrite=True, options="-L -b F32")
+    cdo_operator(input="-timmean -setctomiss,0 {}".format(infile), output=outfile, overwrite=True, options="-O -b F32")
 
 
 def extract(ugid, metadata):
 
     basin = metadata["basins"][ugid]
-    gl_id = metadata["ids"][ugid]
     gl_name = metadata["names"][ugid]
     odir = metadata["output_dir"]
     savename = metadata["savename"]
@@ -102,24 +108,32 @@ def extract(ugid, metadata):
     variable = metadata["variable"]
 
     if metadata["prefix"]:
-        prefix = "b_{basin}_id_{gl_id}_{gl_name}_{savename}".format(
-            basin=basin, gl_id=gl_id, gl_name=unidecode(gl_name).replace(" ", "_"), savename=savename
+        prefix = "b_{basin}_ugid_{ugid}_{gl_name}_{savename}".format(
+            basin=basin, ugid=ugid, gl_name=unidecode(gl_name).replace(" ", "_"), savename=savename
         )
     else:
-        prefix = "id_{gl_id}_{gl_name}_{savename}".format(
-            basin=basin, gl_id=gl_id, gl_name=unidecode(gl_name).replace(" ", "_"), savename=savename
+        prefix = "ugid_{ugid}_{gl_name}_{savename}".format(
+            basin=basin, ugid=ugid, gl_name=unidecode(gl_name).replace(" ", "_"), savename=savename
         )
     metadata["prefix_string"] = prefix
     no_extraction = metadata["no_extraction"]
     if not no_extraction:
         extract_glacier_by_ugid(gl_name, ugid, uri, shape_file, variable, metadata)
-    no_fieldsum = metadata["no_fieldsum"]
-    if not no_fieldsum:
+    no_scalars = metadata["no_scalars"]
+    if not no_scalars:
 
         infile = os.path.join(odir, prefix, prefix + ".nc")
-        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldsum", prefix]), "nc"]))
 
-        calculate_fieldsum(infile, outfile)
+        cdo_operator = cdo.fldsum
+        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldsum", prefix]), "nc"]))
+        calculate_field(cdo_operator, infile, outfile)
+        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldsum_timmean", prefix]), "nc"]))
+        calculate_field_timmean(cdo_operator, infile, outfile)
+        cdo_operator = cdo.fldmean
+        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldmean", prefix]), "nc"]))
+        calculate_field(cdo_operator, infile, outfile)
+        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldmean_timmean", prefix]), "nc"]))
+        calculate_field_timmean(cdo_operator, infile, outfile)
 
 
 if __name__ == "__main__":
@@ -166,10 +180,10 @@ if __name__ == "__main__":
         "--no_extraction", dest="no_extraction", action="store_true", help="Don't extract basins", default=False
     )
     parser.add_argument(
-        "--no_fieldsum",
-        dest="no_fieldsum",
+        "--no_scalars",
+        dest="no_scalars",
         action="store_true",
-        help="Don't scalar time-series by using 'fldsum'",
+        help="Don't scalar time-series by using 'fld*' operators",
         default=False,
     )
     parser.add_argument("--start_date", help="Start date YYYY-MM-DD", default="2008-1-1")
@@ -179,7 +193,7 @@ if __name__ == "__main__":
     time_range = [datetime.strptime(options.start_date, "%Y-%M-%d"), datetime.strptime(options.end_date, "%Y-%M-%d")]
     n_procs = options.n_procs
     no_extraction = options.no_extraction
-    no_fieldsum = options.no_fieldsum
+    no_scalars = options.no_scalars
     prefix = options.prefix
     uri = options.FILE[0]
     shape_file = options.shape_file
@@ -199,8 +213,9 @@ if __name__ == "__main__":
     savename = uri[0 : len(uri) - 3]
 
     ## set the output format to convert to
-    output_format = "nc"
+    output_format = "shp"
     output_format_options = {"data_model": "NETCDF4", "variable_kwargs": {"zlib": True, "complevel": 3}}
+    output_format_options = {}
 
     ## we can either subset the data by a geometry from a shapefile, or convert to
     ## geojson for the entire spatial domain. there are other options here (i.e. a
@@ -209,25 +224,21 @@ if __name__ == "__main__":
 
     with fiona.open(shape_file, encoding="utf-8") as ds:
 
-        glacier_ids = []
         glacier_names = []
         glacier_basins = []
         glacier_ugids = []
         for item in ds.items():
-            if item[1]["properties"]["id"] is not None:
-                glacier_names.append(item[1]["properties"]["Name"])
-                glacier_ids.append(item[1]["properties"]["id"])
-                glacier_basins.append(item[1]["properties"]["basin"])
-                glacier_ugids.append(item[1]["properties"]["UGID"])
+            glacier_names.append(item[1]["properties"]["Name"])
+            glacier_basins.append(item[1]["properties"]["basin"])
+            glacier_ugids.append(item[1]["properties"]["UGID"])
 
     metadata = {
         "prefix": prefix,
-        "ids": glacier_ids,
         "names": glacier_names,
         "basins": glacier_basins,
         "savename": savename,
         "no_extraction": no_extraction,
-        "no_fieldsum": no_fieldsum,
+        "no_scalars": no_scalars,
         "output_dir": odir,
         "output_format": output_format,
         "output_format_options": output_format_options,
