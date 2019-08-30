@@ -20,6 +20,9 @@ import cf_units
 import numpy as np
 import pylab as plt
 
+from io import StringIO
+import pandas as pd
+
 from unidecode import unidecode
 
 try:
@@ -253,6 +256,7 @@ parser.add_argument(
         "pdfs",
         "random_flux",
         "sobel",
+        "glacier_dgmsl",
     ],
     default="les",
 )
@@ -2014,43 +2018,40 @@ def plot_ens_mass(plot_var="limnsw"):
         print(("Reading RCP {} files".format(rcp)))
         rcp_files = [f for f in ifiles if "rcp_{}".format(rcp) in f]
 
-        pctl16_file = [f for f in rcp_files if "enspctl16" in f][0]
-        pctl84_file = [f for f in rcp_files if "enspctl84" in f][0]
+        pctl5_file = [f for f in rcp_files if "enspctl5_" in f][0]
+        pctl50_file = [f for f in rcp_files if "enspctl50_" in f][0]
+        pctl95_file = [f for f in rcp_files if "enspctl95_" in f][0]
 
-        cdf_enspctl16 = cdo.readCdf(pctl16_file)
-        cdf_enspctl84 = cdo.readCdf(pctl84_file)
-        t = cdf_enspctl16.variables["time"][:]
+        cdf_enspctl5 = cdo.readCdf(pctl5_file)
+        cdf_enspctl50 = cdo.readCdf(pctl50_file)
+        cdf_enspctl95 = cdo.readCdf(pctl95_file)
+        t = cdf_enspctl5.variables["time"][:]
 
-        enspctl16 = cdf_enspctl16.variables[plot_var][:]
-        enspctl16_vals = cdf_enspctl16.variables[plot_var][:] - cdf_enspctl16.variables[plot_var][0]
-        iunits = cdf_enspctl16[plot_var].units
-        enspctl16_vals = -unit_converter(enspctl16_vals, iunits, mass_ounits) * gt2mSLE
+        enspctl5 = cdf_enspctl5.variables[plot_var][:]
+        enspctl5_vals = cdf_enspctl5.variables[plot_var][:] - cdf_enspctl5.variables[plot_var][0]
+        iunits = cdf_enspctl5[plot_var].units
+        enspctl5_vals = -unit_converter(enspctl5_vals, iunits, mass_ounits) * gt2cmSLE
 
-        enspctl84 = cdf_enspctl84.variables[plot_var][:]
-        enspctl84_vals = cdf_enspctl84.variables[plot_var][:] - cdf_enspctl84.variables[plot_var][0]
-        iunits = cdf_enspctl84[plot_var].units
-        enspctl84_vals = -unit_converter(enspctl84_vals, iunits, mass_ounits) * gt2mSLE
+        enspctl50 = cdf_enspctl50.variables[plot_var][:]
+        enspctl50_vals = cdf_enspctl50.variables[plot_var][:] - cdf_enspctl50.variables[plot_var][0]
+        iunits = cdf_enspctl50[plot_var].units
+        enspctl50_vals = -unit_converter(enspctl50_vals, iunits, mass_ounits) * gt2cmSLE
+
+        enspctl95 = cdf_enspctl95.variables[plot_var][:]
+        enspctl95_vals = cdf_enspctl95.variables[plot_var][:] - cdf_enspctl95.variables[plot_var][0]
+        iunits = cdf_enspctl95[plot_var].units
+        enspctl95_vals = -unit_converter(enspctl95_vals, iunits, mass_ounits) * gt2cmSLE
 
         date = np.arange(start_year + step, start_year + (len(t[:]) + 1), step)
 
-        # ensemble between 16th and 84th quantile
-        ax.fill_between(date[:], enspctl16_vals, enspctl84_vals, color=rcp_col_dict[rcp], alpha=0.4, linewidth=0)
+        # ensemble between 5th and 95th quantile
+        ax.fill_between(date[:], enspctl5_vals, enspctl95_vals, color=rcp_shade_col_dict[rcp], linewidth=0)
 
-        ax.plot(date[:], enspctl16_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.4)
+        ax.plot(date[:], enspctl5_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.4)
 
-        ax.plot(date[:], enspctl84_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.4)
+        ax.plot(date[:], enspctl50_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.6)
 
-        if ctrl_file is not None:
-            rcp_ctrl_file = [f for f in ctrl_file if "rcp_{}".format(rcp) in f][0]
-
-            cdf_ctrl = cdo.readCdf(rcp_ctrl_file)
-            ctrl_t = cdf_ctrl.variables["time"][:]
-            cdf_date = np.arange(start_year + step, start_year + (len(ctrl_t[:]) + 1), step)
-
-            ctrl_vals = cdf_ctrl.variables[plot_var][:] - cdf_ctrl.variables[plot_var][0]
-            iunits = cdf_ctrl[plot_var].units
-            ctrl_vals = -unit_converter(ctrl_vals, iunits, mass_ounits) * gt2mSLE
-            ax.plot(cdf_date[:], ctrl_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=lw)
+        ax.plot(date[:], enspctl95_vals, color=rcp_col_dict[rcp], linestyle="solid", linewidth=0.4)
 
     if do_legend:
         legend = ax.legend(
@@ -2060,7 +2061,7 @@ def plot_ens_mass(plot_var="limnsw"):
         legend.get_frame().set_alpha(0.0)
 
     ax.set_xlabel("Year")
-    ax.set_ylabel("$\Delta$(GMSL) (m)")
+    ax.set_ylabel("sea level contribution (cm)")
 
     if time_bounds:
         ax.set_xlim(time_bounds[0], time_bounds[1])
@@ -2152,6 +2153,44 @@ def plot_ctrl_mass(plot_var="limnsw"):
         fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
 
+def plot_glacier_dgmsl():
+
+    for k, rcp in enumerate(["85"]):
+
+        print(("Reading RCP {} files".format(rcp)))
+        rcp_files = [f for f in ifiles if "rcp_{}".format(rcp) in f]
+        ifile = rcp_files[-1]
+
+        df = pd.read_csv(ifile)
+        df = df.merge(ugids_names_df, on="UGID")
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for pctl in ["5", "16", "50", "84", "95"]:
+            ax.plot(df[pctl], "o")
+        # if do_legend:
+        #     legend = ax.legend(
+        #         loc="center right", edgecolor="0", bbox_to_anchor=(0.91, 0.63), bbox_transform=plt.gcf().transFigure
+        #     )
+        #     legend.get_frame().set_linewidth(0.0)
+        #     legend.get_frame().set_alpha(0.0)
+
+        # ax.set_xlabel("sea-level equivalent (mm)")
+
+        # if rotate_xticks:
+        #     ticklabels = ax.get_xticklabels()
+        #     for tick in ticklabels:
+        #         tick.set_rotation(30)
+        # else:
+        #     ticklabels = ax.get_xticklabels()
+        #     for tick in ticklabels:
+        #         tick.set_rotation(0)
+
+        for out_format in out_formats:
+            out_file = "glaciers_rcp_{}_2100".format(rcp) + "." + out_format
+            print("  - writing image %s ..." % out_file)
+            fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
+
+
 def plot_pdfs():
 
     years = [2100, 2200, 2300]
@@ -2189,6 +2228,261 @@ def plot_pdfs():
             fig.savefig(out_file, bbox_inches="tight", dpi=out_res)
 
 
+ugids_names = StringIO(
+    """
+UGID,Name
+0,Umiammakku Isbræ
+1,Unnamed Vestfjord S
+2,Rink Isbræ
+3,Kangerlussuup Sermersua
+4,
+5,Sermeq Silarleq
+6,
+7,Lille Gletscher
+8,Store Gletscher
+9,Sermeq Avannarleq
+10,Usulluup Sermia
+11,Inuppaat Quuat
+12,Kangiata Nunaata Sermia
+13,Narsap Sermia
+14,Akullersuup Sermia
+15,Kangiata Nunaata Sermia
+16,
+17,Sermeq (glacier in Sermilik ice fjord)
+18,Avannarleq Bræ
+19,Sermilik Bræ
+20,Qajuuttap Sermia
+21,Kiattuut Sermiat
+22,Inngia Isbræ
+23,
+24,Upernavik SS
+25,Nunatakassaap Sermia
+26,Kakivfaat Sermiat
+27,Qeqertarsuup Sermia
+28,Ussing Bræer
+29,Ussing Bræer N
+30,Cornell Gletscher
+31,Illullip Sermia
+32,Alison Gletscher
+33,Unnamed south Hayes M
+34,Kjer Gletscher
+35,Sverdrup Gletscher
+36,Nansen Gletscher
+37,Steenstrup Gletscher
+38,Storm Gletscher
+39,Saqqap Sermersua
+40,Nordenskiöld Gletscher
+41,
+42,Issuuarsuit Sermia
+43,Rink Gletscher
+44,Carlos Gletscher
+45,Sermiarsupaluk
+46,Heilprin Gletscher
+47,Tracy Gletscher
+48,Harald Moltke Bræ
+49,Humboldt Gletscher
+50,
+51,
+52,Ryder Gletscher
+53,
+54,Marie Sophie Gletscher
+55,Academy Gletscher
+56,
+57,Nioghalvfjerdsfjorden (79North)
+58,Zachariae Isstrøm
+59,Storstrømmen
+60,Daugaard-Jensen
+61,Eielson Gletscher
+62,Unnamed Kanger W
+63,Helheimgletscher
+64,Ikertivaq NN
+65,Unnamed Mogens Heinesen S
+66,Unnamed Napasorsuaq S
+67,Køge Bugt SS
+68,Køge Bugt N
+69,Ukaasorsuaq
+70,Frederikshåbs Isblink
+71,Isunnguata Sermia
+72,Eqip Sermia
+73,
+74,Kong Christian IV Gletscher
+75,Sorgenfri Glacier
+76,Vestfjord Gletscher
+77,Jungersen
+78,Døcker Smith Gletscher
+79,
+80,Tingmiarmiut Fjord
+81,Sermeq Kujalleq
+82,Kangilerngata Sermia
+83,Graulv
+84,C.H. Ostenfeld Gletscher
+85,Kangerluarsuup Sermia
+86,Upernavik Isstrøm N
+87,Wordie Gletscher
+88,
+89,
+90,
+91,
+92,
+93,Fenrisgletscher
+94,Midgårdgletscher
+95,Unnamed Deception Ø CN
+96,Unnamed Uunartit Islands
+97,Kruuse Fjord
+98,K.I.V. Steenstrup Nodre Bræ
+99,Polaric Gletscher
+100,Magga Dan Gletscher
+101,
+102,Styrtegletscher
+103,Frederiksborg Gletscher
+104,
+105,Kangerdlugssuaq Gletscher
+106,Farquhar Gletscher
+107,Melville Gletscher
+108,Sharp Gletscher
+109,Køge Bugt C
+110,Puisortoq N
+111,Unnamed Mogens Heinesen SSS
+112,Harder Gletscher
+113,Unnamed South Danell Fjord
+114,
+115,
+116,Unnamed Kangerluluk
+117,Unnamed Herluf Trolle S
+118,Unnamed Herluf Trolle N
+119,Unnamed Anorituup Kangerlua SS
+120,Unnamed Anorituup Kangerlua N
+121,Unnamed Anorituup Kangerlua S
+122,
+123,Unnamed Danell Fjord
+124,Mælkevejen
+125,Unnamed Laube S
+126,Laube Gletscher
+127,Unnamed Polaric S
+128,Heimdal Gletscher
+129,Skinfaxe
+130,Kong Oscar Gletscher
+131,Fimbulgletscher
+132,Knud Rasmussen
+133,Pasterze
+134,L. Bistrup Bræ
+135,Admiralty Trefork
+136,
+137,
+138,Sioralik Bræ
+139,Sermilik
+140,
+141,Eqalorutsit Killiit Sermiat
+142,
+143,
+144,Avannerleq N
+145,Adolf Hoel Gletscher
+146,Waltershausen Gletscher
+147,Gerard de Geer Gletscher
+148,Jættegletscher
+149,Nordenskiöld Gletscher
+150,
+151,Hisinger Gletscher
+152,Violingletscher
+153,Steensby Gletscher
+154,Gade Glacier
+155,Døcker Smith Gl. W
+156,
+157,Rosenborg Gletscher
+158,Kronborg Gletscher
+159,Borggraven
+160,Sydbræ
+161,Bredegletscher
+162,
+163,Steno Bræ
+164,Storbræ N
+165,Dendritgletscher
+166,
+167,Hart Gletscher
+168,
+169,Hubbard Gletscher
+170,
+171,Bowdoin Gletscher
+172,
+173,
+174,Verhoeff Gletscher
+175,
+176,
+177,
+178,
+179,Morris Jesup Gletscher
+180,
+181,Diebitsch Gletscher
+182,Bamse
+183,Dodge Gletscher
+184,
+185,
+186,
+187,
+188,Pitugfik Gletscher
+189,
+190,Savissuaq WWWW
+191,
+192,Savissuaq Gletscher
+193,
+194,Apuseerajik
+195,
+196,Køge Bugt S
+197,
+198,Apuseerserpia
+199,Gyldenløve Fjord C
+200,Rimfaxe
+201,
+202,Yngvar Nielsen Bræ W
+203,Helland Gletscher
+204,Yngvar Nielsen Bræ
+205,Mohn Gletscher
+206,Heim Gletscher
+207,
+208,
+209,
+210,F. Graae Gletscher
+211,Charcot Gletscher
+212,
+213,Sortebræ
+214,Upernavik Isstrøm C
+215,Upernavik Isstrøm S
+216,Puisortoq S
+217,Unnamed Napasorsuaq N
+218,Ikertivaq N
+219,Ikertivaq M
+220,Ikertivaq S
+221,Hayes Gletscher
+222,Brikkerne Gletscher
+223,Hagen Bræ
+224,
+225,Jakobshavn Isbræ
+226,Saqqarliup Sermia
+227,Nordenskiöld Gletscher
+228,
+229,Sermeq Avannarleq
+230,Petermann Gletscher
+231,
+232,
+236,Berlingske Gletscher
+240,Unnamed Mogens Heinesen C
+241,
+242,A.P. Bernstorff Gletscher
+243,Unnamed Dendritgletscher S
+244,
+245,
+246,Gyldenløve Fjord S
+247,
+248,Savissuaq W
+249,Savissuaq WW
+250,
+251,Savissuaq WWW
+252,Unnamed Mogens Heinesen N]
+"""
+)
+
+ugids_names_df = pd.read_csv(ugids_names, skipinitialspace=True)
+
 if plot == "les":
     plot_les()
 elif plot == "forcing_mass":
@@ -2221,3 +2515,5 @@ elif plot == "profile_anim":
     plot_profile_ts_animation()
 elif plot == "sobel":
     plot_sobel()
+elif plot == "glacier_dgmsl":
+    plot_glacier_dgmsl()
