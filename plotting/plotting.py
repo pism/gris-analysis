@@ -205,6 +205,7 @@ parser.add_argument(
     "--parallel_threads",
     dest="openmp_n",
     help="Number of OpenMP threads for operators such as enssstat, Default=1",
+    type=int,
     default=1,
 )
 parser.add_argument("--no_legend", dest="do_legend", action="store_false", help="Do not plot legend", default=True)
@@ -2505,6 +2506,7 @@ elif plot == "cmip5_rcp":
     plot_cmip5_rcp()
 elif plot == "grid_res":
     plot_grid_res()
+    plot_grid_res(plot_var="tendency_of_ice_mass_due_to_surface_mass_balance")
 elif plot == "random_flux":
     plot_random_flux(plot_var="tendency_of_ice_mass_due_to_discharge")
 elif plot == "pdfs":

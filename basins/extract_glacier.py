@@ -1,6 +1,10 @@
 # Copyright (C) 2016-18 Andy Aschwanden
+import faulthandler
+
+faulthandler.enable()
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
 from cdo import Cdo
 from datetime import datetime
 import fiona
@@ -14,7 +18,6 @@ import os
 from unidecode import unidecode
 
 cdo = Cdo()
-mp.set_start_method("forkserver", force=True)
 
 # create logger
 logger = logging.getLogger("extract_glacier")
@@ -69,7 +72,7 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
         snippet=False,
         # calc=[{"func": "mean", "name": "m"}],
         # calc_grouping=["all"],
-        select_ugid=select_ugid,
+        select_ugid=ugid,
         output_format=output_format,
         output_format_options=output_format_options,
         prefix=prefix,
@@ -251,6 +254,7 @@ if __name__ == "__main__":
     if ugid == "all":
 
         with mp.Pool(n_procs) as pool:
+            mp.set_start_method("forkserver", force=True)
             pool.map(partial(extract, metadata=metadata), glacier_ugids)
             pool.close()
 
