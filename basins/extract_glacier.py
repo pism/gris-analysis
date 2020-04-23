@@ -1,11 +1,10 @@
-# Copyright (C) 2016-18 Andy Aschwanden
-import faulthandler
+# Copyright (C) 2016-19 Andy Aschwanden
 
-faulthandler.enable()
+# import faulthandler
+# faulthandler.enable()
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-from cdo import Cdo
 from datetime import datetime
 import fiona
 from functools import partial
@@ -16,8 +15,6 @@ import numpy as np
 import ocgis
 import os
 from unidecode import unidecode
-
-cdo = Cdo()
 
 # create logger
 logger = logging.getLogger("extract_glacier")
@@ -56,13 +53,10 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
     prefix = metadata["prefix_string"]
     time_range = metadata["time_range"]
 
+    crs = ocgis.variable.crs.CFPolarStereographic(epsg=3413)
     logger.info("Extracting glacier {} with UGID {}".format(glacier, ugid))
-    rd = ocgis.RequestDataset(uri=uri, variable=variable)
-    select_ugid = [
-        [x for x in ocgis.GeomCabinetIterator(path=shape_file) if x["properties"]["UGID"] == ugid][0]["properties"][
-            "UGID"
-        ]
-    ]
+    rd = ocgis.RequestDataset(uri=uri, variable=variable, crs=crs,)
+    # select_ugid = [[x for x in ocgis.GeomCabinetIterator(path=shape_file) if x["properties"]["UGID"] == ugid]]
     ## parameterize the operations to be performed on the target dataset
     ops = ocgis.OcgOperations(
         dataset=rd,
@@ -72,7 +66,7 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
         snippet=False,
         # calc=[{"func": "mean", "name": "m"}],
         # calc_grouping=["all"],
-        select_ugid=ugid,
+        select_ugid=[ugid],
         output_format=output_format,
         output_format_options=output_format_options,
         prefix=prefix,
@@ -251,12 +245,12 @@ if __name__ == "__main__":
         "variable": variable,
     }
 
-    if ugid == "all":
+    # if ugid == "all":
 
-        with mp.Pool(n_procs) as pool:
-            mp.set_start_method("forkserver", force=True)
-            pool.map(partial(extract, metadata=metadata), glacier_ugids)
-            pool.close()
+    #     with mp.Pool(n_procs) as pool:
+    #         mp.set_start_method("forkserver", force=True)
+    #         pool.map(partial(extract, metadata=metadata), glacier_ugids)
+    #         pool.close()
 
-    else:
-        extract(int(ugid), metadata=metadata)
+    # else:
+    #     extract(int(ugid), metadata=metadata)
