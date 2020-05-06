@@ -413,6 +413,8 @@ class FluxGate(object):
         """
 
         gate_name = self.gate_name
+        gtype = self.glaciertype
+        glacier_type = glacier_types[int(gtype)].upper()
         experiments = self.experiments
         profile_axis = self.profile_axis
         profile_axis_name = self.profile_axis_name
@@ -573,7 +575,7 @@ class FluxGate(object):
         if (y_lim_min is not None) or( y_lim_max is not None):
             ax.set_ylim(bottom=y_lim_min, top=y_lim_max)
         if plot_title:
-            plt.title(gate_name, loc="left")
+            plt.title(f"{gate_name} ({glacier_type})", loc="left")
 
         if normalize:
             gate_name = "_".join([unidecode(gate.gate_name), varname, "normalized", "profile"])
