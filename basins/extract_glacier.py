@@ -42,10 +42,12 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 default_basin_file = "Greenland_Basins_PS_v1.4.2ext_TW.shp"
 
 
-def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
+def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata, epsg=None):
     """
     Extract glacier using OCGIS
     """
+
+    ocgis.env.OVERWRITE = True
 
     output_dir = metadata["output_dir"]
     output_format = metadata["output_format"]
@@ -53,19 +55,21 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
     prefix = metadata["prefix_string"]
     time_range = metadata["time_range"]
 
-    crs = ocgis.variable.crs.CFPolarStereographic(epsg=3413)
     logger.info("Extracting glacier {} with UGID {}".format(glacier, ugid))
-    rd = ocgis.RequestDataset(uri=uri, variable=variable, crs=crs,)
-    # select_ugid = [[x for x in ocgis.GeomCabinetIterator(path=shape_file) if x["properties"]["UGID"] == ugid]]
-    ## parameterize the operations to be performed on the target dataset
+    if epsg:
+        crs = ocgis.variable.crs.CoordinateReferenceSystem(epsg=epsg)
+        rd = ocgis.RequestDataset(
+            uri=uri,
+            variable=variable,
+            crs=crs,
+        )
+    else:
+        rd = ocgis.RequestDataset(uri=uri, variable=variable)
     ops = ocgis.OcgOperations(
         dataset=rd,
         time_range=time_range,
         geom=shape_file,
-        # aggregate=True,
         snippet=False,
-        # calc=[{"func": "mean", "name": "m"}],
-        # calc_grouping=["all"],
         select_ugid=[ugid],
         output_format=output_format,
         output_format_options=output_format_options,
@@ -75,39 +79,7 @@ def extract_glacier_by_ugid(glacier, ugid, uri, shape_file, variable, metadata):
     ret = ops.execute()
 
 
-def calculate_field(cdo_operator, infile, outfile):
-
-    """
-    Calculate scalar time series with CDO
-    """
-
-    logger.info("Calculating field sum and saving to \n {}".format(outfile))
-    cdo_operator(input="-setctomiss,0 {}".format(infile), output=outfile, overwrite=True, options="-O -b F32")
-
-
-def calculate_field_timmean(cdo_operator, infile, outfile):
-
-    """
-    Calculate scalar time series with CDO
-    """
-
-    logger.info("Calculating field sum and saving to \n {}".format(outfile))
-    cdo_operator(input="-timmean -setctomiss,0 {}".format(infile), output=outfile, overwrite=True, options="-O -b F32")
-
-
-def calculate_field_timcumsum(cdo_operator, infile, outfile):
-
-    """
-    Calculate scalar time series with CDO
-    """
-
-    logger.info("Calculating field sum and saving to \n {}".format(outfile))
-    cdo_operator(
-        input="-timcumsum -setctomiss,0 {}".format(infile), output=outfile, overwrite=True, options="-O -b F32"
-    )
-
-
-def extract(ugid, metadata):
+def extract(ugid, metadata, epsg):
 
     idx = np.where(np.asarray(metadata["ugids"]) == ugid)[0][0]
     gl_name = metadata["names"][idx]
@@ -121,27 +93,7 @@ def extract(ugid, metadata):
         ugid=ugid, gl_name=unidecode(gl_name).replace(" ", "_"), savename=savename
     )
     metadata["prefix_string"] = prefix
-    no_extraction = metadata["no_extraction"]
-    if not no_extraction:
-        extract_glacier_by_ugid(gl_name, ugid, uri, shape_file, variable, metadata)
-    no_scalars = metadata["no_scalars"]
-    if not no_scalars:
-
-        infile = os.path.join(odir, prefix, prefix + ".nc")
-        infile = infile.replace("(", "\(").replace(")", "\)")
-        cdo_operator = cdo.fldsum
-        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldsum", prefix]), "nc"]))
-        outfile = outfile.replace("(", "").replace(")", "")
-        calculate_field(cdo_operator, infile, outfile)
-        outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldsum_timcumsum", prefix]), "nc"]))
-        calculate_field_timcumsum(cdo_operator, infile, outfile)
-        # outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldsum_timmean", prefix]), "nc"]))
-        # calculate_field_timmean(cdo_operator, infile, outfile)
-        # cdo_operator = cdo.fldmean
-        # outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldmean", prefix]), "nc"]))
-        # calculate_field(cdo_operator, infile, outfile)
-        # outfile = os.path.join(odir, "scalar", ".".join(["_".join(["fldmean_timmean", prefix]), "nc"]))
-        # calculate_field_timmean(cdo_operator, infile, outfile)
+    extract_glacier_by_ugid(gl_name, ugid, uri, shape_file, variable, metadata, epsg=epsg)
 
 
 if __name__ == "__main__":
@@ -151,9 +103,10 @@ if __name__ == "__main__":
     # set up the option parser
 
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.description = "Extract glaciers from continental scale files."
+    parser.description = "Extract sub-regions from large-scale files."
     parser.add_argument("FILE", nargs=1)
-    parser.add_argument("--ugid", help="UGID", default=None)
+    parser.add_argument("--ugid", help="UGID", default="all")
+    parser.add_argument("--epsg", help="Set EPSG code of data set.", default=None, type=int)
     parser.add_argument("--o_dir", dest="odir", help="output directory", default="../glaciers")
     parser.add_argument(
         "--shape_file",
@@ -169,7 +122,6 @@ if __name__ == "__main__":
         help="""number of cores/processors. default=4. Only used if --ugid all""",
         default=4,
     )
-
     parser.add_argument(
         "-v",
         "--variable",
@@ -177,24 +129,13 @@ if __name__ == "__main__":
         help="Comma-separated list of variables to be extracted. By default, all variables are extracted.",
         default=None,
     )
-    parser.add_argument(
-        "--no_extraction", dest="no_extraction", action="store_true", help="Don't extract basins", default=False
-    )
-    parser.add_argument(
-        "--no_scalars",
-        dest="no_scalars",
-        action="store_true",
-        help="Don't scalar time-series by using 'fld*' operators",
-        default=False,
-    )
-    parser.add_argument("--start_date", help="Start date YYYY-MM-DD", default="2008-1-1")
-    parser.add_argument("--end_date", help="End date YYYY-MM-DD", default="2299-1-1")
+    parser.add_argument("--start_date", help="Start date YYYY-MM-DD", default="0001-1-1")
+    parser.add_argument("--end_date", help="End date YYYY-MM-DD", default="3000-1-1")
     options = parser.parse_args()
+    epsg = options.epsg
     ugid = options.ugid
     time_range = [datetime.strptime(options.start_date, "%Y-%M-%d"), datetime.strptime(options.end_date, "%Y-%M-%d")]
     n_procs = options.n_procs
-    no_extraction = options.no_extraction
-    no_scalars = options.no_scalars
     uri = options.FILE[0]
     shape_file = options.shape_file
     variable = options.variable
@@ -204,10 +145,6 @@ if __name__ == "__main__":
     odir = options.odir
     if not os.path.isdir(odir):
         os.mkdir(odir)
-    if not os.path.isdir(os.path.join(odir, "scalar")):
-        os.mkdir(os.path.join(odir, "scalar"))
-
-    ocgis.env.OVERWRITE = True
 
     # Output name
     savename = uri[0 : len(uri) - 3]
@@ -234,8 +171,6 @@ if __name__ == "__main__":
         "names": glacier_names,
         "ugids": glacier_ugids,
         "savename": savename,
-        "no_extraction": no_extraction,
-        "no_scalars": no_scalars,
         "output_dir": odir,
         "output_format": output_format,
         "output_format_options": output_format_options,
@@ -245,12 +180,12 @@ if __name__ == "__main__":
         "variable": variable,
     }
 
-    # if ugid == "all":
+    if ugid == "all":
 
-    #     with mp.Pool(n_procs) as pool:
-    #         mp.set_start_method("forkserver", force=True)
-    #         pool.map(partial(extract, metadata=metadata), glacier_ugids)
-    #         pool.close()
+        with mp.Pool(n_procs) as pool:
+            mp.set_start_method("forkserver", force=True)
+            pool.map(partial(extract, metadata=metadata, epsg=epsg), glacier_ugids)
+            pool.close()
 
-    # else:
-    #     extract(int(ugid), metadata=metadata)
+    else:
+        extract(int(ugid), metadata=metadata)
