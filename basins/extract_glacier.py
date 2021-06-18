@@ -1,4 +1,4 @@
-# Copyright (C) 2016-19 Andy Aschwanden
+# Copyright (C) 2016-21 Andy Aschwanden
 
 # import faulthandler
 # faulthandler.enable()
@@ -188,4 +188,4 @@ if __name__ == "__main__":
             pool.close()
 
     else:
-        extract(int(ugid), metadata=metadata)
+        extract(int(ugid), metadata=metadata, epsg=epsg)

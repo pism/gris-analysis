@@ -95,7 +95,7 @@ class FluxGate(object):
         glaciertype,
         flowtype,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super(FluxGate, self).__init__(*args, **kwargs)
         self.pos_id = pos_id
@@ -436,11 +436,11 @@ class FluxGate(object):
         if has_observations:
             obs = self.observations
             config = obs.config
-            if legend == "dem":
+            if legend == "exp":
                 if obs.has_error:
                     label = "obs: {:6.1f}$\pm${:4.1f}".format(self.observed_flux, self.observed_flux_error)
                 else:
-                    label = config["dem"]
+                    label = config["exp"]
             else:
                 if obs.has_error:
                     label = "{:6.1f}$\pm${:4.1f}".format(self.observed_flux, self.observed_flux_error)
@@ -482,7 +482,7 @@ class FluxGate(object):
             i_vals = exp.values
             i_units_cf = cf_units.Unit(v_units)
             o_units_cf = cf_units.Unit(v_o_units)
-            exp_o_vals = i_units_cf.convert(i_vals, o_units_cf)
+            exp_o_vals = np.squeeze(i_units_cf.convert(i_vals, o_units_cf))
             if normalize:
                 exp_max = np.max(exp_o_vals)
                 exp_o_vals *= obs_max / exp_max
@@ -497,20 +497,20 @@ class FluxGate(object):
                     ]
                 )
                 if has_observations:
-                    if legend == "dem":
-                        label = config.get("dem")
+                    if legend == "exp":
+                        label = config.get("exp")
                 else:
-                    label = config.get("dem")
+                    label = config.get("exp")
                 labels.append(label)
 
             my_color = my_colors[k]
             my_color_light = my_colors_light[k]
             if simple_plot:
-                line_c, = ax.plot(profile_axis_out, exp_o_vals, color=my_color, label=label)
-                line_d, = ax.plot(profile_axis_out, exp_o_vals, color=my_color)
+                (line_c,) = ax.plot(profile_axis_out, exp_o_vals, color=my_color, label=label)
+                (line_d,) = ax.plot(profile_axis_out, exp_o_vals, color=my_color)
             else:
-                line_c, = ax.plot(profile_axis_out, exp_o_vals, "-", color=my_color, alpha=0.5)
-                line_d, = ax.plot(
+                (line_c,) = ax.plot(profile_axis_out, exp_o_vals, "-", color=my_color, alpha=0.5)
+                (line_d,) = ax.plot(
                     profile_axis_out,
                     exp_o_vals,
                     dash_style,
@@ -523,7 +523,7 @@ class FluxGate(object):
             lines_d.append(line_d)
             lines_c.append(line_c)
 
-        if (x_lim_min is not None) or( x_lim_max is not None):
+        if (x_lim_min is not None) or (x_lim_max is not None):
             ax.set_xlim(x_lim_min, int(x_lim_max))
         else:
             ax.set_xlim(0, np.max(profile_axis_out))
@@ -541,7 +541,7 @@ class FluxGate(object):
         ordered_handles.insert(0, handles[0])
         ordered_labels.insert(0, labels[0])
         if legend != "none":
-            if (legend == "dem") :
+            if legend == "exp":
                 lg = ax.legend(
                     ordered_handles,
                     ordered_labels,
@@ -570,9 +570,15 @@ class FluxGate(object):
                 ax.plot(profile_axis_out, obs_o_vals, "-", color="0.35")
             else:
                 ax.plot(profile_axis_out, obs_o_vals, "-", color="0.5")
-                ax.plot(profile_axis_out, obs_o_vals, dash_style, color=obscolor, markeredgewidth=markeredgewidth, markeredgecolor=markeredgecolor,
-)
-        if (y_lim_min is not None) or( y_lim_max is not None):
+                ax.plot(
+                    profile_axis_out,
+                    obs_o_vals,
+                    dash_style,
+                    color=obscolor,
+                    markeredgewidth=markeredgewidth,
+                    markeredgecolor=markeredgecolor,
+                )
+        if (y_lim_min is not None) or (y_lim_max is not None):
             ax.set_ylim(bottom=y_lim_min, top=y_lim_max)
         if plot_title:
             plt.title(f"{gate_name} ({glacier_type})", loc="left")
@@ -677,7 +683,7 @@ class ExperimentDataset(Dataset):
                     self.config[attr] = getattr(ncv, attr)
             else:
                 print("Variable {} not found".format(v))
-                
+
     def __repr__(self):
         return "ExperimentDataset"
 
@@ -732,11 +738,6 @@ class ObservationsDataset(Dataset):
         return "ObservationsDataset"
 
 
-
-
-
-
-
 # ##############################################################################
 # MAIN
 # ##############################################################################
@@ -745,25 +746,20 @@ if __name__ == "__main__":
 
     __spec__ = None
 
-
     # Set up the option parser
     parser = ArgumentParser()
     parser.description = "Analyze flux gates. Used for 'Complex Greenland Outlet Glacier Flow Captured'."
     parser.add_argument("FILE", nargs="*")
     parser.add_argument("--aspect_ratio", dest="aspect_ratio", type=float, help='''Plot aspect ratio"''', default=0.8)
     parser.add_argument(
-        "--colormap",
-        dest="colormap",
-        nargs=1,
-        help="""Name of matplotlib colormap""",
-        default="tab20c"
+        "--colormap", dest="colormap", nargs=1, help="""Name of matplotlib colormap""", default="tab20c"
     )
     parser.add_argument(
         "--label_params",
         dest="label_params",
         help='''comma-separated list of parameters that appear in the legend,
                       e.g. "sia_enhancement_factor"''',
-        default="basal_resistance.pseudo_plastic.q,basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden,stress_balance.sia.enhancement_factor,basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min,flow_law.gpbld.water_frac_observed_limit,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min,basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max",
+        default="exp",
     )
     parser.add_argument(
         "--normalize",
@@ -785,14 +781,18 @@ if __name__ == "__main__":
         "--no_figures", dest="make_figures", action="store_false", help="Do not make profile figures", default=True
     )
     parser.add_argument(
-        "--do_regress", dest="do_regress", action="store_true", help="Make grid resolution regression plots", default=False
+        "--do_regress",
+        dest="do_regress",
+        action="store_true",
+        help="Make grid resolution regression plots",
+        default=False,
     )
     parser.add_argument(
         "--legend",
         dest="legend",
-        choices=["dem"],
+        choices=["exp"],
         help="Controls the legend",
-        default="dem",
+        default="exp",
     )
     parser.add_argument("--o_dir", dest="odir", help="output directory. Default: current directory", default="figures")
     parser.add_argument(
@@ -801,7 +801,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--simple_plot", dest="simple_plot", action="store_true", help="Make simple line plot", default=False
     )
-    parser.add_argument("--no_legend", dest="plot_legend", action="store_false", help="Don't plot a legend", default=True)
+    parser.add_argument(
+        "--no_legend", dest="plot_legend", action="store_false", help="Don't plot a legend", default=True
+    )
     parser.add_argument(
         "-p",
         "--print_size",
@@ -823,7 +825,11 @@ if __name__ == "__main__":
     parser.add_argument("--x_lim", dest="x_lim", nargs=2, help="""X lims""", default=[None, None])
     parser.add_argument("--y_lim", dest="y_lim", nargs=2, help="""Y lims""", default=[None, None])
     parser.add_argument(
-        "-v", "--variable", dest="varname", help="""Variable to plot, default = 'velsurf_mag'.""", default="velsurf_mag"
+        "-v",
+        "--variable",
+        dest="varname",
+        help="""Variable to plot, default = 'velsurf_mag'.""",
+        default="velsurf_mag",
     )
 
     options = parser.parse_args()
@@ -867,7 +873,6 @@ if __name__ == "__main__":
     if y_lim_max is not None:
         y_lim_max = np.float(y_lim_max)
 
-
     if varname in ("velsurf_mag", "velbase_mag", "velsurf_normal"):
         flux_type = "line flux"
         v_o_units = "m yr-1"
@@ -906,7 +911,6 @@ if __name__ == "__main__":
     else:
         print(("variable {} not supported".format(varname)))
 
-
     na = len(args)
     shade = 0.15
     colormap = options.colormap
@@ -926,28 +930,43 @@ if __name__ == "__main__":
     numpoints = 1
     legend_frame_width = 0.25
     markeredgewidth = 0.2
-    markeredgecolor = 'k'
+    markeredgecolor = "k"
     obscolor = "0.4"
 
     params_dict = {
         "dem": {"abbr": "DEM", "format": "{}"},
+        "exp": {"abbr": "EXP", "format": "{}"},
         "bed": {"abbr": "bed", "format": "{}"},
         "surface.pdd.factor_ice": {"abbr": "$f_{\mathregular{i}}$", "format": "{:1.0f}"},
         "surface.pdd.factor_snow": {"abbr": "$f_{\mathregular{s}}$", "format": "{:1.0f}"},
         "basal_resistance.pseudo_plastic.q": {"abbr": "$q$", "format": "{:1.2f}"},
-        "basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden": {"abbr": "$\\delta$", "format": "{:1.4f}"},
+        "basal_yield_stress.mohr_coulomb.till_effective_fraction_overburden": {
+            "abbr": "$\\delta$",
+            "format": "{:1.4f}",
+        },
         "stress_balance.sia.enhancement_factor": {"abbr": "$E_{\mathregular{SIA}}$", "format": "{:1.2f}"},
         "stress_balance.ssa.enhancement_factor": {"abbr": "$E_{\mathregular{SSA}}$", "format": "{:1.2f}"},
         "stress_balance.ssa.Glen_exponent": {"abbr": "$n_{\mathregular{SSA}}$", "format": "{:1.2f}"},
         "stress_balance.sia.Glen_exponent": {"abbr": "$n_{\mathregular{SIA}}$", "format": "{:1.2f}"},
         "grid_dx_meters": {"abbr": "ds", "format": "{:.0f}"},
         "flow_law.gpbld.water_frac_observed_limit": {"abbr": "$\omega$", "format": "{:1.2}"},
-        "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min": {"abbr": "$\phi_{\mathregular{min}}$", "format": "{:4.2f}"},
-        "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_max": {"abbr": "$\phi_{\mathregular{max}}$", "format": "{:4.2f}"},
-        "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min": {"abbr": "$z_{\mathregular{min}}$", "format": "{:1.0f}"},
-        "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max": {"abbr": "$z_{\mathregular{max}}$", "format": "{:1.0f}"},
+        "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_min": {
+            "abbr": "$\phi_{\mathregular{min}}$",
+            "format": "{:4.2f}",
+        },
+        "basal_yield_stress.mohr_coulomb.topg_to_phi.phi_max": {
+            "abbr": "$\phi_{\mathregular{max}}$",
+            "format": "{:4.2f}",
+        },
+        "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_min": {
+            "abbr": "$z_{\mathregular{min}}$",
+            "format": "{:1.0f}",
+        },
+        "basal_yield_stress.mohr_coulomb.topg_to_phi.topg_max": {
+            "abbr": "$z_{\mathregular{max}}$",
+            "format": "{:1.0f}",
+        },
     }
-
 
     var_long = (
         "velsurf_mag",
@@ -978,7 +997,6 @@ if __name__ == "__main__":
 
     flow_types = {0: "isbr{\\ae}", 1: "ice-stream", 2: "undefined"}
     glacier_types = {0: "ffmt", 1: "lvmt", 2: "ist", 3: "lt"}
-
 
     # Open first file
     filename = args[0]
@@ -1051,7 +1069,6 @@ if __name__ == "__main__":
         experiment = ExperimentDataset(id, filename, varname)
         for flux_gate in flux_gates:
             flux_gate.add_experiment(experiment)
-
 
     # set the print mode
     lw, pad_inches = ppt.set_mode(print_mode, aspect_ratio=aspect_ratio)
